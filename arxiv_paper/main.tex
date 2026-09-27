@@ -97,7 +97,7 @@ We benchmark four learning paradigms under identical test-before-learn streaming
     \item \textbf{Static Baseline (Frozen):} Trained exclusively on $\mathcal{D}_{base}$ and permanently frozen across the remaining stream ($S_{n_{base}+1}, \dots, S_T$).
     \item \textbf{Blind Periodic Retraining:} Retrained unconditionally every $K$ time slices (e.g., $K=4$ weeks) on all accumulated historical data without statistical drift awareness.
     \item \textbf{Sliding Window Retraining:} Retrained every $K$ time slices strictly on the most recent $W$ time slices (e.g., $W=4$ weeks), intentionally purging older history to simulate memory-bounded streaming.
-    \item \textbf{Concept-Drift-Adaptive (Proposed):} Employs dual ADWIN ($\delta = 0.002$) and DDM detectors over the prediction error stream. When drift is confirmed, a full retraining of an accelerated histogram-based gradient-boosted decision tree ensemble (XGBoost)~\cite{chen2016xgboost} is triggered across all matured streaming transactions on an NVIDIA RTX 5080 eGPU.
+    \item \textbf{Concept-Drift-Adaptive (Proposed):} Employs dual ADWIN ($\delta = 0.002$) and DDM detectors over the prediction error stream implemented via the River streaming framework~\cite{montiel2021river}. When drift is confirmed, a full retraining of an accelerated histogram-based gradient-boosted decision tree ensemble (XGBoost)~\cite{chen2016xgboost} is triggered across all matured streaming transactions on an NVIDIA RTX 5080 eGPU.
 \end{enumerate}
 
 \subsection{Simulating Asynchronous Verification Latency}
@@ -262,7 +262,7 @@ Benchmarked across $1{,}000$ sequential transactions under concurrent drift moni
 While our framework addresses key limitations in existing literature, two challenges remain:
 \begin{enumerate}
     \item \textbf{Unsupervised Feature-Space Adaptation:} Under long dispute lags ($> 8$ weeks), supervised detectors cannot trigger timely retraining. Future work must integrate unsupervised drift detection directly on feature embeddings $P(X)$ to adapt models prior to label arrival.
-    \item \textbf{Privacy-Preserving Cross-Institutional Expansion:} Financial institutions are legally constrained by data privacy regulations (e.g., GDPR, CCPA) from pooling raw transaction records. An essential next step is extending this streaming framework into \textit{privacy-preserving federated drift adaptation}, enabling collaborative anomaly detection without exposing customer records.
+    \item \textbf{Privacy-Preserving Cross-Institutional Expansion:} Financial institutions are legally constrained by data privacy regulations (e.g., GDPR, CCPA) from pooling raw transaction records. An essential next step is extending this streaming framework into \textit{privacy-preserving federated drift adaptation}, enabling collaborative anomaly detection without exposing customer records~\cite{wang2024gtree}.
 \end{enumerate}
 
 \section{Conclusion}

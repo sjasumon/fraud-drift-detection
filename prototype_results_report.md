@@ -362,7 +362,7 @@ This platform directly connects with the core strengths and publications of Prof
 2. **Verification Latency in Data Streams:**
    Prof. Koh's research on learning under verification latency is directly addressed in our Section 8 benchmarks, quantifying the empirical degradation caused by 30–90 day chargeback delays.
 3. **GPU-Accelerated Model Training:**
-   Her group's work on GPU-accelerated decision trees (*XGT: Fast and Secure Decision Tree Training and Inference on GPUs*, Wang et al., IEEE TDSC 2025) directly informs the architectural viability of rapid, on-demand GPU model retraining demonstrated in this platform.
+   Her group's work on GPU-accelerated decision trees (*GTree: GPU-Friendly Privacy-Preserving Decision Tree Training and Inference*, Wang et al., IEEE TrustCom 2024; and *XGT: Fast and Secure Decision Tree Training and Inference on GPUs*, Wang et al., IEEE TDSC 2025) directly informs the architectural viability of rapid, on-demand GPU model retraining demonstrated in this platform.
 4. **Transition to Phase 2 (Privacy-Preserving Cross-Institution Extension):**
    Having empirically proved single-institution drift adaptation on three diverse datasets, the candidate is uniquely positioned to advance to **Phase 2**: extending this architecture across multiple simulated financial institutions using secure multi-party computation (SMPC) or federated learning, solving the cross-institution visibility dilemma without sharing raw transaction data.
 

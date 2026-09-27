@@ -269,7 +269,7 @@ docker compose up -d
 
 This research directly aligns with the research agenda of **Prof. Yun Sing Koh** (MARS Lab / Centre of Machine Learning for Social Good, University of Auckland):
 1. **Adaptive Stream Mining & Concept Drift:** Extends foundational online algorithms (ADWIN, DDM) to massive, non-stationary financial transaction streams.
-2. **GPU Stream Acceleration:** Implements sub-1.5s model retraining on 500k+ transactions using CUDA histogram gradient boosting, echoing recent MARS lab publications (*XGT: Fast and Secure Decision Tree Training and Inference on GPUs*, IEEE TDSC 2025).
+2. **GPU Stream Acceleration:** Implements sub-1.5s model retraining on 500k+ transactions using CUDA histogram gradient boosting, echoing recent MARS lab publications (*GTree: GPU-Friendly Privacy-Preserving Decision Tree Training and Inference*, Wang et al., IEEE TrustCom 2024; and *XGT*, IEEE TDSC 2025).
 3. **Phased Research Trajectory:** Forms the empirical baseline for **Phase 2** (extending adaptive models to privacy-preserving federated settings across financial institutions).
 
 ---
@@ -279,9 +279,9 @@ This research directly aligns with the research agenda of **Prof. Yun Sing Koh**
 If you use this codebase or benchmark suite in your research, please cite:
 
 ```bibtex
-@article{sumon2026empirical,
-  title={Empirical Evaluation of Drift-Adaptive Gradient Boosting and Bandit Adaptation in Continuous Financial Transaction Streams},
-  author={Sumon, Md and Koh, Yun Sing},
+@article{sumon2026adaptive,
+  title={Adaptive Fraud Detection Under Concept Drift: An Empirical Study on Verification Latency, Entity Generalization, and Statistical Rigor},
+  author={Sumon, Sheikh Joynal Abedin},
   journal={arXiv preprint arXiv:2609.xxxxx},
   year={2026}
 }
