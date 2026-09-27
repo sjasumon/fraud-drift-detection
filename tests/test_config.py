@@ -102,3 +102,34 @@ def test_drift_monitor_reset_behavior():
     assert monitor.ddm is not old_ddm
     assert monitor.adwin.width == 0
 
+
+def test_production_security_validation():
+    """Asserts that production mode blocks insecure defaults (dev key or empty DB password)."""
+    # 1. Insecure default dev key in production
+    with pytest.raises(ValidationError, match="Insecure API key"):
+        Settings(app_env="production", api_key="dev-secret-key", db_password="strong-password-1234")
+
+    # 2. Short key in production
+    with pytest.raises(ValidationError, match="Insecure API key"):
+        Settings(app_env="production", api_key="short-key", db_password="strong-password-1234")
+
+    # 3. Empty DB password in production
+    with pytest.raises(ValidationError, match="Empty database password"):
+        Settings(app_env="production", api_key="a-very-strong-production-api-key-1234", db_password="")
+
+    # 4. Valid production credentials succeed
+    prod_settings = Settings(
+        app_env="production",
+        api_key="a-very-strong-production-api-key-1234",
+        db_password="strong-password-1234"
+    )
+    assert prod_settings.app_env == "production"
+    assert prod_settings.api_key == "a-very-strong-production-api-key-1234"
+    assert prod_settings.db_password == "strong-password-1234"
+
+    # 5. Development mode permits default dev credentials
+    dev_settings = Settings(app_env="development", api_key="dev-secret-key", db_password="")
+    assert dev_settings.app_env == "development"
+    assert dev_settings.api_key == "dev-secret-key"
+
+

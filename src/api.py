@@ -11,6 +11,7 @@ Key Production Capabilities:
 """
 
 import os
+import secrets
 import sys
 import time
 try:
@@ -28,7 +29,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks, Security, Depends, 
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 
-from src.config import USE_GPU, GPU_DEVICE, RANDOM_SEED, ADWIN_DELTA, API_KEY
+from src.config import USE_GPU, GPU_DEVICE, RANDOM_SEED, ADWIN_DELTA, API_KEY, APP_ENV
 from src.drift_detector import DriftMonitor
 
 logger = logging.getLogger("fraud_drift.api")
@@ -210,15 +211,34 @@ api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 def verify_api_key(api_key: Optional[str] = Security(api_key_header)) -> str:
     """
-    Enforces API Key authentication for sensitive inference, feedback, and telemetry endpoints.
-    Mitigates adversarial label-poisoning attacks on the feedback stream.
+    Enforces constant-time API Key authentication for sensitive inference, feedback, and telemetry endpoints.
+    Uses secrets.compare_digest to prevent timing-attack side-channels and mitigates
+    adversarial label-poisoning attacks on the feedback stream.
     """
-    if not api_key or api_key != API_KEY:
+    if not api_key or not secrets.compare_digest(api_key, API_KEY):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or missing API key. Provide a valid 'X-API-Key' header."
         )
     return api_key
+
+
+@app.on_event("startup")
+def startup_security_check():
+    """Validates runtime configuration hygiene upon microservice initialization."""
+    if APP_ENV.lower() in ("production", "prod", "staging"):
+        if secrets.compare_digest(API_KEY, "dev-secret-key") or len(API_KEY) < 16:
+            raise RuntimeError(
+                f"FATAL: Production mode ('{APP_ENV}') detected with insecure API_KEY. "
+                "Set a secure, high-entropy API_KEY in production."
+            )
+        logger.info("Microservice initialized securely in '%s' mode.", APP_ENV)
+    else:
+        if secrets.compare_digest(API_KEY, "dev-secret-key"):
+            logger.warning(
+                "Microservice initialized in '%s' mode with default API_KEY ('dev-secret-key'). "
+                "Ensure production deployments provide a non-default secret.", APP_ENV
+            )
 
 
 def assign_risk_tier(prob: float) -> str:

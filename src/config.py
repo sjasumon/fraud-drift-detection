@@ -4,10 +4,13 @@ Uses Pydantic BaseSettings for type-safe environment variable parsing,
 validation rules, and deterministic directory structure management.
 """
 
+import logging
 from pathlib import Path
 from typing import Optional
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger("fraud_drift.config")
 
 # Base Directory Resolution
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,6 +25,12 @@ class Settings(BaseSettings):
         env_file=str(BASE_DIR / ".env"),
         env_file_encoding="utf-8",
         extra="ignore"
+    )
+
+    # Runtime Environment
+    app_env: str = Field(
+        default="development",
+        description="Deployment environment ('development', 'staging', 'production')"
     )
 
     # Database Configuration (MySQL Server 9.7)
@@ -63,9 +72,32 @@ class Settings(BaseSettings):
             raise ValueError(f"ddm_drift_level ({v}) must be strictly greater than ddm_warning_level ({warning_level})")
         return v
 
+    @model_validator(mode="after")
+    def validate_production_security(self) -> "Settings":
+        """
+        Enforces strict credential and secret policies in production and staging environments.
+        Guards against deploying with default 'dev-secret-key' or empty database passwords.
+        """
+        is_prod = self.app_env.lower() in ("production", "prod", "staging")
+        if is_prod:
+            if self.api_key == "dev-secret-key" or len(self.api_key) < 16:
+                raise ValueError(
+                    f"Insecure API key configured in '{self.app_env}' environment. "
+                    "Must set a non-default API_KEY of at least 16 characters in production/staging."
+                )
+            if not self.db_password:
+                raise ValueError(
+                    f"Empty database password configured in '{self.app_env}' environment. "
+                    "Must set DB_PASSWORD for production/staging database connectivity."
+                )
+        return self
+
 
 # Instantiate validated settings singleton
 settings = Settings()
+
+if settings.app_env.lower() == "development" and settings.api_key == "dev-secret-key":
+    logger.info("Configuration: Running in development mode with default API_KEY. Set API_KEY for production.")
 
 # Directory Paths Management
 DATA_DIR = BASE_DIR / "data"
@@ -80,6 +112,7 @@ for d in [DATA_DIR, RAW_DATA_DIR, PROCESSED_DATA_DIR, RESULTS_DIR, FIGURES_DIR, 
     d.mkdir(parents=True, exist_ok=True)
 
 # Backward-Compatible Module-Level Constants
+APP_ENV = settings.app_env
 DB_HOST = settings.db_host
 DB_PORT = settings.db_port
 DB_USER = settings.db_user

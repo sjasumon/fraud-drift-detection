@@ -7,9 +7,11 @@ drift telemetry, and atomic model hot-swapping under concurrency.
 import pytest
 import numpy as np
 import xgboost as xgb
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from src.api import app, model_buffer, drift_monitor
+from src.api import app, model_buffer, drift_monitor, verify_api_key
+from src.config import API_KEY
 
 
 @pytest.fixture
@@ -201,4 +203,21 @@ def test_feedback_unknown_transaction_raises_404(client):
     })
     assert resp_with_prob.status_code == 200
     assert resp_with_prob.json()["status"] == "RECORDED"
+
+
+def test_verify_api_key_constant_time():
+    """Asserts that verify_api_key validates keys using constant-time comparison."""
+    # Valid key returns the key
+    assert verify_api_key(API_KEY) == API_KEY
+
+    # Missing key raises 401
+    with pytest.raises(HTTPException) as exc_info:
+        verify_api_key(None)
+    assert exc_info.value.status_code == 401
+
+    # Invalid key raises 401
+    with pytest.raises(HTTPException) as exc_info:
+        verify_api_key("invalid-unauthorized-key")
+    assert exc_info.value.status_code == 401
+
 
