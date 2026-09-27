@@ -102,3 +102,30 @@ def test_drift_attribution_ranking_and_schema(synthetic_stream_df, tmp_path):
     )
     assert out_path.exists()
     assert out_path.stat().st_size > 0
+
+
+def test_drift_attribution_reproducibility(synthetic_stream_df):
+    """
+    Asserts that DriftAttributionEngine with a fixed random_state produces
+    identical attribution scores and rankings across repeated executions.
+    """
+    preprocessor = Preprocessor(hours_per_slice=24)
+    preprocessor.fit(synthetic_stream_df[synthetic_stream_df["step"] <= 24])
+    df_processed = preprocessor.transform(synthetic_stream_df)
+    slices = preprocessor.partition_time_slices(df_processed)
+
+    model = DriftAdaptiveModel(feature_names=preprocessor.feature_names, scale_pos_weight=1.0)
+    model.fit_initial(slices[0]["data"])
+
+    explainer1 = DriftAttributionEngine(feature_names=preprocessor.feature_names, max_shap_samples=100, random_state=42)
+    explainer2 = DriftAttributionEngine(feature_names=preprocessor.feature_names, max_shap_samples=100, random_state=42)
+
+    res1 = explainer1.explain_drift_slice(model, slices[0]["data"], slices[1]["data"], slice_index=1, slice_name="Slice_02")
+    res2 = explainer2.explain_drift_slice(model, slices[0]["data"], slices[1]["data"], slice_index=1, slice_name="Slice_02")
+
+    assert len(res1) == len(res2)
+    for a1, a2 in zip(res1, res2):
+        assert a1["feature_name"] == a2["feature_name"]
+        assert np.isclose(a1["attribution_score"], a2["attribution_score"])
+        assert np.isclose(a1["shap_importance"], a2["shap_importance"])
+

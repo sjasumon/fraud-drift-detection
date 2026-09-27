@@ -12,7 +12,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import shap
 
-from src.config import FIGURES_DIR
+from src.config import FIGURES_DIR, RANDOM_SEED
 
 logger = logging.getLogger("fraud_drift.explainer")
 
@@ -64,9 +64,11 @@ class DriftAttributionEngine:
     Ranks features by combined SHAP importance delta and empirical distribution divergence.
     """
 
-    def __init__(self, feature_names: List[str], max_shap_samples: int = 500):
+    def __init__(self, feature_names: List[str], max_shap_samples: int = 500, random_state: int = RANDOM_SEED):
         self.feature_names = feature_names
         self.max_shap_samples = max_shap_samples
+        self.random_state = random_state
+        self.rng = np.random.default_rng(random_state)
 
     def explain_drift_slice(
         self,
@@ -83,9 +85,9 @@ class DriftAttributionEngine:
         """
         logger.info(f"[Drift Attribution] Explaining drift in {slice_name} (Slice {slice_index + 1})...")
 
-        # 1. Sample current data for efficient TreeSHAP
+        # 1. Sample current data deterministically for efficient TreeSHAP
         sample_size = min(self.max_shap_samples, len(current_df))
-        sample_indices = np.random.choice(len(current_df), size=sample_size, replace=False)
+        sample_indices = self.rng.choice(len(current_df), size=sample_size, replace=False)
         X_sample = current_df[self.feature_names].iloc[sample_indices].values
 
         # 2. TreeSHAP computation

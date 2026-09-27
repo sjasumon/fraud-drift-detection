@@ -101,7 +101,10 @@ class DriftAdaptiveModel:
         If drift was flagged by FR-4 (ADWIN/DDM), triggers a FULL RETRAIN
         on the entire accumulated stream (or strictly matured data under delayed feedback).
         """
-        self.cumulative_history.append(slice_df.copy())
+        # Accumulate into internal history only when not using an external training dataset override
+        # (e.g. DelayedFeedbackQueue maintains its own leak-free matured training buffer).
+        if training_df_override is None:
+            self.cumulative_history.append(slice_df.copy())
 
         if drift_triggered:
             self.adaptation_count += 1
