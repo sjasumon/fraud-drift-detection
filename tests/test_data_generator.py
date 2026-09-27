@@ -60,3 +60,25 @@ def test_generate_paysim_stream_all_phases():
     merchant_tx = df[df["type"] == "PAYMENT"]
     if len(merchant_tx) > 0:
         assert merchant_tx["nameDest"].str.startswith("M").all()
+
+
+def test_generate_paysim_stream_phase1_overnight_hours():
+    """Verifies that Phase 1 sudden micro-structuring fraud hours strictly align with overnight hours."""
+    df = generate_paysim_stream(
+        total_weeks=10,
+        tx_per_week=200,
+        fraud_rate=0.20,
+        seed=42
+    )
+
+    phase1_fraud = df[(df["drift_phase"] == "Phase_1_Sudden_MicroStructuring") & (df["isFraud"] == 1)]
+    assert len(phase1_fraud) > 0
+
+    # Downstream derived hour_of_day is (step - 1) % 24
+    derived_hours = (phase1_fraud["step"] - 1) % 24
+    valid_hours = {0, 1, 2, 3, 4, 5, 22, 23}
+
+    assert set(derived_hours.unique()).issubset(valid_hours)
+    # Ensure hour 21 is NOT present (which was previously caused by the off-by-one bug)
+    assert 21 not in set(derived_hours.unique())
+

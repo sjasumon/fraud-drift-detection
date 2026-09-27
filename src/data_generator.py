@@ -152,9 +152,10 @@ def generate_paysim_stream(
                     oldbalanceDest = 0.0
                     newbalanceDest = amount
                     dest_prefix = "C"
-                    # Skew time towards overnight
+                    # Skew time towards overnight (hours 00:00 - 05:00 and 22:00 - 23:00)
                     hour_of_day = int(np.random.choice([0, 1, 2, 3, 4, 5, 22, 23]))
-                    step = (step // 24) * 24 + hour_of_day
+                    # Account for 1-indexed steps: hour_of_day = (step - 1) % 24
+                    step = ((step - 1) // 24) * 24 + hour_of_day + 1
 
                 elif drift_phase == "Phase_2_Gradual_MerchantCamouflage":
                     # Gradual drift: Blending into PAYMENT and DEBIT channels with merchant destinations
