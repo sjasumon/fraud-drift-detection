@@ -111,3 +111,42 @@ def test_invalid_parameters_raise_error():
 
     with pytest.raises(ValueError, match="latency_mode must be 'fixed' or 'lognormal'"):
         DelayedFeedbackQueue(latency_mode="exponential")
+
+
+def test_delayed_feedback_skipped_slice_no_data_loss(sample_slice_data):
+    """
+    Verifies that if dequeue_matured is called across skipped or non-consecutive
+    slice indices, all transactions maturing at or before current_slice are dequeued
+    with ZERO silent data loss (total_enqueued == total_matured + total_pending).
+    """
+    queue = DelayedFeedbackQueue(delay_slices=3, latency_mode="fixed")
+
+    # Enqueue at slices 0, 1, 2 (maturities will be 3, 4, 5 respectively)
+    n = len(sample_slice_data)
+    queue.enqueue(sample_slice_data, current_slice=0)  # matures at 3
+    queue.enqueue(sample_slice_data, current_slice=1)  # matures at 4
+    queue.enqueue(sample_slice_data, current_slice=2)  # matures at 5
+
+    assert queue.get_pending_count() == 3 * n
+    assert queue.get_matured_count() == 0
+
+    # Skip slice 3 entirely, and call dequeue_matured directly at slice 4 (e.g. after resume/checkpoint)
+    matured_at_4 = queue.dequeue_matured(current_slice=4)
+
+    # Must contain BOTH slice 0 (maturing at 3) and slice 1 (maturing at 4)
+    assert len(matured_at_4) == 2 * n
+    assert queue.get_matured_count() == 2 * n
+
+    # Slice 2 (maturing at 5) must still be safely in pending queue
+    assert queue.get_pending_count() == 1 * n
+
+    # Invariant: Enqueued == Matured + Pending
+    summary = queue.get_status_summary(current_slice=4)
+    assert summary["total_enqueued"] == summary["total_matured"] + summary["total_pending"]
+
+    # Now advance to slice 6: the remaining slice 2 (maturing at 5) must mature
+    matured_at_6 = queue.dequeue_matured(current_slice=6)
+    assert len(matured_at_6) == 1 * n
+    assert queue.get_pending_count() == 0
+    assert queue.get_matured_count() == 3 * n
+

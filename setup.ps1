@@ -33,11 +33,11 @@ Write-Host "[3/4] Installing dependencies from pyproject.toml..." -ForegroundCol
 & .\.venv\Scripts\python.exe -m pip install -e ".[test]"
 
 # 4. Run automated test suite
-Write-Host "[4/4] Executing 50 automated invariant tests..." -ForegroundColor Yellow
+Write-Host "[4/4] Executing 51 automated invariant tests..." -ForegroundColor Yellow
 & .\.venv\Scripts\pytest.exe -v
 
 Write-Host "================================================================================" -ForegroundColor Cyan
-Write-Host "SETUP COMPLETE: All 50 automated tests passed!" -ForegroundColor Green
+Write-Host "SETUP COMPLETE: All 51 automated tests passed!" -ForegroundColor Green
 Write-Host "To run the benchmark pipeline:  .\.venv\Scripts\python.exe -m src.pipeline"
 Write-Host "To run multi-seed stats rigor: .\.venv\Scripts\python.exe -m src.benchmark_statistical_rigor --seeds 42 101"
 Write-Host "To run non-stationary bandit:  .\.venv\Scripts\python.exe -m src.bandit.benchmark --seeds 42 --steps 2000"

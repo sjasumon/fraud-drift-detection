@@ -5,7 +5,7 @@
 [![CUDA Acceleration](https://img.shields.io/badge/CUDA-RTX%205080%20eGPU-green.svg)](https://developer.nvidia.com/cuda-zone)
 [![arXiv Preprint](https://img.shields.io/badge/arXiv-Preprint%20Ready-b31b1b.svg)](arxiv_paper/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests Passing](https://img.shields.io/badge/tests-47%20passed-brightgreen.svg)](tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-51%20passed-brightgreen.svg)](tests/)
 
 A reproducible, production-grade empirical research framework and preprint package developed in support of doctoral research under **Professor Yun Sing Koh** at the **MARS Lab / Centre of Machine Learning for Social Good, University of Auckland**.
 

@@ -100,7 +100,7 @@ class DelayedFeedbackQueue:
 
     def dequeue_matured(self, current_slice: int) -> pd.DataFrame:
         """
-        Extracts and returns all transactions whose labels have matured exactly at current_slice.
+        Extracts and returns all transactions whose labels have matured at or before current_slice.
         These transactions are moved from the pending queue into the matured buffer.
         
         Args:
@@ -115,7 +115,7 @@ class DelayedFeedbackQueue:
         for entry in self._queue:
             df = entry["data"]
             # Check if any rows in this chunk mature at or before current_slice
-            matured_mask = df["_maturity_slice"] == current_slice
+            matured_mask = df["_maturity_slice"] <= current_slice
             unmatured_mask = df["_maturity_slice"] > current_slice
 
             if matured_mask.any():
