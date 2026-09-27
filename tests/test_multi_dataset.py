@@ -68,6 +68,7 @@ def test_paysim_ingestion_schema():
         "isFlaggedFraud": [0, 0, 0, 0]
     })
     sample_path = Path("data/paysim/sample_test.csv")
+    sample_path.parent.mkdir(parents=True, exist_ok=True)
     sample_df.to_csv(sample_path, index=False)
 
     try:

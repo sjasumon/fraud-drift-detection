@@ -132,7 +132,8 @@ class SliceEvaluator:
         self,
         metrics_df: pd.DataFrame,
         drift_events: List[Dict[str, Any]],
-        output_filename: str = "model_comparison_f1_aucpr.png"
+        output_filename: str = "model_comparison_f1_aucpr.png",
+        n_train_slices: int = 5
     ) -> Path:
         """
         FR-6.2: Generates a high-resolution time-series chart showing all evaluated models
@@ -199,9 +200,9 @@ class SliceEvaluator:
                 markersize=6
             )
 
-        # Highlight baseline training window (Weeks 1-5)
-        ax1.axvspan(1, 5, color="#EAEAEA", alpha=0.6, label="Baseline Window (Weeks 1-5)")
-        ax2.axvspan(1, 5, color="#EAEAEA", alpha=0.6)
+        # Highlight baseline training window dynamically
+        ax1.axvspan(1, n_train_slices, color="#EAEAEA", alpha=0.6, label=f"Baseline Window (Slices 1–{n_train_slices})")
+        ax2.axvspan(1, n_train_slices, color="#EAEAEA", alpha=0.6)
 
         # Mark drift alerts
         drift_slices = set(e["slice_index"] + 1 for e in drift_events)

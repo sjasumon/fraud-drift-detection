@@ -1,11 +1,10 @@
 # Concept-Drift-Aware Fraud Detection Architecture
 
-[![CI Status](https://github.com/OWNER/fraud-drift-detection/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/fraud-drift-detection/actions/workflows/ci.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
 [![CUDA Acceleration](https://img.shields.io/badge/CUDA-RTX%205080%20eGPU-green.svg)](https://developer.nvidia.com/cuda-zone)
 [![arXiv Preprint](https://img.shields.io/badge/arXiv-Preprint%20Ready-b31b1b.svg)](arxiv_paper/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests Passing](https://img.shields.io/badge/tests-54%20passed-brightgreen.svg)](tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-55%20passed-brightgreen.svg)](tests/)
 
 A reproducible, production-grade empirical research framework and preprint package developed in support of doctoral research under **Professor Yun Sing Koh** at the **MARS Lab / Centre of Machine Learning for Social Good, University of Auckland**.
 
@@ -14,13 +13,12 @@ This repository provides rigorous empirical validation, statistical confidence i
 
 ---
 
-## ⚡ 5-Minute Stranger Quickstart
+## ⚡ 5-Minute Quickstart
 
-To reproduce the environment, run the 47-test verification suite, and inspect benchmarks within 5 minutes:
+To reproduce the environment, run the 55-test verification suite, and inspect benchmarks within 5 minutes:
 
 ### Linux / macOS
 ```bash
-git clone https://github.com/OWNER/fraud-drift-detection.git
 cd fraud-drift-detection
 chmod +x setup.sh
 ./setup.sh
@@ -28,7 +26,6 @@ chmod +x setup.sh
 
 ### Windows (PowerShell)
 ```powershell
-git clone https://github.com/OWNER/fraud-drift-detection.git
 cd "fraud-drift-detection"
 .\setup.bat
 ```
@@ -36,7 +33,7 @@ cd "fraud-drift-detection"
 ### Run Test Suite
 ```bash
 pytest -v
-# Output: ======================= 47 passed in 10.2s =======================
+# Output: ======================= 55 passed in 10.6s =======================
 ```
 
 ---
@@ -251,7 +248,7 @@ docker compose up -d
 │   ├── drift_explainer.py           <- TreeSHAP drift attribution
 │   ├── preprocessing.py             <- Temporal feature engineering & UID extraction
 │   └── db.py                        <- MySQL SQLAlchemy persistence layer
-├── tests/                           <- Comprehensive test suite (47 tests)
+├── tests/                           <- Comprehensive test suite (54 tests)
 │   ├── test_statistical_rigor.py    <- Tests for bootstrap CIs and paired hypothesis testing
 │   ├── test_bandit.py               <- Tests for bandit agents and environment transitions
 │   ├── test_api.py                  <- Microservice endpoint validation

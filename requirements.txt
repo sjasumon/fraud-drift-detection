@@ -33,6 +33,7 @@ pydantic-settings==2.15.0
 fastapi==0.141.1
 uvicorn==0.54.0
 httpx==0.28.1
+psutil==7.1.0
 
 # Testing & Continuous Integration
 pytest==9.1.1

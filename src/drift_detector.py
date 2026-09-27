@@ -9,7 +9,9 @@ import logging
 from typing import List, Dict, Any, Optional, Tuple
 from river import drift
 
-from src.config import ADWIN_DELTA
+from src.config import (
+    ADWIN_DELTA, DDM_MIN_INSTANCES, DDM_WARNING_LEVEL, DDM_DRIFT_LEVEL
+)
 
 logger = logging.getLogger("fraud_drift.detector")
 
@@ -20,10 +22,23 @@ class DriftMonitor:
     Applies ADWIN and DDM concurrently to capture sudden and gradual distribution shifts.
     """
 
-    def __init__(self, adwin_delta: float = ADWIN_DELTA):
+    def __init__(
+        self,
+        adwin_delta: float = ADWIN_DELTA,
+        ddm_min_instances: int = DDM_MIN_INSTANCES,
+        ddm_warning_level: float = DDM_WARNING_LEVEL,
+        ddm_drift_level: float = DDM_DRIFT_LEVEL
+    ):
         self.adwin_delta = adwin_delta
+        self.ddm_min_instances = ddm_min_instances
+        self.ddm_warning_level = ddm_warning_level
+        self.ddm_drift_level = ddm_drift_level
         self.adwin = drift.ADWIN(delta=adwin_delta)
-        self.ddm = drift.binary.DDM()
+        self.ddm = drift.binary.DDM(
+            warm_start=ddm_min_instances,
+            warning_threshold=ddm_warning_level,
+            drift_threshold=ddm_drift_level
+        )
         self.drift_events: List[Dict[str, Any]] = []
         self.total_samples_monitored = 0
         self.total_errors_observed = 0
@@ -95,5 +110,9 @@ class DriftMonitor:
     def reset_detectors(self):
         """Resets detection windows after model adaptation event."""
         self.adwin = drift.ADWIN(delta=self.adwin_delta)
-        self.ddm = drift.binary.DDM()
+        self.ddm = drift.binary.DDM(
+            warm_start=self.ddm_min_instances,
+            warning_threshold=self.ddm_warning_level,
+            drift_threshold=self.ddm_drift_level
+        )
         logger.info("Drift detectors reset following model adaptation.")

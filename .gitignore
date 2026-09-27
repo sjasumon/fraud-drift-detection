@@ -34,3 +34,7 @@ ieee-fraud-detection.zip
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Execution logs
+*.log
+results/logs/

@@ -62,3 +62,21 @@ def test_adwin_delta_bounds():
 
     with pytest.raises(ValidationError):
         Settings(adwin_delta=0.0)
+
+
+def test_drift_monitor_wires_ddm_config():
+    """Asserts that DriftMonitor wires DDM hyperparameters into river DDM instance."""
+    from src.drift_detector import DriftMonitor
+    monitor = DriftMonitor(
+        ddm_min_instances=50,
+        ddm_warning_level=2.2,
+        ddm_drift_level=3.3
+    )
+    assert monitor.ddm.warm_start == 50
+    assert monitor.ddm.warning_threshold == 2.2
+    assert monitor.ddm.drift_threshold == 3.3
+
+    monitor.reset_detectors()
+    assert monitor.ddm.warm_start == 50
+    assert monitor.ddm.warning_threshold == 2.2
+    assert monitor.ddm.drift_threshold == 3.3

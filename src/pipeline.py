@@ -15,7 +15,7 @@ import time
 import logging
 import argparse
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import numpy as np
 import pandas as pd
 
@@ -47,20 +47,31 @@ logging.basicConfig(
 logger = logging.getLogger("fraud_drift.pipeline")
 
 
-def run_pipeline(dataset_path: Path = None, exclude_card_identifiers: bool = False) -> Dict[str, Any]:
+def run_pipeline(
+    dataset_path: Path = None,
+    exclude_card_identifiers: bool = False,
+    dataset_type: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Executes the end-to-end experiment pipeline according to FRD requirements.
+    Artifacts are namespaced by dataset slug and run_id to avoid cross-benchmark collisions.
     """
     run_id = f"RUN_{uuid.uuid4().hex[:10].upper()}"
     start_total_time = time.time()
 
-    # 1. Initialize Database (MySQL Server 9.7)
-    db = DatabaseManager()
+    # 1. Initialize Database (MySQL Server 9.7 with graceful fallback to file-only persistence)
+    try:
+        db = DatabaseManager()
+        db_backend_name = db.backend_name
+    except Exception as e:
+        logger.warning(f"Database connection unavailable ({e}). Continuing with filesystem metrics logging.")
+        db = None
+        db_backend_name = "Filesystem Only (MySQL unavailable)"
 
     logger.info("=" * 80)
     logger.info(f"STARTING CONCEPT-DRIFT-AWARE FRAUD DETECTION PIPELINE [{run_id}]")
     logger.info(f"Hardware: NVIDIA eGPU Acceleration = {USE_GPU} ({GPU_DEVICE})")
-    logger.info(f"Database Backend: {db.backend_name}")
+    logger.info(f"Database Backend: {db_backend_name}")
     logger.info(f"Adaptation Strategy: FULL RETRAINING ON NVIDIA GPU")
     logger.info(f"Reproducibility Seed: {RANDOM_SEED}")
     logger.info("=" * 80)
@@ -82,6 +93,19 @@ def run_pipeline(dataset_path: Path = None, exclude_card_identifiers: bool = Fal
 
     ingestor = DatasetIngestion(dataset_path)
     df_raw, validation_report = ingestor.load_and_validate()
+
+    # Determine dataset slug for artifact namespacing
+    ds_str = str(dataset_path).lower() if dataset_path else ""
+    if dataset_type:
+        dataset_slug = "ieee_cis" if dataset_type.lower() == "ieee" else dataset_type.lower()
+    elif "ieee" in ds_str or "train_transaction" in ds_str:
+        dataset_slug = "ieee_cis"
+    elif "feedzai" in ds_str or "base.csv" in ds_str:
+        dataset_slug = "feedzai_baf"
+    elif "paysim" in ds_str:
+        dataset_slug = "paysim"
+    else:
+        dataset_slug = dataset_path.stem.lower().replace("-", "_").replace(" ", "_") if dataset_path else "dataset"
 
     # 3. FR-2: Time-Slice Partitioning on RAW data (Zero Lookahead Leakage)
     preprocessor = Preprocessor(exclude_card_identifiers=exclude_card_identifiers)
@@ -108,8 +132,9 @@ def run_pipeline(dataset_path: Path = None, exclude_card_identifiers: bool = Fal
         s_transformed["data"] = preprocessor.transform(s["data"])
         time_slices.append(s_transformed)
 
-    # Persist slice metadata strictly to MySQL
-    db.log_slices(run_id, time_slices)
+    # Persist slice metadata strictly to MySQL if available
+    if db is not None:
+        db.log_slices(run_id, time_slices)
 
     # 4. FR-3: Static Baseline Model Setup
     train_slices = time_slices[:n_train_slices]
@@ -319,46 +344,75 @@ def run_pipeline(dataset_path: Path = None, exclude_card_identifiers: bool = Fal
         oos_mask=oos_mask
     )
 
-    # Save metrics to CSV and JSON
+    # Save metrics to CSV and JSON with namespacing
     metrics_df = pd.DataFrame(evaluator.metrics_log)
-    metrics_csv_path = METRICS_DIR / "slice_comparison_metrics.csv"
-    metrics_df.to_csv(metrics_csv_path, index=False)
 
-    summary_json_path = METRICS_DIR / "summary_metrics.json"
-    with open(summary_json_path, "w") as f:
+    # 1. Namespaced by run_id
+    run_metrics_csv = METRICS_DIR / f"{dataset_slug}_{run_id}_slice_comparison_metrics.csv"
+    metrics_df.to_csv(run_metrics_csv, index=False)
+
+    run_summary_json = METRICS_DIR / f"{dataset_slug}_{run_id}_summary.json"
+    with open(run_summary_json, "w", encoding="utf-8") as f:
         json.dump(overall_summary, f, indent=4)
+
+    # 2. Namespaced by dataset slug
+    dataset_metrics_csv = METRICS_DIR / f"{dataset_slug}_slice_comparison_metrics.csv"
+    metrics_df.to_csv(dataset_metrics_csv, index=False)
+
+    dataset_summary_json = METRICS_DIR / f"{dataset_slug}_summary_metrics.json"
+    with open(dataset_summary_json, "w", encoding="utf-8") as f:
+        json.dump(overall_summary, f, indent=4)
+
+    # 3. Maintain root headline artifacts for IEEE-CIS (primary benchmark)
+    metrics_csv_path = METRICS_DIR / "slice_comparison_metrics.csv"
+    summary_json_path = METRICS_DIR / "summary_metrics.json"
+    chart_output_filename = "model_comparison_f1_aucpr.png" if dataset_slug == "ieee_cis" else f"{dataset_slug}_model_comparison_f1_aucpr.png"
+
+    if dataset_slug == "ieee_cis":
+        metrics_df.to_csv(metrics_csv_path, index=False)
+        with open(summary_json_path, "w", encoding="utf-8") as f:
+            json.dump(overall_summary, f, indent=4)
 
     # 9. FR-6.2: Generate High-Resolution Visual Comparison Charts
     chart_path = evaluator.generate_comparison_plots(
         metrics_df=metrics_df,
         drift_events=drift_monitor.drift_events,
-        output_filename="model_comparison_f1_aucpr.png"
+        output_filename=chart_output_filename,
+        n_train_slices=n_train_slices
     )
-
-    # 10. Persist Everything to MySQL Database
-    db.log_metrics(run_id, evaluator.metrics_log)
-    db.log_drift_events(run_id, drift_monitor.drift_events)
-    if all_attributions:
-        db.log_attributions(run_id, all_attributions)
-        logger.info(f"P4: Persisted {len(all_attributions)} drift attribution records to MySQL `drift_attributions`.")
-
-    run_record = {
-        "run_id": run_id,
-        "dataset_name": dataset_path.name,
-        "total_rows": len(df_raw),
-        "time_slices_count": len(time_slices),
-        "gpu_accelerated": f"{static_model.device_used} (RTX 5080)",
-        "static_f1_overall": overall_summary["static_model"]["overall_f1"],
-        "adaptive_f1_overall": overall_summary["adaptive_model"]["overall_f1"],
-        "drift_alerts_count": len(drift_monitor.drift_events),
-        "notes": (
-            f"Periodic retrains: {periodic_model.retrain_count}. "
-            f"Sliding retrains: {sliding_model.retrain_count}. "
-            f"Adaptive retrains: {adaptive_model.adaptation_count}. "
-            f"Total execution time: {time.time() - start_total_time:.1f}s"
+    if dataset_slug == "ieee_cis":
+        evaluator.generate_comparison_plots(
+            metrics_df=metrics_df,
+            drift_events=drift_monitor.drift_events,
+            output_filename="ieee_cis_model_comparison_f1_aucpr.png",
+            n_train_slices=n_train_slices
         )
-    }
-    db.log_run(run_record)
+
+    # 10. Persist Everything to MySQL Database if available
+    if db is not None:
+        db.log_metrics(run_id, evaluator.metrics_log)
+        db.log_drift_events(run_id, drift_monitor.drift_events)
+        if all_attributions:
+            db.log_attributions(run_id, all_attributions)
+            logger.info(f"P4: Persisted {len(all_attributions)} drift attribution records to MySQL `drift_attributions`.")
+
+        run_record = {
+            "run_id": run_id,
+            "dataset_name": dataset_path.name,
+            "total_rows": len(df_raw),
+            "time_slices_count": len(time_slices),
+            "gpu_accelerated": f"{static_model.device_used} (RTX 5080)",
+            "static_f1_overall": overall_summary["static_model"]["overall_f1"],
+            "adaptive_f1_overall": overall_summary["adaptive_model"]["overall_f1"],
+            "drift_alerts_count": len(drift_monitor.drift_events),
+            "notes": (
+                f"Periodic retrains: {periodic_model.retrain_count}. "
+                f"Sliding retrains: {sliding_model.retrain_count}. "
+                f"Adaptive retrains: {adaptive_model.adaptation_count}. "
+                f"Total execution time: {time.time() - start_total_time:.1f}s"
+            )
+        }
+        db.log_run(run_record)
 
     total_pipeline_time = time.time() - start_total_time
 
@@ -367,8 +421,9 @@ def run_pipeline(dataset_path: Path = None, exclude_card_identifiers: bool = Fal
     logger.info("MULTI-MODEL STREAMING BENCHMARK COMPLETE — SUMMARY OF RESULTS")
     logger.info("=" * 96)
     logger.info(f"Dataset: {dataset_path.name} ({len(df_raw):,} transactions across {len(time_slices)} weeks)")
+    logger.info(f"Dataset Slug: {dataset_slug}")
     logger.info(f"Hardware Acceleration: {static_model.device_used} (NVIDIA RTX 5080 eGPU)")
-    logger.info(f"Database Logged: {db.backend_name}")
+    logger.info(f"Database Logged: {db_backend_name}")
     logger.info(f"Total Drift Alerts: {len(drift_monitor.drift_events)}")
     logger.info("-" * 96)
     logger.info(f"{'Model Architecture':<32} | {'Retrains':<9} | {'Whole F1':<9} | {'Whole AUC':<10} | {'OOS Recall':<11} | {'OOS AUC-PR':<11}")
@@ -391,20 +446,27 @@ def run_pipeline(dataset_path: Path = None, exclude_card_identifiers: bool = Fal
 
     logger.info("-" * 96)
     logger.info(f"Outputs generated:")
-    logger.info(f"  - Metrics Table: {metrics_csv_path}")
-    logger.info(f"  - Summary JSON:  {summary_json_path}")
-    logger.info(f"  - Chart:         {chart_path}")
-    logger.info(f"  - Log File:      {log_file}")
+    logger.info(f"  - Dataset Metrics: {dataset_metrics_csv}")
+    logger.info(f"  - Dataset Summary: {dataset_summary_json}")
+    logger.info(f"  - Run Summary:     {run_summary_json}")
+    if dataset_slug == "ieee_cis":
+        logger.info(f"  - Root Metrics:    {metrics_csv_path}")
+        logger.info(f"  - Root Summary:    {summary_json_path}")
+    logger.info(f"  - Chart:           {chart_path}")
+    logger.info(f"  - Log File:        {log_file}")
     logger.info(f"Pipeline executed in {total_pipeline_time:.2f}s.")
     logger.info("=" * 80)
 
     return {
         "run_id": run_id,
+        "dataset_slug": dataset_slug,
         "overall_summary": overall_summary,
         "chart_path": chart_path,
-        "metrics_csv_path": metrics_csv_path,
+        "metrics_csv_path": metrics_csv_path if dataset_slug == "ieee_cis" else dataset_metrics_csv,
+        "summary_json_path": summary_json_path if dataset_slug == "ieee_cis" else dataset_summary_json,
+        "run_summary_json": run_summary_json,
         "drift_events_count": len(drift_monitor.drift_events),
-        "db_backend": db.backend_name,
+        "db_backend": db_backend_name,
         "retrains_count": adaptive_model.adaptation_count
     }
 
@@ -433,7 +495,11 @@ def main():
             default_path = "data/ieee/train_transaction.csv" if Path("data/ieee/train_transaction.csv").exists() else "ieee/train_transaction.csv"
             data_file = Path(default_path)
 
-    run_pipeline(dataset_path=data_file, exclude_card_identifiers=args.exclude_identifiers)
+    run_pipeline(
+        dataset_path=data_file,
+        exclude_card_identifiers=args.exclude_identifiers,
+        dataset_type=args.dataset_type if not args.dataset else None
+    )
 
 
 if __name__ == "__main__":

@@ -40,7 +40,7 @@ pip install --upgrade pip setuptools wheel
 pip install -e ".[test]"
 
 # 4. Run automated test suite
-echo "[4/4] Executing 54 automated invariant tests..."
+echo "[4/4] Executing 55 automated invariant tests..."
 pytest -v
 
 echo "================================================================================"
