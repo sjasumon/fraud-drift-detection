@@ -39,7 +39,7 @@ This proposal sits directly at the intersection of two established strands of Pr
 
 ## 5. Candidate Background
 
-I bring 15+ years of practical, hands-on technical experience in automation, AI systems, and infrastructure — including self-hosted server infrastructure, application auditing, and freelance AI/automation development — alongside a Master of Science in Computer Science (National University of Bangladesh, First Class, including a supervised research thesis). This background gives me a strong practical foundation in building and deploying systems reliably, which I intend to bring to bear on the engineering side of this research alongside the theoretical contributions.
+I bring 17+ years of practical, hands-on technical experience in automation, AI systems, and infrastructure — including self-hosted server infrastructure, application auditing, and freelance AI/automation development — alongside a Master of Science in Computer Science (National University of Bangladesh, First Class, including a supervised research thesis). This background gives me a strong practical foundation in building and deploying systems reliably, which I intend to bring to bear on the engineering side of this research alongside the theoretical contributions.
 
 ## 6. Next Steps
 

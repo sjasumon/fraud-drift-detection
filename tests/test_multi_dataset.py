@@ -13,35 +13,56 @@ from src.ingestion import DatasetIngestion
 from src.preprocessing import Preprocessor
 
 
-def test_feedzai_baf_ingestion_schema():
+def test_feedzai_baf_ingestion_schema(tmp_path: Path):
     """Verifies that Feedzai BAF dataset correctly adapts to the platform's unified schema."""
     feedzai_path = Path("data/feedzai/Base.csv")
-    if not feedzai_path.exists():
-        pytest.skip("Feedzai dataset not present at data/feedzai/Base.csv")
+    if feedzai_path.exists():
+        ingestor = DatasetIngestion(feedzai_path)
+        df, report = ingestor.load_and_validate()
+        assert ingestor.dataset_type == "Feedzai-BAF"
+        assert report["total_rows"] == 1_000_000
+        assert report["fraud_count"] == 11_029
+    else:
+        # Fallback to self-contained synthetic fixture so tests never skip on clean clones
+        sample_path = tmp_path / "synthetic_feedzai_base.csv"
+        mock_df = pd.DataFrame({
+            "fraud_bool": [0, 1] * 60,
+            "month": [0] * 60 + [1] * 60,
+            "proposed_credit_limit": [1200.0] * 120,
+            "payment_type": ["AA", "AB", "AC", "AA"] * 30
+        })
+        mock_df.to_csv(sample_path, index=False)
+        ingestor = DatasetIngestion(sample_path)
+        df, report = ingestor.load_and_validate()
+        assert ingestor.dataset_type == "Feedzai-BAF"
+        assert report["total_rows"] == 120
+        assert report["fraud_count"] == 60
 
-    ingestor = DatasetIngestion(feedzai_path)
-    df, report = ingestor.load_and_validate()
-
-    assert ingestor.dataset_type == "Feedzai-BAF"
     assert "isFraud" in df.columns
     assert "trans_id" in df.columns
     assert "step" in df.columns
     assert "month" in df.columns
-    assert report["total_rows"] == 1_000_000
-    assert report["fraud_count"] == 11_029
 
 
 def test_feedzai_baf_monthly_partitioning():
     """Verifies that Feedzai BAF is partitioned into exactly 8 non-overlapping monthly slices."""
     feedzai_path = Path("data/feedzai/Base.csv")
-    if not feedzai_path.exists():
-        pytest.skip("Feedzai dataset not present at data/feedzai/Base.csv")
+    if feedzai_path.exists():
+        sample_df = pd.read_csv(feedzai_path, nrows=10_000)
+    else:
+        # Fallback to self-contained 8-month fixture so tests never skip on clean clones
+        sample_df = pd.DataFrame({
+            "fraud_bool": [0, 1] * 40,
+            "month": [m for m in range(8) for _ in range(10)],
+            "proposed_credit_limit": [1500.0] * 80
+        })
 
-    # Test partitioning on a subsample
-    sample_df = pd.read_csv(feedzai_path, nrows=10_000)
     sample_df["isFraud"] = sample_df["fraud_bool"].astype(int)
     sample_df["trans_id"] = [f"BAF_{i}" for i in range(len(sample_df))]
-    sample_df["step"] = (sample_df["month"] * 720 + 1).astype(int)
+    intra_rank = sample_df.groupby("month").cumcount()
+    month_counts = sample_df.groupby("month")["trans_id"].transform("count")
+    intra_step = (intra_rank / np.maximum(month_counts - 1, 1) * 719).astype(int)
+    sample_df["step"] = (sample_df["month"] * 720 + 1 + intra_step).astype(int)
 
     preprocessor = Preprocessor()
     slices = preprocessor.partition_time_slices(sample_df)
@@ -50,6 +71,8 @@ def test_feedzai_baf_monthly_partitioning():
     assert slices[0]["slice_name"].startswith("Month_")
     total_slice_rows = sum(len(s["data"]) for s in slices)
     assert total_slice_rows == len(sample_df)
+    if not feedzai_path.exists():
+        assert len(slices) == 8
 
 
 def test_paysim_ingestion_schema():
