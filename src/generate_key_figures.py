@@ -6,6 +6,7 @@ findings in seconds:
 2. verification_latency_degradation.png: Verification-latency degradation curve showing decay towards static floor.
 """
 
+import json
 from pathlib import Path
 import re
 import matplotlib.pyplot as plt
@@ -25,23 +26,21 @@ def parse_ieee_26w_metrics() -> pd.DataFrame:
     """Parses weekly metrics and drift retrains from the verified 26-week pipeline log."""
     log_path = ROOT_DIR / "results" / "logs" / "pipeline_run_1790494066.log"
     if not log_path.exists():
-        # Fallback to simulated data if log missing
-        weeks = list(range(1, 27))
-        static_f1 = [0.41, 0.31, 0.37, 0.31, 0.43] + [0.35, 0.34, 0.35, 0.36, 0.38, 0.35, 0.32, 0.32, 0.28, 0.30, 0.36, 0.38, 0.35, 0.32, 0.30, 0.28, 0.29, 0.24, 0.29, 0.35, 0.36]
-        adapt_f1 = [0.43, 0.29, 0.35, 0.25, 0.40] + [0.36, 0.38, 0.41, 0.41, 0.45, 0.39, 0.34, 0.35, 0.31, 0.33, 0.38, 0.39, 0.36, 0.36, 0.33, 0.32, 0.31, 0.28, 0.30, 0.35, 0.37]
-        period_f1 = [0.43, 0.33, 0.39, 0.33, 0.45] + [0.35, 0.35, 0.36, 0.38, 0.45, 0.39, 0.34, 0.34, 0.31, 0.32, 0.37, 0.39, 0.36, 0.35, 0.32, 0.30, 0.31, 0.28, 0.29, 0.34, 0.37]
-        slide_f1 = [0.43, 0.33, 0.39, 0.33, 0.45] + [0.35, 0.35, 0.36, 0.38, 0.46, 0.39, 0.36, 0.37, 0.35, 0.36, 0.41, 0.43, 0.44, 0.40, 0.37, 0.32, 0.38, 0.34, 0.34, 0.40, 0.48]
-        is_retrain = [1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1]
-        return pd.DataFrame({
-            "week": weeks, "static_f1": static_f1, "adaptive_f1": adapt_f1,
-            "periodic_f1": period_f1, "sliding_f1": slide_f1, "is_retrain": is_retrain
-        })
+        raise FileNotFoundError(
+            f"Pipeline log not found at {log_path}. "
+            "Run the pipeline first — refusing to plot synthetic placeholder data."
+        )
 
     with open(log_path, "r", encoding="utf-8") as f:
         text = f.read()
 
     pattern = r"Slice Week_(\d\d) \((\d\d)/26\): Static F1=([\d\.]+) \| Period F1=([\d\.]+) \| Slide F1=([\d\.]+) \| Adapt F1=([\d\.]+)(.*)"
     matches = re.findall(pattern, text)
+    if not matches:
+        raise ValueError(
+            f"No 26-week streaming metrics found in pipeline log {log_path}. "
+            "Ensure the log contains formatted slice evaluation outputs."
+        )
 
     weeks, static_f1, period_f1, slide_f1, adapt_f1, is_retrain = [], [], [], [], [], []
     for w_str, _, s_f1, p_f1, sl_f1, a_f1, extra in matches:
@@ -151,15 +150,31 @@ def plot_stream_f1_drift_timeline(df: pd.DataFrame) -> Path:
 
 def plot_verification_latency_degradation() -> Path:
     """Generates Figure 2: Verification-Latency Degradation Curve showing decay towards static floor."""
-    plt.style.use("seaborn-v0_8-whitegrid" if "seaborn-v0_8-whitegrid" in plt.style.available else "default")
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6), dpi=300)
+    benchmark_json = ROOT_DIR / "results" / "metrics" / "delayed_feedback_benchmark.json"
+    if not benchmark_json.exists():
+        raise FileNotFoundError(
+            f"Delayed feedback benchmark metrics not found at {benchmark_json}. "
+            "Run delayed feedback benchmark first — refusing to plot synthetic placeholder data."
+        )
 
-    # Verified empirical points from delayed feedback benchmark
+    with open(benchmark_json, "r", encoding="utf-8") as f:
+        records = json.load(f)
+
+    # Filter fixed and lognormal regimes
+    fixed_records = [r for r in records if r.get("latency_mode") == "fixed"]
+    lognormal_record = next((r for r in records if r.get("latency_mode") == "lognormal"), None)
+    if len(fixed_records) < 3 or lognormal_record is None:
+        raise ValueError(
+            f"Expected at least 3 fixed regimes and 1 lognormal regime in {benchmark_json}, "
+            f"found {len(fixed_records)} fixed and {lognormal_record is not None} lognormal."
+        )
+
     # Delays in weeks: 0 (Immediate), 4 (Standard), 8 (Extended)
-    delays_fixed = [0, 4, 8]
-    recalls_fixed = [72.70, 65.94, 63.45]
-    aucpr_fixed = [0.5197 * 100, 0.4773 * 100, 0.4644 * 100]
-    retrains_fixed = [21, 17, 15]
+    delays_fixed = [r["delay_slices"] for r in fixed_records]
+    recalls_fixed = [round(r["oos_recall"] * 100, 2) for r in fixed_records]
+    aucpr_fixed = [round(r["oos_aucpr"] * 100, 2) for r in fixed_records]
+    retrains_fixed = [r["retrains_count"] for r in fixed_records]
+    frauds_intercepted = [r["oos_tp"] for r in fixed_records]
 
     # Static baseline floor
     static_recall = 63.27
@@ -170,6 +185,9 @@ def plot_verification_latency_degradation() -> Path:
     # Exponential / polynomial fit
     p_rec = np.poly1d(np.polyfit(delays_fixed, recalls_fixed, 2))
     p_auc = np.poly1d(np.polyfit(delays_fixed, aucpr_fixed, 2))
+
+    plt.style.use("seaborn-v0_8-whitegrid" if "seaborn-v0_8-whitegrid" in plt.style.available else "default")
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6), dpi=300)
 
     # --- Panel 1: Degradation Horizon toward Static Baseline Floor ---
     ax1.plot(x_dense, p_rec(x_dense), color="#1F77B4", linestyle="-", linewidth=2.5, label="Adaptive Recall (%) under Delay")
@@ -185,8 +203,10 @@ def plot_verification_latency_degradation() -> Path:
                 label=f"Static AUC-PR Floor ({static_aucpr:.1f}%)")
 
     # Stochastic LogNormal Delay Plotting
-    lognormal_recall = 66.37
-    lognormal_auc = 47.53
+    lognormal_recall = round(lognormal_record["oos_recall"] * 100, 2)
+    lognormal_auc = round(lognormal_record["oos_aucpr"] * 100, 2)
+    lognormal_retrains = lognormal_record["retrains_count"]
+    lognormal_tp = lognormal_record["oos_tp"]
     ax1.scatter([4.0], [lognormal_recall], color="#9467BD", marker="*", s=220, zorder=6,
                 label=f"LogNormal Stochastic Latency ({lognormal_recall:.1f}% Recall)")
 
@@ -195,20 +215,22 @@ def plot_verification_latency_degradation() -> Path:
                      color="#1F77B4", alpha=0.12, label="Adaptive Advantage Region")
 
     # Annotations
-    ax1.annotate("Immediate Verification (Oracle)\nRecall: 72.70%, AUC-PR: 0.520",
-                 xy=(0, 72.70), xytext=(0.5, 75.0),
+    ax1.annotate(f"Immediate Verification (Oracle)\nRecall: {recalls_fixed[0]:.2f}%, AUC-PR: {aucpr_fixed[0]/100:.3f}",
+                 xy=(delays_fixed[0], recalls_fixed[0]), xytext=(0.5, 75.0),
                  arrowprops=dict(facecolor="#1F77B4", arrowstyle="->", lw=1.2),
                  fontsize=8.5, fontweight="bold",
                  bbox=dict(boxstyle="round,pad=0.3", edgecolor="#1F77B4", facecolor="#EBF5FB"))
 
-    ax1.annotate(r"Standard 4-Week Chargeback Delay" "\n" r"$-6.76\%$ Recall Loss (1,126 frauds missed)",
-                 xy=(4, 65.94), xytext=(2.2, 60.5),
+    recall_loss_4w = recalls_fixed[0] - recalls_fixed[1]
+    frauds_missed_4w = frauds_intercepted[0] - frauds_intercepted[1]
+    ax1.annotate(f"Standard 4-Week Chargeback Delay\n-{recall_loss_4w:.2f}% Recall Loss ({frauds_missed_4w:,} frauds missed)",
+                 xy=(delays_fixed[1], recalls_fixed[1]), xytext=(2.2, 60.5),
                  arrowprops=dict(facecolor="#D62728", arrowstyle="->", lw=1.2),
                  fontsize=8.5, fontweight="bold",
                  bbox=dict(boxstyle="round,pad=0.3", edgecolor="#E74C3C", facecolor="#FDEDEC"))
 
-    ax1.annotate("8-Week Delay Degradation Horizon:\nRecall decays to 63.45% (approaching 63.27% static floor)",
-                 xy=(8, 63.45), xytext=(4.2, 53.0),
+    ax1.annotate(f"8-Week Delay Degradation Horizon:\nRecall decays to {recalls_fixed[2]:.2f}% (approaching {static_recall:.2f}% static floor)",
+                 xy=(delays_fixed[2], recalls_fixed[2]), xytext=(4.2, 53.0),
                  arrowprops=dict(facecolor="#D62728", arrowstyle="->", lw=1.2),
                  fontsize=8.5, fontweight="bold",
                  bbox=dict(boxstyle="round,pad=0.3", edgecolor="#E74C3C", facecolor="#FDEDEC"))
@@ -225,24 +247,25 @@ def plot_verification_latency_degradation() -> Path:
     ax1.grid(True, linestyle="--", alpha=0.5)
 
     # --- Panel 2: Operational Efficiency: Frauds Intercepted vs. GPU Retraining Cost ---
-    frauds_intercepted = [12112, 10986, 10570]
-    regime_labels = ["Immediate (0w)", "Standard (4w)", "Extended (8w)"]
     bubble_colors = ["#1F77B4", "#2CA02C", "#D62728"]
+    regime_labels = [r["regime_name"] for r in fixed_records]
 
     ax2.scatter(retrains_fixed, frauds_intercepted, s=180, c=bubble_colors, edgecolors="#111111", linewidths=1.5, zorder=5)
 
     # Add LogNormal
-    ax2.scatter([12], [11058], s=250, c="#9467BD", marker="*", edgecolors="#111111", linewidths=1.5, zorder=6, label="LogNormal Stochastic Latency")
+    ax2.scatter([lognormal_retrains], [lognormal_tp], s=250, c="#9467BD", marker="*", edgecolors="#111111", linewidths=1.5, zorder=6, label="LogNormal Stochastic Latency")
 
     # Point Annotations
-    ax2.annotate("Immediate (0w)\n12,112 Frauds, 21 Retrains", xy=(21, 12112), xytext=(18.2, 12180),
-                 fontsize=8.5, fontweight="bold", ha="center")
-    ax2.annotate("Standard (4w)\n10,986 Frauds, 17 Retrains", xy=(17, 10986), xytext=(17.0, 11100),
-                 fontsize=8.5, fontweight="bold", ha="center")
-    ax2.annotate("Extended (8w)\n10,570 Frauds, 15 Retrains", xy=(15, 10570), xytext=(15.0, 10450),
-                 fontsize=8.5, fontweight="bold", ha="center")
-    ax2.annotate("LogNormal Delay: Pareto Optimal\n11,058 Frauds with ONLY 12 Retrains\n(29% Compute Savings vs. Fixed 4w)",
-                 xy=(12, 11058), xytext=(13.5, 10750),
+    for i in range(len(fixed_records)):
+        offset_y = 68 if i == 0 else (114 if i == 1 else -120)
+        ax2.annotate(f"{regime_labels[i]}\n{frauds_intercepted[i]:,} Frauds, {retrains_fixed[i]} Retrains",
+                     xy=(retrains_fixed[i], frauds_intercepted[i]),
+                     xytext=(retrains_fixed[i], frauds_intercepted[i] + offset_y),
+                     fontsize=8.5, fontweight="bold", ha="center")
+
+    compute_savings = int(round((1 - lognormal_retrains / retrains_fixed[1]) * 100))
+    ax2.annotate(f"LogNormal Delay: Pareto Optimal\n{lognormal_tp:,} Frauds with ONLY {lognormal_retrains} Retrains\n({compute_savings}% Compute Savings vs. Fixed 4w)",
+                 xy=(lognormal_retrains, lognormal_tp), xytext=(13.5, 10750),
                  arrowprops=dict(facecolor="#9467BD", arrowstyle="->", lw=1.2),
                  fontsize=8.5, fontweight="bold",
                  bbox=dict(boxstyle="round,pad=0.3", edgecolor="#9467BD", facecolor="#F4ECF7"))
