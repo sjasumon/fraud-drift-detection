@@ -16,6 +16,7 @@ def test_default_settings_valid():
     assert 0.0 < settings.training_window_ratio < 1.0
     assert 0.0 < settings.adwin_delta < 0.1
     assert settings.ddm_drift_level > settings.ddm_warning_level
+    assert len(settings.api_key) > 0
 
 
 def test_invalid_db_port_validation():

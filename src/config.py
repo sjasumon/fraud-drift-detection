@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     db_password: str = Field(default="", description="Database password")
     db_name: str = Field(default="fraud_drift_db", description="Target database schema name")
 
+    # API Authentication & Security
+    api_key: str = Field(default="dev-secret-key", description="Master API Key for microservice endpoints")
+
     # Hardware Acceleration Configuration (NVIDIA RTX 5080 eGPU)
     use_gpu: bool = Field(default=True, description="Enable CUDA acceleration for XGBoost")
     gpu_device: str = Field(default="cuda", description="Target GPU device string")
@@ -82,6 +85,7 @@ DB_PORT = settings.db_port
 DB_USER = settings.db_user
 DB_PASSWORD = settings.db_password
 DB_NAME = settings.db_name
+API_KEY = settings.api_key
 
 USE_GPU = settings.use_gpu
 GPU_DEVICE = settings.gpu_device

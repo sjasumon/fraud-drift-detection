@@ -24,10 +24,11 @@ from typing import Dict, List, Any, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException, BackgroundTasks, status
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Security, Depends, status
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 
-from src.config import USE_GPU, GPU_DEVICE, RANDOM_SEED, ADWIN_DELTA
+from src.config import USE_GPU, GPU_DEVICE, RANDOM_SEED, ADWIN_DELTA, API_KEY
 from src.drift_detector import DriftMonitor
 
 logger = logging.getLogger("fraud_drift.api")
@@ -92,6 +93,8 @@ class HealthResponse(BaseModel):
     uptime_seconds: float
     model_loaded: bool
     model_generation: int
+    is_dummy: bool = Field(..., description="True if serving a synthetic warmup placeholder model")
+    is_ready: bool = Field(..., description="True if serving a genuine production-trained model")
     gpu_enabled: bool
     gpu_device: str
     memory_rss_mb: float
@@ -107,10 +110,11 @@ class ModelDoubleBuffer:
     while background retrain threads build shadow_model and perform an atomic pointer swap.
     """
 
-    def __init__(self, initial_model=None, feature_names: Optional[List[str]] = None):
+    def __init__(self, initial_model=None, feature_names: Optional[List[str]] = None, is_dummy: bool = True):
         self._active_model = initial_model
         self._feature_names = feature_names or []
         self._generation = 1
+        self._is_dummy = is_dummy
         self._last_retrain_time: Optional[str] = datetime.utcnow().isoformat()
         self._swap_lock = threading.Lock()
 
@@ -129,6 +133,14 @@ class ModelDoubleBuffer:
     @property
     def is_loaded(self) -> bool:
         return self._active_model is not None
+
+    @property
+    def is_dummy(self) -> bool:
+        return self._is_dummy
+
+    @property
+    def is_ready(self) -> bool:
+        return self.is_loaded and not self._is_dummy
 
     def predict_single(self, features_dict: Dict[str, float]) -> Tuple[float, bool]:
         """Performs non-blocking inference on the active model pointer."""
@@ -161,15 +173,19 @@ class ModelDoubleBuffer:
         preds = (probs >= 0.5).astype(bool)
         return probs, preds
 
-    def atomic_swap(self, new_model, new_feature_names: Optional[List[str]] = None):
+    def atomic_swap(self, new_model, new_feature_names: Optional[List[str]] = None, is_dummy: bool = False):
         """Atomically hot-swaps the active model pointer with the newly trained shadow model."""
         with self._swap_lock:
             self._active_model = new_model
             if new_feature_names is not None:
                 self._feature_names = new_feature_names
+            self._is_dummy = is_dummy
             self._generation += 1
             self._last_retrain_time = datetime.utcnow().isoformat()
-            logger.info(f"ModelDoubleBuffer: Atomic hot-swap complete. Active model generation is now #{self._generation}.")
+            logger.info(
+                f"ModelDoubleBuffer: Atomic hot-swap complete. "
+                f"Active model generation is now #{self._generation} (is_dummy={self._is_dummy}, is_ready={self.is_ready})."
+            )
 
 
 # --- FastAPI Application & State Initialization ---
@@ -186,6 +202,23 @@ model_buffer = ModelDoubleBuffer()
 drift_monitor = DriftMonitor()
 recent_predictions: Dict[str, float] = {}  # In-memory LRU cache of recent transaction probabilities
 predictions_lock = threading.Lock()
+
+
+# API Key Authentication
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+def verify_api_key(api_key: Optional[str] = Security(api_key_header)) -> str:
+    """
+    Enforces API Key authentication for sensitive inference, feedback, and telemetry endpoints.
+    Mitigates adversarial label-poisoning attacks on the feedback stream.
+    """
+    if not api_key or api_key != API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing API key. Provide a valid 'X-API-Key' header."
+        )
+    return api_key
 
 
 def assign_risk_tier(prob: float) -> str:
@@ -216,6 +249,8 @@ def health_check():
         uptime_seconds=time.time() - start_time,
         model_loaded=model_buffer.is_loaded,
         model_generation=model_buffer.generation,
+        is_dummy=model_buffer.is_dummy,
+        is_ready=model_buffer.is_ready,
         gpu_enabled=USE_GPU,
         gpu_device=GPU_DEVICE if USE_GPU else "cpu",
         memory_rss_mb=round(mem_rss, 2),
@@ -223,7 +258,7 @@ def health_check():
     )
 
 
-@app.post("/v1/score", response_model=ScoreResponse, tags=["Inference"])
+@app.post("/v1/score", response_model=ScoreResponse, dependencies=[Depends(verify_api_key)], tags=["Inference"])
 def score_transaction(payload: TransactionPayload):
     """
     Sub-15ms real-time scoring endpoint for payment gateways.
@@ -257,7 +292,7 @@ def score_transaction(payload: TransactionPayload):
     )
 
 
-@app.post("/v1/batch-score", response_model=BatchScoreResponse, tags=["Inference"])
+@app.post("/v1/batch-score", response_model=BatchScoreResponse, dependencies=[Depends(verify_api_key)], tags=["Inference"])
 def score_batch(payload: BatchTransactionPayload):
     """Vectorized high-throughput batch scoring endpoint."""
     t0 = time.perf_counter()
@@ -297,7 +332,7 @@ def score_batch(payload: BatchTransactionPayload):
     )
 
 
-@app.post("/v1/feedback", response_model=FeedbackResponse, tags=["Stream Feedback"])
+@app.post("/v1/feedback", response_model=FeedbackResponse, dependencies=[Depends(verify_api_key)], tags=["Stream Feedback"])
 def log_chargeback_feedback(payload: FeedbackPayload):
     """
     Ingests asynchronous ground-truth dispute/chargeback labels into the drift monitor stream.
@@ -306,7 +341,15 @@ def log_chargeback_feedback(payload: FeedbackPayload):
     predicted_prob = payload.predicted_probability
     if predicted_prob is None:
         with predictions_lock:
-            predicted_prob = recent_predictions.get(payload.trans_id, 0.0)
+            if payload.trans_id not in recent_predictions:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=(
+                        f"Transaction '{payload.trans_id}' was not found in the recent prediction cache. "
+                        "Provide 'predicted_probability' explicitly to log ground-truth feedback."
+                    )
+                )
+            predicted_prob = recent_predictions[payload.trans_id]
 
     predicted_binary = int(predicted_prob >= 0.5)
 
@@ -329,7 +372,7 @@ def log_chargeback_feedback(payload: FeedbackPayload):
     )
 
 
-@app.get("/v1/drift-status", response_model=DriftStatusResponse, tags=["Monitoring"])
+@app.get("/v1/drift-status", response_model=DriftStatusResponse, dependencies=[Depends(verify_api_key)], tags=["Monitoring"])
 def get_drift_status():
     """Returns real-time drift telemetry from the error stream."""
     err_rate = (drift_monitor.total_errors_observed / drift_monitor.total_samples_monitored) if drift_monitor.total_samples_monitored > 0 else 0.0
@@ -346,7 +389,7 @@ def get_drift_status():
 
 
 def initialize_app_model():
-    """Initializes a lightweight dummy or pre-trained XGBoost model into the buffer on startup."""
+    """Initializes a lightweight dummy/warmup XGBoost model into the buffer on startup."""
     import xgboost as xgb
     dummy_features = ["TransactionAmt", "card1", "C1", "C2", "C5", "C13", "D1"]
     X = np.random.randn(200, len(dummy_features)).astype(np.float32)
@@ -360,8 +403,8 @@ def initialize_app_model():
         device="cpu"
     )
     model.fit(X, y)
-    model_buffer.atomic_swap(model, dummy_features)
-    logger.info("initialize_app_model: Model buffer pre-seeded with baseline model.")
+    model_buffer.atomic_swap(model, dummy_features, is_dummy=True)
+    logger.info("initialize_app_model: Model buffer pre-seeded with synthetic warmup placeholder (is_dummy=True, is_ready=False).")
 
 
 # Auto-seed on module import

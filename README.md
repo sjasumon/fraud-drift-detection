@@ -5,7 +5,7 @@
 [![CUDA Acceleration](https://img.shields.io/badge/CUDA-RTX%205080%20eGPU-green.svg)](https://developer.nvidia.com/cuda-zone)
 [![arXiv Preprint](https://img.shields.io/badge/arXiv-Preprint%20Ready-b31b1b.svg)](arxiv_paper/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests Passing](https://img.shields.io/badge/tests-51%20passed-brightgreen.svg)](tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-53%20passed-brightgreen.svg)](tests/)
 
 A reproducible, production-grade empirical research framework and preprint package developed in support of doctoral research under **Professor Yun Sing Koh** at the **MARS Lab / Centre of Machine Learning for Social Good, University of Auckland**.
 
@@ -196,13 +196,16 @@ python -m src.pipeline --dataset ieee/train_transaction.csv
 ```
 
 ### 5. Production Microservice API
-Starts the FastAPI microservice with ADWIN drift monitoring:
+Starts the FastAPI microservice with atomic double-buffering and live ADWIN/DDM drift monitoring:
 ```bash
 fraud-api --port 8000
 # Or:
 uvicorn src.api:app --host 0.0.0.0 --port 8000
 ```
-Interactive OpenAPI documentation available at: `http://localhost:8000/docs`.
+* **Interactive OpenAPI Docs:** Available at `http://localhost:8000/docs`.
+* **Authentication:** Protected endpoints (`/v1/score`, `/v1/batch-score`, `/v1/feedback`, `/v1/drift-status`) require the `X-API-Key` header (`dev-secret-key` by default, configurable in `.env`). `/health` remains public for container liveness/readiness probes.
+* **Concurrency & Multi-Worker Architecture:** In this prototype, `model_buffer`, `drift_monitor`, and `recent_predictions` are thread-safe in-process singletons suited for single-worker or edge deployments. When horizontally scaling across multiple Uvicorn/Gunicorn worker processes (`--workers N`), each worker has an independent memory space; in high-throughput distributed production, prediction caches should be backed by Redis and feedback events aggregated via a shared Kafka/Redis stream.
+* **Label-Poisoning Attack Surface:** The `/v1/feedback` stream directly updates ADWIN and DDM drift statistics. Without authentication, adversaries could inject falsified labels to prematurely force retraining or conceal genuine concept drift. API key enforcement closes this attack surface, and designing Byzantine-resilient drift detectors against label poisoning represents a compelling future research vector.
 
 ---
 
