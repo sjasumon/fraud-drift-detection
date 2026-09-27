@@ -38,3 +38,8 @@ Thumbs.db
 # Execution logs
 *.log
 results/logs/
+
+# Private applicant due-diligence & supervisor notes
+Prof_Yun_Sing_Koh_profile.md
+*profile*.md
+
