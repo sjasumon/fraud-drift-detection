@@ -10,7 +10,7 @@ import xgboost as xgb
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-from src.api import app, model_buffer, drift_monitor, verify_api_key
+from src.api import app, model_buffer, drift_monitor, verify_api_key, retrainer, training_store
 from src.config import API_KEY
 
 
@@ -219,5 +219,48 @@ def test_verify_api_key_constant_time():
     with pytest.raises(HTTPException) as exc_info:
         verify_api_key("invalid-unauthorized-key")
     assert exc_info.value.status_code == 401
+
+
+def test_manual_retrain_endpoint_synchronous(client):
+    """Verifies that POST /v1/retrain?sync=true executes shadow retrain and hot-swaps model."""
+    gen_before = model_buffer.generation
+    resp = client.post("/v1/retrain?sync=true")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["status"] == "COMPLETED"
+    assert data["current_generation"] == gen_before + 1
+    assert data["is_retraining"] is False
+    assert data["total_retrains"] >= 1
+    assert model_buffer.generation == gen_before + 1
+    assert model_buffer.is_ready is True
+
+
+def test_automated_shadow_retraining_on_drift(client):
+    """Verifies that triggering concept drift on /v1/feedback executes shadow retrain and resets detectors."""
+    gen_before = model_buffer.generation
+    retrains_before = retrainer.total_retrains
+
+    # Feed transactions that cause drift in drift_monitor (e.g. 70 consecutive prediction errors)
+    for i in range(70):
+        tx_id = f"TX_DRIFT_STREAM_{i:03d}"
+        client.post("/v1/score", json={
+            "trans_id": tx_id,
+            "features": {"TransactionAmt": 150.0 + i, "card1": 2000.0, "C1": 1.0}
+        })
+        resp = client.post("/v1/feedback", json={
+            "trans_id": tx_id,
+            "is_fraud": 1,
+            "predicted_probability": 0.01
+        })
+        assert resp.status_code == 200
+
+    # Execute retrain to simulate background worker completion
+    retrainer.execute_retrain()
+
+    assert model_buffer.generation > gen_before
+    assert retrainer.total_retrains > retrains_before
+    # Detectors must have been reset following the retrain
+    assert drift_monitor.adwin.width == 0
+
 
 

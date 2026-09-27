@@ -4,7 +4,7 @@
 [![CUDA Acceleration](https://img.shields.io/badge/CUDA-RTX%205080%20eGPU%20%7C%20CPU%20Fallback-green.svg)](https://developer.nvidia.com/cuda-zone)
 [![arXiv Preprint](https://img.shields.io/badge/arXiv-Preprint%20Ready-b31b1b.svg)](arxiv_paper/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests Passing](https://img.shields.io/badge/tests-58%20passed-brightgreen.svg)](tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-60%20passed-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-85%25%20core%20modules-brightgreen.svg)](tests/)
 [![CI Test Suite](https://github.com/sjasumon/fraud-drift-detection/actions/workflows/ci.yml/badge.svg)](https://github.com/sjasumon/fraud-drift-detection/actions/workflows/ci.yml)
 
@@ -17,7 +17,7 @@ This repository provides rigorous empirical validation, statistical confidence i
 
 ## ⚡ 5-Minute Quickstart
 
-To reproduce the environment, run the 58-test verification suite, and inspect benchmarks within 5 minutes:
+To reproduce the environment, run the 60-test verification suite, and inspect benchmarks within 5 minutes:
 
 ### Linux / macOS
 ```bash
@@ -35,7 +35,7 @@ cd "fraud-drift-detection"
 ### Run Test Suite & Coverage
 ```bash
 pytest -v --cov=src --cov-report=term-missing
-# Output: ======================= 58 passed in 10.6s =======================
+# Output: ======================= 60 passed in 11.5s =======================
 # Core algorithmic modules: 85%-100% unit coverage
 ```
 
@@ -44,7 +44,7 @@ pytest -v --cov=src --cov-report=term-missing
 This framework is optimized for hardware-accelerated training using an **NVIDIA GeForce RTX 5080 eGPU** (CUDA `tree_method='hist'`), enabling full 26-week streaming retrains across 590,540 transactions in **77.77 seconds** (~1.2s per retrain).
 
 * **Automatic CPU Fallback**: If an NVIDIA CUDA device is not present, or if `USE_GPU=false` is set in `.env`, the entire framework seamlessly falls back to CPU-based histogram gradient boosting without failing or crashing. On a standard multi-core laptop CPU, the 26-week stream retraining runs in approximately 4–6 minutes.
-* **Test Suite Hardware Independence**: The entire 58-test verification suite and the multi-armed bandit evaluation run 100% on CPU by default (and in CI), requiring zero GPU hardware to reproduce all invariant tests.
+* **Test Suite Hardware Independence**: The entire 60-test verification suite and the multi-armed bandit evaluation run 100% on CPU by default (and in CI), requiring zero GPU hardware to reproduce all invariant tests.
 
 ---
 
@@ -175,7 +175,7 @@ Due to Kaggle dataset license agreements, multi-gigabyte raw benchmark files can
 | **PaySim Mobile Money** | 6,362,620 transactions, 5 weeks | [Kaggle: PaySim1](https://www.kaggle.com/datasets/ealaxi/paysim1) | CC BY-SA 4.0 | Place `PS_20174392719_1491204439457_log.csv` in `data/paysim/`. |
 
 > **Zero-Download Verification Out-of-the-Box**:
-> You do **not** need to download these multi-gigabyte files to verify the framework's mathematical correctness. The 55 automated invariant tests (`pytest -v`), schema validators (`tests/test_multi_dataset.py`), non-stationary bandit benchmark (`python -m src.bandit.benchmark`), and the FastAPI microservice (`src/api.py`) run immediately out-of-the-box using self-contained synthetic fixtures and schemas.
+> You do **not** need to download these multi-gigabyte files to verify the framework's mathematical correctness. The 60 automated invariant tests (`pytest -v`), schema validators (`tests/test_multi_dataset.py`), non-stationary bandit benchmark (`python -m src.bandit.benchmark`), and the FastAPI microservice (`src/api.py`) run immediately out-of-the-box using self-contained synthetic fixtures and schemas.
 
 ---
 
@@ -217,15 +217,20 @@ python -m src.pipeline --dataset ieee/train_transaction.csv
 ```
 
 ### 5. Production Microservice API
-Starts the FastAPI microservice with atomic double-buffering and live ADWIN/DDM drift monitoring:
+Starts the FastAPI microservice with atomic double-buffering, automated shadow retraining, and live ADWIN/DDM drift telemetry:
 ```bash
 fraud-api --port 8000
 # Or:
 uvicorn src.api:app --host 0.0.0.0 --port 8000
 ```
 * **Interactive OpenAPI Docs:** Available at `http://localhost:8000/docs`.
-* **Authentication:** Protected endpoints (`/v1/score`, `/v1/batch-score`, `/v1/feedback`, `/v1/drift-status`) require the `X-API-Key` header (`dev-secret-key` by default, configurable in `.env`). `/health` remains public for container liveness/readiness probes.
-* **Concurrency & Multi-Worker Architecture:** In this prototype, `model_buffer`, `drift_monitor`, and `recent_predictions` are thread-safe in-process singletons suited for single-worker or edge deployments. When horizontally scaling across multiple Uvicorn/Gunicorn worker processes (`--workers N`), each worker has an independent memory space; in high-throughput distributed production, prediction caches should be backed by Redis and feedback events aggregated via a shared Kafka/Redis stream.
+* **Zero-Downtime Double-Buffering & Shadow Retraining:**
+  - **Non-Blocking Inference:** In-flight scoring requests (`/v1/score`, `/v1/batch-score`) read the active model pointer via `ModelDoubleBuffer` without locking.
+  - **Automated Drift-Triggered Shadow Retrain:** Ground-truth dispute labels ingested via `/v1/feedback` update ADWIN and DDM monitors. When concept drift is flagged, FastAPI dispatches an asynchronous background worker (`BackgroundRetrainer`) that builds a shadow XGBoost model on accumulated feedback.
+  - **Atomic Pointer Swap & Detector Reset:** Once the shadow model finishes training, it atomically swaps the active serving pointer (`model_buffer.atomic_swap()`), increments the model generation, and flushes pre-retrain error windows via `drift_monitor.reset_detectors()`.
+  - **Manual/Orchestrated Retrain Endpoint:** Supports `POST /v1/retrain?sync=false|true` for manual trigger or scheduled MLOps pipeline orchestration.
+* **Authentication & Production Security:** Protected endpoints (`/v1/score`, `/v1/batch-score`, `/v1/feedback`, `/v1/retrain`, `/v1/drift-status`) enforce constant-time API key verification (`secrets.compare_digest`) via the `X-API-Key` header. In production/staging (`APP_ENV=production`), startup strictly rejects default or weak credentials (`dev-secret-key` or empty `DB_PASSWORD`). `/health` remains public for container liveness/readiness probes.
+* **Concurrency & Multi-Worker Architecture:** In this prototype, `model_buffer`, `retrainer`, `drift_monitor`, and `recent_predictions` are thread-safe in-process singletons suited for single-worker or edge deployments. When horizontally scaling across multiple Uvicorn/Gunicorn worker processes (`--workers N`), each worker has an independent memory space; in high-throughput distributed production, prediction caches should be backed by Redis and feedback events aggregated via a shared Kafka/Redis stream.
 * **Label-Poisoning Attack Surface:** The `/v1/feedback` stream directly updates ADWIN and DDM drift statistics. Without authentication, adversaries could inject falsified labels to prematurely force retraining or conceal genuine concept drift. API key enforcement closes this attack surface, and designing Byzantine-resilient drift detectors against label poisoning represents a compelling future research vector.
 
 ---

@@ -3,11 +3,14 @@ Real-Time Concept-Drift-Aware Fraud Detection Microservice.
 Built with FastAPI and Uvicorn.
 
 Key Production Capabilities:
-1. Sub-15ms Real-Time Inference (/v1/score and /v1/batch-score)
-2. Asynchronous Chargeback / Ground-Truth Feedback Stream (/v1/feedback)
-3. Live Concept Drift Telemetry & Statistical Error Tracking (/v1/drift-status)
-4. Atomic Double-Buffered Model Pointer: Lock-free scoring requests during background model retraining.
-5. Readiness and Liveness Health Probes (/health)
+1. Sub-15ms Real-Time Inference (/v1/score and /v1/batch-score) via active double-buffer pointer.
+2. Asynchronous Chargeback / Ground-Truth Feedback Stream (/v1/feedback) updating ADWIN & DDM detectors.
+3. Automated Background Shadow Retraining: When concept drift is flagged by ADWIN/DDM on /v1/feedback,
+   FastAPI dispatches an asynchronous background retrain worker that builds a shadow XGBoost model.
+4. Atomic Double-Buffered Pointer Swap: Background retrain worker swaps active pointer with zero downtime
+   or scoring interruptions, then automatically resets drift detectors (re-baselining error windows).
+5. Dedicated Model Retraining API (/v1/retrain) supporting synchronous or asynchronous manual/orchestrated retrains.
+6. Live Drift & Adaptation Telemetry (/v1/drift-status) and Health Probes (/health).
 """
 
 import os
@@ -76,6 +79,8 @@ class FeedbackResponse(BaseModel):
     drift_alert_triggered: bool
     current_error_rate: float
     monitored_samples_total: int
+    shadow_retrain_triggered: bool = False
+    model_generation: int = 1
 
 
 class DriftStatusResponse(BaseModel):
@@ -87,6 +92,9 @@ class DriftStatusResponse(BaseModel):
     ddm_warning_detected: bool
     model_generation: int
     last_retrain_timestamp: Optional[str]
+    is_retraining: bool = False
+    total_retrains: int = 0
+    last_retrain_status: Optional[str] = None
 
 
 class HealthResponse(BaseModel):
@@ -100,6 +108,18 @@ class HealthResponse(BaseModel):
     gpu_device: str
     memory_rss_mb: float
     cpu_percent: float
+    is_retraining: bool = False
+    total_retrains: int = 0
+
+
+class RetrainResponse(BaseModel):
+    status: str
+    message: str
+    current_generation: int
+    is_retraining: bool
+    total_retrains: int
+    last_retrain_duration_sec: float
+    last_retrain_status: Optional[str] = None
 
 
 # --- Atomic Double-Buffer Model Container ---
@@ -189,6 +209,159 @@ class ModelDoubleBuffer:
             )
 
 
+# --- Feedback Training Store & Background Shadow Retrainer ---
+
+class FeedbackTrainingStore:
+    """
+    Thread-safe store for accumulating labeled feedback data and initial training seed
+    to train shadow models when concept drift is flagged.
+    """
+    def __init__(self, max_samples: int = 10000):
+        self._lock = threading.Lock()
+        self._max_samples = max_samples
+        self._feature_names: List[str] = []
+        self._X: List[List[float]] = []
+        self._y: List[int] = []
+
+    def set_seed_data(self, feature_names: List[str], X: np.ndarray, y: np.ndarray):
+        with self._lock:
+            self._feature_names = list(feature_names)
+            self._X = X.tolist()
+            self._y = y.tolist()
+
+    def add_sample(self, features: Dict[str, float], is_fraud: int):
+        with self._lock:
+            if not self._feature_names:
+                self._feature_names = list(features.keys())
+            vector = [features.get(f, 0.0) for f in self._feature_names]
+            self._X.append(vector)
+            self._y.append(int(is_fraud))
+            if len(self._X) > self._max_samples:
+                self._X.pop(0)
+                self._y.pop(0)
+
+    def get_dataset(self) -> Tuple[List[str], np.ndarray, np.ndarray]:
+        with self._lock:
+            return (
+                list(self._feature_names),
+                np.array(self._X, dtype=np.float32),
+                np.array(self._y, dtype=np.int32)
+            )
+
+    @property
+    def sample_count(self) -> int:
+        with self._lock:
+            return len(self._y)
+
+
+class BackgroundRetrainer:
+    """
+    Manages background shadow-model training and atomic hot-swapping
+    when concept drift is flagged by ADWIN / DDM.
+    Guarantees non-blocking scoring during retrain and coalesces concurrent triggers.
+    """
+    def __init__(self, model_buffer: ModelDoubleBuffer, drift_monitor: DriftMonitor, training_store: FeedbackTrainingStore):
+        self.model_buffer = model_buffer
+        self.drift_monitor = drift_monitor
+        self.training_store = training_store
+        self._retrain_lock = threading.Lock()
+        self._is_retraining = False
+        self._total_retrains = 0
+        self._last_retrain_duration: float = 0.0
+        self._last_retrain_status: Optional[str] = None
+
+    @property
+    def is_retraining(self) -> bool:
+        return self._is_retraining
+
+    @property
+    def total_retrains(self) -> int:
+        return self._total_retrains
+
+    @property
+    def last_retrain_duration(self) -> float:
+        return self._last_retrain_duration
+
+    @property
+    def last_retrain_status(self) -> Optional[str]:
+        return self._last_retrain_status
+
+    def trigger_retrain_async(self, background_tasks: Optional[BackgroundTasks] = None) -> bool:
+        """Dispatches shadow model retraining into a background thread or task."""
+        if self._is_retraining:
+            logger.info("BackgroundRetrainer: Retrain already in progress, coalescing trigger.")
+            return False
+
+        if background_tasks is not None:
+            background_tasks.add_task(self.execute_retrain)
+        else:
+            thread = threading.Thread(target=self.execute_retrain, daemon=True, name="ShadowRetrainWorker")
+            thread.start()
+        return True
+
+    def execute_retrain(self) -> bool:
+        """
+        Builds shadow model on accumulated data, performs atomic pointer swap,
+        and resets drift detectors.
+        """
+        if not self._retrain_lock.acquire(blocking=False):
+            logger.info("BackgroundRetrainer: Another worker acquired retrain lock; skipping.")
+            return False
+
+        self._is_retraining = True
+        t0 = time.time()
+        logger.info("BackgroundRetrainer: Starting background shadow model training...")
+        try:
+            import xgboost as xgb
+            feature_names, X, y = self.training_store.get_dataset()
+
+            if len(y) < 10 or len(np.unique(y)) < 2:
+                logger.warning(
+                    f"BackgroundRetrainer: Insufficient training data ({len(y)} samples, classes={np.unique(y)}). "
+                    "Skipping shadow retrain."
+                )
+                self._last_retrain_status = "SKIPPED_INSUFFICIENT_DATA"
+                return False
+
+            pos = int(np.sum(y))
+            neg = len(y) - pos
+            scale_pos = float(neg) / max(1.0, float(pos))
+
+            shadow_model = xgb.XGBClassifier(
+                n_estimators=30,
+                max_depth=4,
+                learning_rate=0.08,
+                scale_pos_weight=scale_pos,
+                tree_method="hist",
+                device="cpu",
+                random_state=RANDOM_SEED
+            )
+            shadow_model.fit(X, y)
+
+            # Atomic hot-swap pointer to activate new model without dropping in-flight scoring
+            self.model_buffer.atomic_swap(shadow_model, feature_names, is_dummy=False)
+
+            # Re-baseline detectors: flush pre-retrain error statistics
+            self.drift_monitor.reset_detectors()
+
+            dur = time.time() - t0
+            self._last_retrain_duration = round(dur, 3)
+            self._total_retrains += 1
+            self._last_retrain_status = f"SUCCESS (gen={self.model_buffer.generation})"
+            logger.info(
+                f"BackgroundRetrainer: Shadow model generation #{self.model_buffer.generation} "
+                f"trained and swapped successfully in {dur:.3f}s. Drift detectors reset."
+            )
+            return True
+        except Exception as e:
+            self._last_retrain_status = f"FAILED: {str(e)}"
+            logger.error(f"BackgroundRetrainer: Failed during shadow retrain: {e}", exc_info=True)
+            return False
+        finally:
+            self._is_retraining = False
+            self._retrain_lock.release()
+
+
 # --- FastAPI Application & State Initialization ---
 
 app = FastAPI(
@@ -201,8 +374,12 @@ app = FastAPI(
 start_time = time.time()
 model_buffer = ModelDoubleBuffer()
 drift_monitor = DriftMonitor()
+training_store = FeedbackTrainingStore()
+retrainer = BackgroundRetrainer(model_buffer, drift_monitor, training_store)
 recent_predictions: Dict[str, float] = {}  # In-memory LRU cache of recent transaction probabilities
+recent_features: Dict[str, Dict[str, float]] = {}  # Cached features for ground-truth feedback pairing
 predictions_lock = threading.Lock()
+MAX_CACHE_SIZE = 100000
 
 
 # API Key Authentication
@@ -274,7 +451,9 @@ def health_check():
         gpu_enabled=USE_GPU,
         gpu_device=GPU_DEVICE if USE_GPU else "cpu",
         memory_rss_mb=round(mem_rss, 2),
-        cpu_percent=round(cpu_pct, 2)
+        cpu_percent=round(cpu_pct, 2),
+        is_retraining=retrainer.is_retraining,
+        total_retrains=retrainer.total_retrains
     )
 
 
@@ -292,14 +471,15 @@ def score_transaction(payload: TransactionPayload):
 
     latency_ms = (time.perf_counter() - t0) * 1000.0
 
-    # Cache prediction for downstream chargeback feedback correlation
+    # Cache prediction & features for downstream chargeback feedback correlation
     with predictions_lock:
         recent_predictions[payload.trans_id] = prob
-        if len(recent_predictions) > 100_000:
-            # Simple eviction of oldest entries
+        recent_features[payload.trans_id] = payload.features
+        if len(recent_predictions) > MAX_CACHE_SIZE:
             first_keys = list(recent_predictions.keys())[:10_000]
             for k in first_keys:
-                del recent_predictions[k]
+                recent_predictions.pop(k, None)
+                recent_features.pop(k, None)
 
     return ScoreResponse(
         trans_id=payload.trans_id,
@@ -334,6 +514,7 @@ def score_batch(payload: BatchTransactionPayload):
             p = float(probs[i])
             is_f = bool(preds[i])
             recent_predictions[tx.trans_id] = p
+            recent_features[tx.trans_id] = tx.features
             results.append(ScoreResponse(
                 trans_id=tx.trans_id,
                 fraud_probability=round(p, 4),
@@ -353,12 +534,17 @@ def score_batch(payload: BatchTransactionPayload):
 
 
 @app.post("/v1/feedback", response_model=FeedbackResponse, dependencies=[Depends(verify_api_key)], tags=["Stream Feedback"])
-def log_chargeback_feedback(payload: FeedbackPayload):
+def log_chargeback_feedback(payload: FeedbackPayload, background_tasks: BackgroundTasks):
     """
     Ingests asynchronous ground-truth dispute/chargeback labels into the drift monitor stream.
-    Updates ADWIN and DDM statistical test streams.
+    Updates ADWIN and DDM statistical test streams. If concept drift is flagged,
+    automatically dispatches an asynchronous background retrain task that trains a shadow
+    XGBoost model, atomically swaps the serving pointer, and resets drift detectors.
     """
     predicted_prob = payload.predicted_probability
+    with predictions_lock:
+        tx_features = recent_features.get(payload.trans_id)
+
     if predicted_prob is None:
         with predictions_lock:
             if payload.trans_id not in recent_predictions:
@@ -371,6 +557,10 @@ def log_chargeback_feedback(payload: FeedbackPayload):
                 )
             predicted_prob = recent_predictions[payload.trans_id]
 
+    # Accumulate labeled sample for background shadow retraining if features exist
+    if tx_features:
+        training_store.add_sample(tx_features, payload.is_fraud)
+
     predicted_binary = int(predicted_prob >= 0.5)
 
     alert = drift_monitor.update(
@@ -381,6 +571,11 @@ def log_chargeback_feedback(payload: FeedbackPayload):
         trans_id=payload.trans_id
     )
 
+    # Automated background retrain trigger on concept drift
+    retrain_dispatched = False
+    if alert["any_drift"]:
+        retrain_dispatched = retrainer.trigger_retrain_async(background_tasks=background_tasks)
+
     err_rate = (drift_monitor.total_errors_observed / drift_monitor.total_samples_monitored) if drift_monitor.total_samples_monitored > 0 else 0.0
 
     return FeedbackResponse(
@@ -388,7 +583,9 @@ def log_chargeback_feedback(payload: FeedbackPayload):
         trans_id=payload.trans_id,
         drift_alert_triggered=alert["any_drift"],
         current_error_rate=round(err_rate, 4),
-        monitored_samples_total=drift_monitor.total_samples_monitored
+        monitored_samples_total=drift_monitor.total_samples_monitored,
+        shadow_retrain_triggered=retrain_dispatched,
+        model_generation=model_buffer.generation
     )
 
 
@@ -404,14 +601,60 @@ def get_drift_status():
         ddm_drift_detected=drift_monitor.ddm.drift_detected,
         ddm_warning_detected=drift_monitor.ddm.warning_detected,
         model_generation=model_buffer.generation,
-        last_retrain_timestamp=model_buffer.last_retrain_time
+        last_retrain_timestamp=model_buffer.last_retrain_time,
+        is_retraining=retrainer.is_retraining,
+        total_retrains=retrainer.total_retrains,
+        last_retrain_status=retrainer.last_retrain_status
     )
+
+
+@app.post("/v1/retrain", response_model=RetrainResponse, dependencies=[Depends(verify_api_key)], tags=["Model Lifecycle"])
+def trigger_model_retrain(background_tasks: BackgroundTasks, sync: bool = False):
+    """
+    Triggers shadow model retraining on accumulated training and feedback data.
+    If sync=True, trains synchronously and blocks until atomic pointer swap completes.
+    If sync=False (default), dispatches retrain to background worker and returns immediately.
+    """
+    if retrainer.is_retraining:
+        return RetrainResponse(
+            status="IN_PROGRESS",
+            message="Shadow retraining is already in progress.",
+            current_generation=model_buffer.generation,
+            is_retraining=True,
+            total_retrains=retrainer.total_retrains,
+            last_retrain_duration_sec=retrainer.last_retrain_duration,
+            last_retrain_status=retrainer.last_retrain_status
+        )
+
+    if sync:
+        success = retrainer.execute_retrain()
+        return RetrainResponse(
+            status="COMPLETED" if success else "SKIPPED_OR_FAILED",
+            message=f"Synchronous retrain finished with status: {retrainer.last_retrain_status}",
+            current_generation=model_buffer.generation,
+            is_retraining=False,
+            total_retrains=retrainer.total_retrains,
+            last_retrain_duration_sec=retrainer.last_retrain_duration,
+            last_retrain_status=retrainer.last_retrain_status
+        )
+    else:
+        dispatched = retrainer.trigger_retrain_async(background_tasks=background_tasks)
+        return RetrainResponse(
+            status="DISPATCHED" if dispatched else "IN_PROGRESS",
+            message="Background shadow retrain dispatched.",
+            current_generation=model_buffer.generation,
+            is_retraining=True,
+            total_retrains=retrainer.total_retrains,
+            last_retrain_duration_sec=retrainer.last_retrain_duration,
+            last_retrain_status=retrainer.last_retrain_status
+        )
 
 
 def initialize_app_model():
     """Initializes a lightweight dummy/warmup XGBoost model into the buffer on startup."""
     import xgboost as xgb
     dummy_features = ["TransactionAmt", "card1", "C1", "C2", "C5", "C13", "D1"]
+    np.random.seed(RANDOM_SEED)
     X = np.random.randn(200, len(dummy_features)).astype(np.float32)
     y = np.random.binomial(1, 0.1, size=200)
 
@@ -420,10 +663,12 @@ def initialize_app_model():
         max_depth=3,
         learning_rate=0.1,
         tree_method="hist",
-        device="cpu"
+        device="cpu",
+        random_state=RANDOM_SEED
     )
     model.fit(X, y)
     model_buffer.atomic_swap(model, dummy_features, is_dummy=True)
+    training_store.set_seed_data(dummy_features, X, y)
     logger.info("initialize_app_model: Model buffer pre-seeded with synthetic warmup placeholder (is_dummy=True, is_ready=False).")
 
 

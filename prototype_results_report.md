@@ -8,7 +8,7 @@
 **Hardware Platform:** NVIDIA GeForce RTX 5080 eGPU (CUDA acceleration via `tree_method='hist'`)  
 **Database Backend:** MySQL Server 9.7 (`fraud_drift_db` on port 3306)  
 **Evaluation Portfolio:** 7,953,160 transactions across 3 distinct financial fraud benchmarks (IEEE-CIS, Feedzai BAF NeurIPS 2022, PaySim Mobile Money)  
-**Test Suite Verification:** 58/58 Automated Pytest Invariant Tests Passing in 10.63s  
+**Test Suite Verification:** 60/60 Automated Pytest Invariant Tests Passing in 11.51s  
 **Evaluation Date:** September 2026  
 
 ---
@@ -386,7 +386,7 @@ In adherence to high academic standards, the following methodological boundaries
 - [x] **Criterion 4 (Mechanistic Explainability):** 165 TreeSHAP $\times$ PSI feature attribution records logged to MySQL table `drift_attributions`.
 - [x] **Criterion 5 (Verification Latency Simulation):** Empirical degradation curve evaluated across 4 regimes and visualized at `results/figures/delayed_feedback_impact.png`.
 - [x] **Criterion 6 (FastAPI Real-Time Microservice):** Sub-10ms inference microservice with atomic double-buffering, Dockerfile, and docker-compose.
-- [x] **Criterion 7 (Automated Test Suite):** 58/58 automated invariant tests passing cleanly in 10.63s.
+- [x] **Criterion 7 (Automated Test Suite):** 60/60 automated invariant tests passing cleanly in 11.51s.
 - [x] **Criterion 8 (Hardware & DB Compliance):** Ran on NVIDIA RTX 5080 eGPU (`tree_method='hist'`, `device='cuda'`); 100% persisted into MySQL Server 9.7 (`fraud_drift_db`).
 
 ---
