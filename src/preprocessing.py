@@ -181,7 +181,11 @@ class Preprocessor:
         if "month" in df.columns and df["month"].nunique() <= 12:
             slices = []
             for m_idx, (m_val, m_group) in enumerate(df.groupby("month", sort=True)):
-                slice_df = m_group.copy().reset_index(drop=True)
+                sort_candidates = [c for c in ["step", "trans_id", "TransactionID"] if c in m_group.columns]
+                if sort_candidates:
+                    slice_df = m_group.sort_values(by=sort_candidates).reset_index(drop=True)
+                else:
+                    slice_df = m_group.copy().reset_index(drop=True)
                 fraud_count = int(slice_df["isFraud"].sum())
                 total_count = len(slice_df)
                 min_step = int(slice_df["step"].min()) if "step" in slice_df.columns else int(m_val * 720 + 1)

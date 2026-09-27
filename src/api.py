@@ -23,7 +23,7 @@ except ImportError:
     psutil = None
 import logging
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional, Tuple
 
 import numpy as np
@@ -136,7 +136,7 @@ class ModelDoubleBuffer:
         self._feature_names = feature_names or []
         self._generation = 1
         self._is_dummy = is_dummy
-        self._last_retrain_time: Optional[str] = datetime.utcnow().isoformat()
+        self._last_retrain_time: Optional[str] = datetime.now(timezone.utc).isoformat()
         self._swap_lock = threading.Lock()
 
     @property
@@ -202,7 +202,7 @@ class ModelDoubleBuffer:
                 self._feature_names = new_feature_names
             self._is_dummy = is_dummy
             self._generation += 1
-            self._last_retrain_time = datetime.utcnow().isoformat()
+            self._last_retrain_time = datetime.now(timezone.utc).isoformat()
             logger.info(
                 f"ModelDoubleBuffer: Atomic hot-swap complete. "
                 f"Active model generation is now #{self._generation} (is_dummy={self._is_dummy}, is_ready={self.is_ready})."

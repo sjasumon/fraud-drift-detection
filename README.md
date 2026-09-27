@@ -4,7 +4,7 @@
 [![CUDA Acceleration](https://img.shields.io/badge/CUDA-GPU%20%7C%20CPU%20Fallback-green.svg)](https://developer.nvidia.com/cuda-zone)
 [![arXiv Preprint](https://img.shields.io/badge/arXiv-Preprint%20Ready-b31b1b.svg)](arxiv_paper/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests Passing](https://img.shields.io/badge/tests-67%20passed-brightgreen.svg)](tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-70%20passed-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-85%25%20core%20modules-brightgreen.svg)](tests/)
 [![CI Verification](https://img.shields.io/badge/CI-GitHub%20Actions%20Passing-brightgreen.svg)](.github/workflows/ci.yml)
 
@@ -17,7 +17,7 @@ This repository provides rigorous empirical validation, statistical confidence i
 
 ## ⚡ 5-Minute Quickstart
 
-To reproduce the environment, run the 67-test verification suite, and inspect benchmarks within 5 minutes:
+To reproduce the environment, run the 70-test verification suite, and inspect benchmarks within 5 minutes:
 
 ### Linux / macOS
 ```bash
@@ -35,7 +35,7 @@ cd "fraud-drift-detection"
 ### Run Test Suite & Coverage
 ```bash
 pytest -v --cov=src --cov-report=term-missing
-# Output: ======================= 67 passed in 12.1s =======================
+# Output: ======================= 70 passed in 12.2s =======================
 # Core algorithmic modules: 85%-100% unit coverage
 ```
 
@@ -44,7 +44,7 @@ pytest -v --cov=src --cov-report=term-missing
 This framework is optimized for hardware-accelerated training using a **CUDA-accelerated GPU (tested on RTX 5080-class hardware)** (CUDA `tree_method='hist'`), enabling full 26-week streaming retrains across 590,540 transactions in **77.77 seconds** (~1.2s per retrain).
 
 * **Automatic CPU Fallback**: If an NVIDIA CUDA device is not present, or if `USE_GPU=false` is set in `.env`, the entire framework seamlessly falls back to CPU-based histogram gradient boosting without failing or crashing. On a standard multi-core laptop CPU, the 26-week stream retraining runs in approximately 4–6 minutes.
-* **Test Suite Hardware Independence**: The entire 67-test verification suite and the multi-armed bandit evaluation run 100% on CPU by default (and in CI), requiring zero GPU hardware to reproduce all invariant tests.
+* **Test Suite Hardware Independence**: The entire 70-test verification suite and the multi-armed bandit evaluation run 100% on CPU by default (and in CI), requiring zero GPU hardware to reproduce all invariant tests.
 
 ---
 

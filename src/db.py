@@ -6,7 +6,7 @@ and model performance evaluation metrics via MySQL Server 9.7 (schema: fraud_dri
 import sys
 import logging
 from urllib.parse import quote_plus
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
 from sqlalchemy import (
@@ -27,7 +27,7 @@ class ExperimentRun(Base):
     __tablename__ = "experiment_runs"
 
     run_id = Column(String(64), primary_key=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     dataset_name = Column(String(128))
     total_rows = Column(Integer)
     time_slices_count = Column(Integer)
@@ -104,7 +104,7 @@ class DriftAttributionRecord(Base):
     shap_importance = Column(Float, nullable=False)
     attribution_score = Column(Float, nullable=False)
     rank_order = Column(Integer, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     experiment = relationship("ExperimentRun", back_populates="attributions")
 

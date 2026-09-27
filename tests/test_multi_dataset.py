@@ -178,3 +178,25 @@ def test_feedzai_baf_degenerate_step_fallback():
     assert slices[1]["start_step"] == 721
     assert slices[1]["end_step"] == 1440
 
+
+def test_monthly_partitioning_intra_slice_sequential_ordering():
+    """Verifies that partition_time_slices strictly orders transactions within each month by step and trans_id."""
+    # Deliberately scrambled transactions within each month
+    mock_df = pd.DataFrame({
+        "month": [0, 0, 0, 1, 1],
+        "step": [300, 100, 200, 900, 800],
+        "trans_id": ["T3", "T1", "T2", "T5", "T4"],
+        "isFraud": [0, 1, 0, 0, 1]
+    })
+    preprocessor = Preprocessor()
+    slices = preprocessor.partition_time_slices(mock_df)
+    assert len(slices) == 2
+    # Verify month 0 is strictly sorted by step
+    m0_steps = list(slices[0]["data"]["step"])
+    assert m0_steps == [100, 200, 300]
+    assert list(slices[0]["data"]["trans_id"]) == ["T1", "T2", "T3"]
+    # Verify month 1 is strictly sorted by step
+    m1_steps = list(slices[1]["data"]["step"])
+    assert m1_steps == [800, 900]
+    assert list(slices[1]["data"]["trans_id"]) == ["T4", "T5"]
+

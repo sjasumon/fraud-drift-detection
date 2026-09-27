@@ -125,3 +125,47 @@ def test_cohort_disjointness_and_exhaustiveness(synthetic_stream_df):
     assert set(cohort3.index).issubset(set(cohort2.index)), (
         "Cohort 3 contains transactions that were in Cohort 1!"
     )
+
+
+def test_compute_cohort_metrics_zero_fraud_and_empty_resilience():
+    """
+    Asserts that compute_metrics guards against ZeroDivisionError and single-class AUC-PR errors
+    by returning an empty dict when a cohort has zero frauds or is empty.
+    """
+    from src.evaluate_uid_split import compute_metrics
+
+    # Test completely empty cohort
+    empty_d = {"y": [], "stat_p": [], "adapt_p": [], "stat_prob": [], "adapt_prob": []}
+    res_empty = compute_metrics(empty_d)
+    assert res_empty == {}, "Expected empty dict when cohort is empty"
+
+    # Test cohort with transactions but 0 frauds
+    zero_fraud_d = {
+        "y": [0, 0, 0, 0, 0],
+        "stat_p": [0, 0, 1, 0, 0],
+        "adapt_p": [0, 0, 0, 0, 0],
+        "stat_prob": [0.1, 0.2, 0.7, 0.05, 0.15],
+        "adapt_prob": [0.05, 0.1, 0.3, 0.02, 0.08]
+    }
+    res_zero = compute_metrics(zero_fraud_d)
+    assert res_zero == {}, "Expected empty dict when fraud count is zero"
+
+
+def test_print_audit_report_zero_fraud_resilience(capsys):
+    """
+    Asserts that print_audit_report executes cleanly without ZeroDivisionError
+    when cohorts have zero frauds.
+    """
+    from src.evaluate_uid_split import compute_metrics, print_audit_report
+
+    empty_metrics = compute_metrics({"y": [0, 0], "stat_p": [0, 0], "adapt_p": [0, 0], "stat_prob": [0.1, 0.2], "adapt_prob": [0.1, 0.2]})
+    results = {
+        "global_oos": empty_metrics,
+        "clean": {"seen": empty_metrics, "unseen": empty_metrics, "strict": empty_metrics},
+        "collision_free": {"seen": empty_metrics, "unseen": empty_metrics, "strict": empty_metrics}
+    }
+    # Should not throw ZeroDivisionError or KeyError
+    print_audit_report(results, "ZERO FRAUD TEST AUDIT")
+    captured = capsys.readouterr()
+    assert "ZERO FRAUD TEST AUDIT" in captured.out
+    assert "Weighted Recall: 0.0000%" in captured.out

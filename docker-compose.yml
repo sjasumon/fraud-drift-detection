@@ -6,6 +6,7 @@ services:
     container_name: fraud_mysql_db
     restart: unless-stopped
     environment:
+      # local/demo only — see config.py production guard
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
       MYSQL_DATABASE: fraud_drift_db
     ports:
@@ -33,7 +34,7 @@ services:
       - DB_HOST=mysql
       - DB_PORT=3306
       - DB_USER=root
-      - DB_PASSWORD=
+      - DB_PASSWORD=  # local/demo only — see config.py production guard
       - DB_NAME=fraud_drift_db
       - USE_GPU=true
       - GPU_DEVICE=cuda
