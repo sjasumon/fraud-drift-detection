@@ -24,14 +24,12 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
-    # Database Configuration
-    db_type: str = Field(default="mysql", description="Database dialect ('mysql' or 'sqlite')")
+    # Database Configuration (MySQL Server 9.7)
     db_host: str = Field(default="127.0.0.1", description="Database host IP or hostname")
     db_port: int = Field(default=3306, ge=1024, le=65535, description="Database port number")
     db_user: str = Field(default="root", description="Database username")
     db_password: str = Field(default="", description="Database password")
     db_name: str = Field(default="fraud_drift_db", description="Target database schema name")
-    sqlite_db_path: str = Field(default="data/fraud_drift.db", description="Fallback SQLite path")
 
     # Hardware Acceleration Configuration (NVIDIA RTX 5080 eGPU)
     use_gpu: bool = Field(default=True, description="Enable CUDA acceleration for XGBoost")
@@ -79,13 +77,11 @@ for d in [DATA_DIR, RAW_DATA_DIR, PROCESSED_DATA_DIR, RESULTS_DIR, FIGURES_DIR, 
     d.mkdir(parents=True, exist_ok=True)
 
 # Backward-Compatible Module-Level Constants
-DB_TYPE = settings.db_type.lower()
 DB_HOST = settings.db_host
 DB_PORT = settings.db_port
 DB_USER = settings.db_user
 DB_PASSWORD = settings.db_password
 DB_NAME = settings.db_name
-SQLITE_DB_PATH = BASE_DIR / settings.sqlite_db_path
 
 USE_GPU = settings.use_gpu
 GPU_DEVICE = settings.gpu_device

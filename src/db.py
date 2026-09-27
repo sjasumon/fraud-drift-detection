@@ -1,8 +1,6 @@
 """
 Database management module for storing transactions metadata, drift events,
-and model performance evaluation metrics.
-Supports MySQL (via pymysql) and provides an automatic SQLite fallback
-if MySQL service is offline.
+and model performance evaluation metrics via MySQL Server 9.7 (schema: fraud_drift_db).
 """
 
 import sys
@@ -18,7 +16,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.engine import Engine
 
 from src.config import (
-    DB_TYPE, DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, SQLITE_DB_PATH
+    DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
 )
 
 logger = logging.getLogger("fraud_drift.db")
@@ -112,7 +110,7 @@ class DriftAttributionRecord(Base):
 
 
 class DatabaseManager:
-    """Manages database connectivity and persistence for experimental runs strictly via MySQL."""
+    """Manages database connectivity and persistence for experimental runs via MySQL Server 9.7."""
 
     def __init__(self):
         self.engine: Optional[Engine] = None
@@ -138,11 +136,11 @@ class DatabaseManager:
             Base.metadata.create_all(self.engine)
             self.session_factory = sessionmaker(bind=self.engine)
             self.backend_name = f"MySQL Server 9.7 (`{DB_NAME}` on {DB_HOST}:{DB_PORT})"
-            logger.info(f"Connected strictly to MySQL: {self.backend_name}")
+            logger.info(f"Connected to MySQL: {self.backend_name}")
         except Exception as e:
             logger.error(f"Failed to connect to MySQL database at {DB_HOST}:{DB_PORT}: {e}")
             raise ConnectionError(
-                f"MySQL connection error ({e}). Please ensure MySQL service is running on {DB_HOST}:{DB_PORT}."
+                f"MySQL connection error ({e}). Please ensure MySQL Server 9.7 is running on {DB_HOST}:{DB_PORT}."
             )
 
     def get_session(self):

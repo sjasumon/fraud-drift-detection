@@ -33,7 +33,6 @@ jobs:
       - name: Run Full Test Suite (50 Invariant & Unit Tests)
         env:
           USE_GPU: "false"
-          DB_TYPE: "sqlite"
         run: |
           pytest -v --cov=src --cov-report=term --cov-report=xml
 

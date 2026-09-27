@@ -54,17 +54,16 @@ def run_pipeline(dataset_path: Path = None, exclude_card_identifiers: bool = Fal
     run_id = f"RUN_{uuid.uuid4().hex[:10].upper()}"
     start_total_time = time.time()
 
+    # 1. Initialize Database (MySQL Server 9.7)
+    db = DatabaseManager()
+
     logger.info("=" * 80)
     logger.info(f"STARTING CONCEPT-DRIFT-AWARE FRAUD DETECTION PIPELINE [{run_id}]")
     logger.info(f"Hardware: NVIDIA eGPU Acceleration = {USE_GPU} ({GPU_DEVICE})")
-    logger.info(f"Database: Strict MySQL Server 9.7 (fraud_drift_db)")
+    logger.info(f"Database Backend: {db.backend_name}")
     logger.info(f"Adaptation Strategy: FULL RETRAINING ON NVIDIA GPU")
     logger.info(f"Reproducibility Seed: {RANDOM_SEED}")
     logger.info("=" * 80)
-
-    # 1. Initialize MySQL Database
-    db = DatabaseManager()
-    logger.info(f"Database connected: {db.backend_name}")
 
     # 2. FR-1: Dataset Ingestion & Validation
     if dataset_path is None:

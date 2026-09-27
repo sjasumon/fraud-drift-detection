@@ -30,7 +30,6 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DB_TYPE=mysql
       - DB_HOST=mysql
       - DB_PORT=3306
       - DB_USER=root
