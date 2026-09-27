@@ -149,6 +149,8 @@ def run_latency_simulation_regime(
             slice_idx=s_idx,
             training_df_override=matured_train_data
         )
+        if slice_drift_triggered:
+            drift_monitor.reset_detectors()
 
         drift_flag = " [RETRAIN]" if slice_drift_triggered else ""
         logger.info(

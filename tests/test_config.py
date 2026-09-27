@@ -80,3 +80,25 @@ def test_drift_monitor_wires_ddm_config():
     assert monitor.ddm.warm_start == 50
     assert monitor.ddm.warning_threshold == 2.2
     assert monitor.ddm.drift_threshold == 3.3
+
+
+def test_drift_monitor_reset_behavior():
+    """Asserts that reset_detectors() clears accumulated drift statistics after adaptation."""
+    from src.drift_detector import DriftMonitor
+    monitor = DriftMonitor()
+
+    # Feed errors to accumulate detector window state
+    for i in range(100):
+        monitor.update(y_true=1, y_pred=0, slice_index=0, step_number=i, trans_id=f"tx_{i}")
+
+    assert monitor.adwin.width > 0
+
+    # Reset detectors after model adaptation
+    old_adwin = monitor.adwin
+    old_ddm = monitor.ddm
+    monitor.reset_detectors()
+
+    assert monitor.adwin is not old_adwin
+    assert monitor.ddm is not old_ddm
+    assert monitor.adwin.width == 0
+

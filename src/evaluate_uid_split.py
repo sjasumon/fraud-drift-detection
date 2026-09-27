@@ -196,6 +196,8 @@ def run_single_audit(
             if alert["any_drift"]:
                 slice_drift = True
         adaptive_model.update_with_slice(slice_data, slice_drift, s["slice_index"])
+        if slice_drift:
+            drift_monitor.reset_detectors()
 
     logger.info(f"Baseline warmup complete. Drift alerts in warmup: {len(drift_monitor.drift_events)}.")
 
@@ -244,6 +246,8 @@ def run_single_audit(
                 slice_drift = True
 
         adaptive_model.update_with_slice(slice_data, slice_drift, s["slice_index"])
+        if slice_drift:
+            drift_monitor.reset_detectors()
 
         for i in range(len(y_true)):
             yt = int(y_true[i])

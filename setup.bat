@@ -33,11 +33,11 @@ python -m pip install --upgrade pip setuptools wheel
 pip install -e ".[test]"
 
 REM 4. Run automated test suite
-echo [4/4] Executing 55 automated invariant tests...
+echo [4/4] Executing 56 automated invariant tests...
 pytest -v
 
 echo ================================================================================
-echo SETUP COMPLETE: All 55 automated tests passed!
+echo SETUP COMPLETE: All 56 automated tests passed!
 echo To run benchmark pipeline:  python -m src.pipeline
 echo To run multi-seed stats:    python -m src.benchmark_statistical_rigor --seeds 42 101
 echo To run non-stationary bandit: python -m src.bandit.benchmark --seeds 42 --steps 2000

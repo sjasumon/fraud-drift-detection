@@ -264,6 +264,8 @@ def run_paysim_statistical_rigor(seeds: List[int], n_bootstrap: int = 1000) -> D
                 if alert["any_drift"]:
                     base_drift = True
             adaptive.update_with_slice(s_data, base_drift, s["slice_index"])
+            if base_drift:
+                drift_monitor.reset_detectors()
 
         # Sequential Evaluation across Out-of-Sample Slices
         per_preds_list, sli_preds_list, adp_preds_list = [], [], []
@@ -298,6 +300,8 @@ def run_paysim_statistical_rigor(seeds: List[int], n_bootstrap: int = 1000) -> D
                 if alert["any_drift"]:
                     slice_drift = True
             adaptive.update_with_slice(s_data, slice_drift, s["slice_index"])
+            if slice_drift:
+                drift_monitor.reset_detectors()
 
         p_preds = np.concatenate(per_preds_list)
         p_probs = np.concatenate(per_probs_list)

@@ -284,6 +284,8 @@ def run_pipeline(
             drift_triggered=slice_drift_triggered,
             slice_idx=slice_idx
         )
+        if slice_drift_triggered:
+            drift_monitor.reset_detectors()
 
         # --- G. P4: Mechanistic SHAP & PSI Attribution on Drift ---
         if slice_drift_triggered:
