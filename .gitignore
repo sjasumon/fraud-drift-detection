@@ -26,7 +26,6 @@ data/
 ieee/
 ieee-fraud-detection.zip
 *.zip
-!arxiv_paper/*.zip
 *.tar.gz
 *.csv
 !results/metrics/*.csv

@@ -91,8 +91,7 @@ flowchart TD
 A camera-ready 5-page IEEE-format research manuscript is included in [`arxiv_paper/`](arxiv_paper/):
 - **Title:** *Empirical Evaluation of Drift-Adaptive Gradient Boosting and Bandit Adaptation in Continuous Financial Transaction Streams*
 - **Source Files:** [`arxiv_paper/main.tex`](arxiv_paper/main.tex), [`arxiv_paper/references.bib`](arxiv_paper/references.bib), and 300-DPI publication figures.
-- **One-Click Archive:** [`arxiv_paper/arxiv_preprint_package.zip`](arxiv_paper/arxiv_preprint_package.zip) ready for immediate upload to arXiv or Overleaf.
-- **Detailed Build Instructions:** [`arxiv_paper/README.md`](arxiv_paper/README.md).
+- **Detailed Build Instructions:** [`arxiv_paper/README.md`](arxiv_paper/README.md) for local compilation or Overleaf upload.
 
 ---
 
@@ -267,7 +266,7 @@ In the interest of scientific rigor and transparent doctoral research, we highli
 ├── arxiv_paper/                     <- arXiv camera-ready paper package
 │   ├── main.tex                     <- IEEE-format camera-ready manuscript (5 pages)
 │   ├── references.bib               <- Authentic academic bibliography
-│   ├── arxiv_preprint_package.zip   <- 1-click submission package for arXiv/Overleaf
+│   ├── figures/                     <- 300-DPI publication vector/raster figures
 │   └── README.md                    <- LaTeX compilation & arXiv submission instructions
 ├── src/
 │   ├── bandit/                      <- Non-stationary Multi-Armed Bandit suite
