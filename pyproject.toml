@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
-    { name = "Sheikh Joynal Abedin Sumon", email = "s.sumon@auckland.ac.nz" }
+    { name = "Sheikh Joynal Abedin Sumon", email = "me@sumon.me" }
 ]
 keywords = ["fraud-detection", "concept-drift", "stream-mining", "xgboost", "adwin", "ddm", "multi-armed-bandits", "gpu"]
 classifiers = [
