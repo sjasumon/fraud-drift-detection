@@ -10,6 +10,7 @@ Satisfies:
 """
 
 import math
+import logging
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -18,6 +19,8 @@ from typing import Tuple
 from src.config import (
     RAW_DATA_DIR, RANDOM_SEED, TOTAL_SIMULATION_WEEKS, DEFAULT_HOURS_PER_WEEK
 )
+
+logger = logging.getLogger("fraud_drift.data_generator")
 
 
 def generate_paysim_stream(
@@ -212,8 +215,9 @@ def generate_paysim_stream(
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     out_file = RAW_DATA_DIR / "paysim_synthetic_24w.csv"
-    print(f"Generating synthetic financial transaction stream to {out_file}...")
+    logger.info(f"Generating synthetic financial transaction stream to {out_file}...")
     df = generate_paysim_stream(output_path=out_file)
-    print(f"Generated {len(df):,} transactions across {TOTAL_SIMULATION_WEEKS} weeks.")
-    print(f"Class Balance: {df['isFraud'].value_counts(normalize=True).to_dict()}")
+    logger.info(f"Generated {len(df):,} transactions across {TOTAL_SIMULATION_WEEKS} weeks.")
+    logger.info(f"Class Balance: {df['isFraud'].value_counts(normalize=True).to_dict()}")

@@ -15,6 +15,11 @@ Evaluates:
 Supports both:
 - Configuration A: Standard Features (card identifiers included in numerical features)
 - Configuration B: Feature-Blind / Identifier-Exclusion (card1, card2, card3, card5, addr1, addr2 excluded)
+
+Architectural Note on Reporting:
+This module serves as the primary CLI reporting script and interactive audit tool.
+Audit outputs are channeled through structured logging (`logger.info`) with synchronized
+stdout streaming for immediate interactive tabular visualization during command-line execution.
 """
 
 import sys
@@ -81,63 +86,69 @@ def compute_metrics(d: Dict[str, list]) -> Dict[str, Any]:
     }
 
 
+def _emit(text: str = ""):
+    """Emits report line to both structured logging and stdout for interactive CLI inspection."""
+    logger.info(text)
+    print(text)
+
+
 def print_audit_report(results: Dict[str, Any], title: str):
-    print("\n" + "=" * 92)
-    print(f"AUDIT REPORT: {title}")
-    print("=" * 92)
+    _emit("\n" + "=" * 92)
+    _emit(f"AUDIT REPORT: {title}")
+    _emit("=" * 92)
 
     g = results.get("global_oos", {})
     if g:
-        print(f"\n[GLOBAL OUT-OF-SAMPLE BENCHMARK (All {g['total_tx']:,} Transactions, {g['fraud_tx']:,} Frauds)]")
-        print(f"   Static Model   : Recall = {g['stat_recall']:.2f}% ({g['stat_tp']:,}/{g['fraud_tx']:,}) | Precision = {g['stat_prec']:.2f}% | AUC-PR = {g['stat_auc']:.4f}")
-        print(f"   Adaptive Model : Recall = {g['adapt_recall']:.2f}% ({g['adapt_tp']:,}/{g['fraud_tx']:,}) | Precision = {g['adapt_prec']:.2f}% | AUC-PR = {g['adapt_auc']:.4f}")
-        print(f"   Net Gain       : Recall = +{g['recall_gain']:.2f}% (+{g['adapt_tp'] - g['stat_tp']:,} frauds caught) | AUC-PR = +{g['auc_gain']:.4f}")
+        _emit(f"\n[GLOBAL OUT-OF-SAMPLE BENCHMARK (All {g['total_tx']:,} Transactions, {g['fraud_tx']:,} Frauds)]")
+        _emit(f"   Static Model   : Recall = {g['stat_recall']:.2f}% ({g['stat_tp']:,}/{g['fraud_tx']:,}) | Precision = {g['stat_prec']:.2f}% | AUC-PR = {g['stat_auc']:.4f}")
+        _emit(f"   Adaptive Model : Recall = {g['adapt_recall']:.2f}% ({g['adapt_tp']:,}/{g['fraud_tx']:,}) | Precision = {g['adapt_prec']:.2f}% | AUC-PR = {g['adapt_auc']:.4f}")
+        _emit(f"   Net Gain       : Recall = +{g['recall_gain']:.2f}% (+{g['adapt_tp'] - g['stat_tp']:,} frauds caught) | AUC-PR = +{g['auc_gain']:.4f}")
 
     cl_seen_m = results.get("clean", {}).get("seen", {})
     cl_unseen_m = results.get("clean", {}).get("unseen", {})
     cl_cov_tx = cl_seen_m.get("total_tx", 0) + cl_unseen_m.get("total_tx", 0)
     g_total_tx = g.get("total_tx", 0)
     cl_cov_pct = (cl_cov_tx / g_total_tx * 100) if g_total_tx > 0 else 0.0
-    print("\n" + "-" * 92)
-    print("METHOD A: CLEAN COMPLETE CASES ONLY (card1, card2, addr1 all strictly non-null)")
-    print(f"Coverage: {cl_cov_tx:,} transactions ({cl_cov_pct:.2f}% of stream; excludes {100 - cl_cov_pct:.2f}% missing cases)")
-    print("-" * 92)
+    _emit("\n" + "-" * 92)
+    _emit("METHOD A: CLEAN COMPLETE CASES ONLY (card1, card2, addr1 all strictly non-null)")
+    _emit(f"Coverage: {cl_cov_tx:,} transactions ({cl_cov_pct:.2f}% of stream; excludes {100 - cl_cov_pct:.2f}% missing cases)")
+    _emit("-" * 92)
     for name, key in [
         ("1. Repeat / Baseline-Seen Cards (seen in Weeks 1-5)", "seen"),
         ("2. Baseline-Unseen Cards (not in Weeks 1-5)", "unseen"),
         ("3. Strict Stream-Unseen Cards (Zero-Memory Arrival Test)", "strict")
     ]:
         m = results.get("clean", {}).get(key, {})
-        print(f"   {name}:")
+        _emit(f"   {name}:")
         if not m:
-            print("      No transactions or zero fraud observed in this cohort.")
+            _emit("      No transactions or zero fraud observed in this cohort.")
             continue
-        print(f"      Transactions: {m['total_tx']:,} | Frauds: {m['fraud_tx']:,} ({m['prevalence_pct']:.2f}%)")
-        print(f"      Static Model   : Recall = {m['stat_recall']:.2f}% ({m['stat_tp']:,}/{m['fraud_tx']:,}) | Precision = {m['stat_prec']:.2f}% | AUC-PR = {m['stat_auc']:.4f}")
-        print(f"      Adaptive Model : Recall = {m['adapt_recall']:.2f}% ({m['adapt_tp']:,}/{m['fraud_tx']:,}) | Precision = {m['adapt_prec']:.2f}% | AUC-PR = {m['adapt_auc']:.4f}")
-        print(f"      Net Advantage  : Recall Gain = +{m['recall_gain']:.2f}% | AUC-PR Gain = +{m['auc_gain']:.4f}")
+        _emit(f"      Transactions: {m['total_tx']:,} | Frauds: {m['fraud_tx']:,} ({m['prevalence_pct']:.2f}%)")
+        _emit(f"      Static Model   : Recall = {m['stat_recall']:.2f}% ({m['stat_tp']:,}/{m['fraud_tx']:,}) | Precision = {m['stat_prec']:.2f}% | AUC-PR = {m['stat_auc']:.4f}")
+        _emit(f"      Adaptive Model : Recall = {m['adapt_recall']:.2f}% ({m['adapt_tp']:,}/{m['fraud_tx']:,}) | Precision = {m['adapt_prec']:.2f}% | AUC-PR = {m['adapt_auc']:.4f}")
+        _emit(f"      Net Advantage  : Recall Gain = +{m['recall_gain']:.2f}% | AUC-PR Gain = +{m['auc_gain']:.4f}")
 
-    print("\n" + "-" * 92)
-    print("METHOD B: FULL POPULATION WITH COLLISION-FREE TOKENIZATION (MISSING_<trans_id>)")
-    print(f"Coverage: 100% of out-of-sample stream ({g_total_tx:,} transactions, 0 spurious collisions)")
-    print("-" * 92)
+    _emit("\n" + "-" * 92)
+    _emit("METHOD B: FULL POPULATION WITH COLLISION-FREE TOKENIZATION (MISSING_<trans_id>)")
+    _emit(f"Coverage: 100% of out-of-sample stream ({g_total_tx:,} transactions, 0 spurious collisions)")
+    _emit("-" * 92)
     for name, key in [
         ("1. Repeat / Baseline-Seen Entities", "seen"),
         ("2. Baseline-Unseen Entities (New cards + unique anon transactions)", "unseen"),
         ("3. Strict Stream-Unseen Entities (Mixed arrival population)", "strict")
     ]:
         m = results.get("collision_free", {}).get(key, {})
-        print(f"   {name}:")
+        _emit(f"   {name}:")
         if not m:
-            print("      No transactions or zero fraud observed in this cohort.")
+            _emit("      No transactions or zero fraud observed in this cohort.")
             continue
-        print(f"      Transactions: {m['total_tx']:,} | Frauds: {m['fraud_tx']:,} ({m['prevalence_pct']:.2f}%)")
-        print(f"      Static Model   : Recall = {m['stat_recall']:.2f}% ({m['stat_tp']:,}/{m['fraud_tx']:,}) | Precision = {m['stat_prec']:.2f}% | AUC-PR = {m['stat_auc']:.4f}")
-        print(f"      Adaptive Model : Recall = {m['adapt_recall']:.2f}% ({m['adapt_tp']:,}/{m['fraud_tx']:,}) | Precision = {m['adapt_prec']:.2f}% | AUC-PR = {m['adapt_auc']:.4f}")
-        print(f"      Net Advantage  : Recall Gain = +{m['recall_gain']:.2f}% | AUC-PR Gain = +{m['auc_gain']:.4f}")
+        _emit(f"      Transactions: {m['total_tx']:,} | Frauds: {m['fraud_tx']:,} ({m['prevalence_pct']:.2f}%)")
+        _emit(f"      Static Model   : Recall = {m['stat_recall']:.2f}% ({m['stat_tp']:,}/{m['fraud_tx']:,}) | Precision = {m['stat_prec']:.2f}% | AUC-PR = {m['stat_auc']:.4f}")
+        _emit(f"      Adaptive Model : Recall = {m['adapt_recall']:.2f}% ({m['adapt_tp']:,}/{m['fraud_tx']:,}) | Precision = {m['adapt_prec']:.2f}% | AUC-PR = {m['adapt_auc']:.4f}")
+        _emit(f"      Net Advantage  : Recall Gain = +{m['recall_gain']:.2f}% | AUC-PR Gain = +{m['auc_gain']:.4f}")
 
-    print("\n" + "-" * 92)
-    print("MATHEMATICAL RECONCILIATION VERIFICATION:")
+    _emit("\n" + "-" * 92)
+    _emit("MATHEMATICAL RECONCILIATION VERIFICATION:")
     cl_tp_sum = cl_seen_m.get("adapt_tp", 0) + cl_unseen_m.get("adapt_tp", 0)
     cl_fraud_sum = cl_seen_m.get("fraud_tx", 0) + cl_unseen_m.get("fraud_tx", 0)
     cf_seen_m = results.get("collision_free", {}).get("seen", {})
@@ -148,9 +159,9 @@ def print_audit_report(results: Dict[str, Any], title: str):
     cl_weighted_recall = (cl_tp_sum / cl_fraud_sum * 100) if cl_fraud_sum > 0 else 0.0
     cf_weighted_recall = (cf_tp_sum / cf_fraud_sum * 100) if cf_fraud_sum > 0 else 0.0
 
-    print(f"   Method A Cohorts 1+2 Frauds: {cl_fraud_sum:,} | Adaptive Caught: {cl_tp_sum:,} -> Weighted Recall: {cl_weighted_recall:.4f}%")
-    print(f"   Method B Cohorts 1+2 Frauds: {cf_fraud_sum:,} (matches global {g.get('fraud_tx', 0):,}) | Adaptive Caught: {cf_tp_sum:,} (matches global {g.get('adapt_tp', 0):,}) -> Weighted Recall: {cf_weighted_recall:.4f}%")
-    print("=" * 92 + "\n")
+    _emit(f"   Method A Cohorts 1+2 Frauds: {cl_fraud_sum:,} | Adaptive Caught: {cl_tp_sum:,} -> Weighted Recall: {cl_weighted_recall:.4f}%")
+    _emit(f"   Method B Cohorts 1+2 Frauds: {cf_fraud_sum:,} (matches global {g.get('fraud_tx', 0):,}) | Adaptive Caught: {cf_tp_sum:,} (matches global {g.get('adapt_tp', 0):,}) -> Weighted Recall: {cf_weighted_recall:.4f}%")
+    _emit("=" * 92 + "\n")
 
 
 def run_single_audit(

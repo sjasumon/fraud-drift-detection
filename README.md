@@ -38,12 +38,15 @@ pytest -v --cov=src --cov-report=term-missing
 # Full codebase: 85% total statement coverage (90%-100% across core algorithmic and orchestrator modules)
 ```
 
-### ⚡ Hardware Acceleration & Automatic CPU Fallback
+### ⚡ Compute Portability & Hardware Acceleration
 
-This framework is optimized for hardware-accelerated training using a **CUDA-accelerated GPU (tested on RTX 5080-class hardware)** (CUDA `tree_method='hist'`), enabling full 26-week streaming retrains across 590,540 transactions in **77.77 seconds** (~1.2s per retrain).
+This framework is architected for **universal CPU reproducibility** with optional CUDA GPU acceleration:
 
-* **Automatic CPU Fallback**: If an NVIDIA CUDA device is not present, or if `USE_GPU=false` is set in `.env`, the entire framework seamlessly falls back to CPU-based histogram gradient boosting without failing or crashing. On a standard multi-core laptop CPU, the 26-week stream retraining runs in approximately 4–6 minutes.
-* **Test Suite Hardware Independence**: The entire 89-test verification suite and the multi-armed bandit evaluation run 100% on CPU by default (and in CI), requiring zero GPU hardware to reproduce all invariant tests.
+* **100% CPU-Portable by Default**: The entire 89-test verification suite, mathematical invariant assertions, multi-armed bandit simulation, and streaming pipelines run on standard multi-core CPUs out of the box (requiring zero GPU hardware or external driver dependencies). On a standard commodity multi-core laptop CPU, the complete 26-week stream retraining runs in approximately 4–6 minutes.
+* **Optional CUDA Acceleration**: When an NVIDIA GPU is available, gradient boosting automatically leverages histogram-based acceleration (`tree_method='hist'`), completing full 26-week streaming retrains across 590,540 transactions in **77.77 seconds** (~1.2s per retrain)¹.
+* **Seamless Graceful Fallback**: If CUDA is unavailable or if `USE_GPU=false` is configured in `.env`, the system automatically falls back to CPU execution with zero code changes or disruptions.
+
+> ¹ *Benchmarking Hardware Context*: GPU throughput benchmarks were conducted on a CUDA-accelerated GPU (tested on RTX 5080-class hardware). Algorithmic convergence, concept drift detection points, and statistical metrics are numerically identical across CPU and GPU backends.
 
 ---
 

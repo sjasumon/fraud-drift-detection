@@ -7,12 +7,16 @@ findings in seconds:
 """
 
 import json
+import logging
 from pathlib import Path
 import re
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import numpy as np
 import pandas as pd
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+logger = logging.getLogger("fraud_drift.key_figures")
 
 # Paths
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -287,15 +291,15 @@ def plot_verification_latency_degradation() -> Path:
 
 
 def main():
-    print("Generating Figure 1: stream_f1_drift_timeline.png...")
+    logger.info("Generating Figure 1: stream_f1_drift_timeline.png...")
     df = parse_ieee_26w_metrics()
     f1_path = plot_stream_f1_drift_timeline(df)
-    print(f"Figure 1 saved to: {f1_path}")
+    logger.info(f"Figure 1 saved to: {f1_path}")
 
-    print("Generating Figure 2: verification_latency_degradation.png...")
+    logger.info("Generating Figure 2: verification_latency_degradation.png...")
     f2_path = plot_verification_latency_degradation()
-    print(f"Figure 2 saved to: {f2_path}")
-    print("Publication figures successfully generated and synced to arxiv_paper/figures/")
+    logger.info(f"Figure 2 saved to: {f2_path}")
+    logger.info("Publication figures successfully generated and synced to arxiv_paper/figures/")
 
 
 if __name__ == "__main__":
