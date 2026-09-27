@@ -5,7 +5,7 @@ Handles missing values, categorical encoding, class imbalance, and sequential we
 """
 
 import logging
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Tuple, Dict, Any, Optional, Set
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder
@@ -15,12 +15,59 @@ from src.config import DEFAULT_HOURS_PER_WEEK
 logger = logging.getLogger("fraud_drift.preprocessing")
 
 
+# Modular dataset schema specifications for extensible multi-dataset support
+DATASET_SCHEMA_CONFIG: Dict[str, Dict[str, Any]] = {
+    "default": {
+        "categorical_columns": [
+            "ProductCD", "card4", "card6", "type",
+            "payment_type", "employment_status", "housing_status", "source", "device_os"
+        ],
+        "excluded_columns": {
+            "TransactionID", "trans_id", "isFraud", "isFlaggedFraud", "TransactionDT",
+            "step", "month", "fraud_bool", "nameOrig", "nameDest", "drift_phase", "week",
+            "P_emaildomain", "R_emaildomain", "uid", "uid_clean", "uid_cf", "is_clean"
+        },
+        "identifier_columns": {
+            "card1", "card2", "card3", "card5", "addr1", "addr2"
+        }
+    },
+    "ieee_cis": {
+        "categorical_columns": ["ProductCD", "card4", "card6"],
+        "excluded_columns": {
+            "TransactionID", "trans_id", "isFraud", "TransactionDT", "step",
+            "P_emaildomain", "R_emaildomain", "uid", "uid_clean", "uid_cf", "is_clean"
+        },
+        "identifier_columns": {"card1", "card2", "card3", "card5", "addr1", "addr2"}
+    },
+    "feedzai_baf": {
+        "categorical_columns": ["payment_type", "employment_status", "housing_status", "source", "device_os"],
+        "excluded_columns": {"month", "fraud_bool", "isFraud", "step", "trans_id"},
+        "identifier_columns": set()
+    },
+    "paysim": {
+        "categorical_columns": ["type"],
+        "excluded_columns": {"trans_id", "step", "nameOrig", "nameDest", "isFraud", "isFlaggedFraud", "drift_phase", "week"},
+        "identifier_columns": set()
+    }
+}
+
+
 class Preprocessor:
     """Preprocesses raw transaction data and partitions into sequential temporal slices."""
 
-    def __init__(self, hours_per_slice: int = DEFAULT_HOURS_PER_WEEK, exclude_card_identifiers: bool = False):
+    def __init__(
+        self,
+        hours_per_slice: int = DEFAULT_HOURS_PER_WEEK,
+        exclude_card_identifiers: bool = False,
+        dataset_name: Optional[str] = None,
+        custom_categorical_cols: Optional[List[str]] = None,
+        custom_exclude_cols: Optional[Set[str]] = None
+    ):
         self.hours_per_slice = hours_per_slice
         self.exclude_card_identifiers = exclude_card_identifiers
+        self.dataset_name = dataset_name
+        self.custom_categorical_cols = custom_categorical_cols
+        self.custom_exclude_cols = custom_exclude_cols
         self.encoder: Optional[OneHotEncoder] = None
         self.fitted = False
         self.feature_names: List[str] = []
@@ -73,23 +120,26 @@ class Preprocessor:
         """
         df = self.extract_engineered_features(df)
 
+        # Resolve dataset schema configuration
+        schema_cfg = DATASET_SCHEMA_CONFIG.get(self.dataset_name, DATASET_SCHEMA_CONFIG["default"])
+
         # Identify candidate categorical columns
-        possible_cats = [
-            "ProductCD", "card4", "card6", "type",
-            "payment_type", "employment_status", "housing_status", "source", "device_os"
-        ]
+        if self.custom_categorical_cols is not None:
+            possible_cats = self.custom_categorical_cols
+        else:
+            possible_cats = schema_cfg.get("categorical_columns", [])
         self.categorical_cols = [c for c in possible_cats if c in df.columns]
 
         # Base exclusion set
-        exclude_cols = {
-            "TransactionID", "trans_id", "isFraud", "isFlaggedFraud", "TransactionDT",
-            "step", "month", "fraud_bool", "nameOrig", "nameDest", "drift_phase", "week",
-            "P_emaildomain", "R_emaildomain", "uid", "uid_clean", "uid_cf", "is_clean"
-        }
+        if self.custom_exclude_cols is not None:
+            exclude_cols = set(self.custom_exclude_cols)
+        else:
+            exclude_cols = set(schema_cfg.get("excluded_columns", set()))
 
         # Optionally exclude raw card and address identifier codes
         if self.exclude_card_identifiers:
-            exclude_cols.update({"card1", "card2", "card3", "card5", "addr1", "addr2"})
+            id_cols = schema_cfg.get("identifier_columns", {"card1", "card2", "card3", "card5", "addr1", "addr2"})
+            exclude_cols.update(id_cols)
 
         self.numeric_cols = [
             c for c in df.columns

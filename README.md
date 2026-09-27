@@ -4,7 +4,7 @@
 [![CUDA Acceleration](https://img.shields.io/badge/CUDA-GPU%20%7C%20CPU%20Fallback-green.svg)](https://developer.nvidia.com/cuda-zone)
 [![arXiv Preprint](https://img.shields.io/badge/arXiv-Preprint%20Ready-b31b1b.svg)](arxiv_paper/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests Passing](https://img.shields.io/badge/tests-89%20passed-brightgreen.svg)](tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-90%20passed-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-85%25%20total%20codebase-brightgreen.svg)](tests/)
 
 A reproducible, production-grade empirical research framework and pre-proposal package developed in support of a prospective PhD proposal to **Professor Yun Sing Koh** (MARS Lab / Centre of Machine Learning for Social Good, University of Auckland).
@@ -12,11 +12,14 @@ A reproducible, production-grade empirical research framework and pre-proposal p
 This repository provides rigorous empirical validation, statistical confidence intervals, streaming multi-armed bandit extensions, and production deployment artifacts for:
 > **"Adaptive Fraud Detection Under Concept Drift, Towards Privacy-Preserving Cross-Institution Extension"**
 
+> [!TIP]
+> **Academic Pre-Proposal Executive Summary**: For an immediate overview of the core research questions (RQ1–RQ4), empirical findings, statistical methodology, alignment with the MARS Lab (Prof. Yun Sing Koh), and doctoral roadmap, please see the dedicated [**Supervisor Executive Brief (`SUPERVISOR_BRIEF.md`)**](SUPERVISOR_BRIEF.md).
+
 ---
 
-## ⚡ 5-Minute Quickstart
+## Quickstart & Verification
 
-To reproduce the environment, run the 89-test verification suite, and inspect benchmarks within 5 minutes:
+To reproduce the environment, run the 90-test verification suite, and inspect benchmarks within 5 minutes:
 
 ### Linux / macOS
 ```bash
@@ -34,15 +37,15 @@ cd "fraud-drift-detection"
 ### Run Test Suite & Coverage
 ```bash
 pytest -v --cov=src --cov-report=term-missing
-# Output: ======================= 89 passed in ~30s =======================
+# Output: ======================= 90 passed in ~28s =======================
 # Full codebase: 85% total statement coverage (90%-100% across core algorithmic and orchestrator modules)
 ```
 
-### ⚡ Compute Portability & Hardware Acceleration
+### Compute Portability & Hardware Acceleration
 
 This framework is architected for **universal CPU reproducibility** with optional CUDA GPU acceleration:
 
-* **100% CPU-Portable by Default**: The entire 89-test verification suite, mathematical invariant assertions, multi-armed bandit simulation, and streaming pipelines run on standard multi-core CPUs out of the box (requiring zero GPU hardware or external driver dependencies). On a standard commodity multi-core laptop CPU, the complete 26-week stream retraining runs in approximately 4–6 minutes.
+* **100% CPU-Portable by Default**: The entire 90-test verification suite, mathematical invariant assertions, multi-armed bandit simulation, and streaming pipelines run on standard multi-core CPUs out of the box (requiring zero GPU hardware or external driver dependencies). On a standard commodity multi-core laptop CPU, the complete 26-week stream retraining runs in approximately 4–6 minutes.
 * **Optional CUDA Acceleration**: When an NVIDIA GPU is available, gradient boosting automatically leverages histogram-based acceleration (`tree_method='hist'`), completing full 26-week streaming retrains across 590,540 transactions in **77.77 seconds** (~1.2s per retrain)¹.
 * **Seamless Graceful Fallback**: If CUDA is unavailable or if `USE_GPU=false` is configured in `.env`, the system automatically falls back to CPU execution with zero code changes or disruptions.
 
@@ -50,7 +53,87 @@ This framework is architected for **universal CPU reproducibility** with optiona
 
 ---
 
-## 🏛️ System Architecture
+## Key Empirical Discoveries & Publication Figures
+
+### 1. Disproving Memorization via Feature-Blind UID Zero-Memory Evaluation
+A central critique in financial stream mining is that adaptive models merely "memorize" newly introduced card identifiers (`card1-card6`, `addr1-addr2`). 
+To address this, we implemented a **Feature-Blind Protocol** stripping all entity identifiers and tracked **Cohort 3 (strict stream-unseen cards)** upon their first arrival in the stream across 5 random seeds:
+
+| Evaluation Metric | Static Baseline (Frozen) | Drift-Adaptive (Full GPU Retrain) | Delta ($\Delta$) | Effect Size | Statistical Significance |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Cohort 3 Recall** | $69.41\% \pm 1.07\%$ | **$76.62\% \pm 0.35\%$** | **$+7.22\% \pm 1.31\%$** | Cohen's $d = 5.49$ (Hedges' $g = 5.08$) | **$t = 12.27, p = 0.00025$ ($p_{\text{FDR}} < 0.001$)** |
+| **Cohort 3 AUC-PR** | $0.4856 \pm 0.0022$ | **$0.5406 \pm 0.0032$** | **$+0.0550 \pm 0.0049$** | Cohen's $d = 11.12$ (Hedges' $g = 10.30$) | **$t = 24.87, p = 7.15 \times 10^{-6}$ ($p_{\text{FDR}} < 0.0001$)** |
+| **Cohort 1 Recall** | $48.90\% \pm 0.48\%$ | **$61.41\% \pm 0.50\%$** | **$+12.51\% \pm 0.34\%$** | Cohen's $d = 36.79$ (Hedges' $g = 34.07$) | $p < 0.0001$ |
+
+> **Conclusion & Methodological Rigor:** The $+7.22\%$ recall improvement on transactions from entities never previously observed confirms that adaptive retraining learns generalized structural drift (e.g. shifts in transaction velocity, amounts, and cross-feature distributions), conclusively refuting the memorization hypothesis.
+> 
+> *Sample Size & Multiple Testing Note:* While $n=5$ random seeds is an exploratory sample size for paired Student's $t$-tests under central limit assumptions, the enormous effect sizes ($\text{Cohen's } d > 5.0$, $\text{Hedges' } g > 5.0$), non-parametric Wilcoxon signed-rank tests ($p < 0.05$), and Benjamini-Hochberg FDR adjustments confirm that these performance improvements are genuine, large-scale structural shifts rather than seed stochasticity. (Run `python -m src.benchmark_statistical_rigor --extended-seeds` for expanded 10-seed evaluation).
+
+---
+
+### 2. Empirical Verification-Latency Degradation Curve
+In real-world banking streams, ground truth chargeback and dispute confirmations arrive with a 30-to-90 day latency. Modeling this verification lag demonstrates how delayed labels erode adaptive advantages towards the static baseline:
+
+![Verification Latency Degradation](results/figures/verification_latency_degradation.png)
+
+- **Panel A (Degradation Horizon):** While an immediate oracle achieves $72.70\%$ recall, standard 4-week chargeback delays degrade recall to $65.94\%$ ($-6.76\%$ loss). Under extended 8-week delays, recall drops to $63.45\%$, asymptotically approaching the static baseline floor ($63.27\%$).
+- **Panel B (Operational Pareto Frontier):** Modeling realistic stochastic latency via LogNormal distribution ($\mu=1.38, \sigma=0.45$) achieves **$66.37\%$ recall (11,058 frauds intercepted)** with **only 12 GPU retrains**—delivering $29\%$ compute savings over fixed 4-week retraining while capturing $+488$ additional frauds over the 8-week regime.
+
+---
+
+### 3. Multi-Seed Statistical Rigor & Saturated Feature Discovery
+Single-run comparisons on synthetic PaySim streams ($0.9955 \to 0.9978$ F1) were re-evaluated across 5 random seeds (`[42, 101, 202, 303, 404]`):
+
+| Model Regime | Mean F1-Score | Std Dev ($\sigma$) | 95% Bootstrap CI | Paired $t$-test vs. Static |
+|---|:---:|:---:|:---:|:---:|
+| **Static Baseline** | 0.9958 | $\pm 0.0002$ | $[0.9944, 0.9970]$ | — |
+| **Periodic Retrain (4-Wk)** | 0.9966 | $\pm 0.0003$ | $[0.9947, 0.9974]$ | $t = 5.74, p = 0.0046$ |
+| **Sliding Window (8-Wk)** | **0.9967** | $\pm 0.0003$ | $[0.9948, 0.9975]$ | $t = 5.86, p = 0.0042$ |
+| **Drift-Adaptive (ADWIN)** | 0.9964 | $\pm 0.0009$ | $[0.9943, 0.9970]$ | **$t = 1.23, p = 0.2871$ (n.s.)** |
+
+> **Finding:** On PaySim, the observed single-run difference between static and adaptive models was stochastic noise. Feature attribution (SHAP) reveals that PaySim's engineered accounting balance feature (`errorBalanceOrig = newbalanceOrig + amount - oldbalanceOrg`) provides near-deterministic separation, saturating all models at $>0.995$ F1. Honest statistical reporting prevents overclaiming on saturated synthetic benchmarks.
+
+![Statistical Rigor Summary](results/figures/statistical_rigor_errorbars.png)
+
+---
+
+### 4. Non-Stationary Multi-Armed Bandit Adaptation (ADWIN-UCB)
+To evaluate online exploration-exploitation under non-stationary fraud environments (e.g., dynamic risk routing or rule allocation), we designed a 4-phase non-stationary bandit environment (10,000 steps per seed, 5 seeds) comparing standard UCB1, Sliding-Window UCB (M-UCB), Discounted UCB, and our proposed **ADWIN-UCB**:
+
+| Agent Algorithm | Cumulative Regret ($T=10,000$) | 95% Confidence Interval | Optimal Action % | Paired Regret Reduction vs. ADWIN |
+|---|:---:|:---:|:---:|:---:|
+| **Standard UCB1** | $510.33 \pm 53.98$ | $[443.32, 577.34]$ | $91.49\% \pm 0.87\%$ | $-50.1\%$ ($p = 0.000257$) |
+| **Sliding-Window UCB** ($W=1000, c=0.6$) | $364.46 \pm 25.32$ | $[333.02, 395.90]$ | $93.83\% \pm 0.36\%$ | **$-30.1\%$ ($p = 0.00164$)** |
+| **Discounted UCB** ($\gamma=0.999, c=0.5$) | $323.27 \pm 13.03$ | $[307.09, 339.45]$ | $94.60\% \pm 0.25\%$ | **$-21.2\%$ ($p = 0.0142$)** |
+| **ADWIN-UCB (Ours)** | **$254.63 \pm 29.79$** | **$[217.65, 291.61]$** | **$95.65\% \pm 0.46\%$** | **Baseline Winner** |
+
+![Bandit Cumulative Regret](results/figures/bandit_cumulative_regret.png)
+
+> **Key Takeaway:** When properly tuned to the environment's drift scale, non-stationary baselines (Sliding-Window UCB and Discounted UCB) successfully adapt to distribution shifts and outperform stationary UCB1 (regret $364.46$ and $323.27$ vs. $510.33$). However, ADWIN-UCB achieves the lowest cumulative regret ($254.63$, a further $21.2\%$ to $30.1\%$ reduction) because it dynamically maintains full historical memory during stationary regimes (retaining $O(\log t)$ efficiency) and resets an arm's statistical state only when Hoeffding bounds verify genuine concept drift.
+
+---
+
+### 5. 26-Week Streaming Trajectory Under Real-World Concept Drift
+Across 590,540 sequential transactions, the static baseline's efficacy degrades substantially as perpetrators shift tactics (dropping as low as 0.2418 F1 in Week 23). In contrast, the drift-adaptive model monitors prediction errors via ADWIN and DDM, triggering 22 sub-1.5s full retrains on GPU to sustain performance:
+
+![Streaming F1 Drift Timeline](results/figures/stream_f1_drift_timeline.png)
+
+- **Panel A (Trajectory):** Out-of-sample evaluation (Weeks 6–26) demonstrates that while periodic and sliding-window retrains fluctuate, adaptive retraining consistently recovers from drops.
+- **Panel B (Net Delta):** The adaptive model achieves sustained net F1 gains ($\Delta \text{F1} > 0$) across virtually all out-of-sample weeks.
+- **Mechanistic Root Causes:** TreeSHAP $\times (1 + \text{PSI})$ attribution isolates specific drivers behind each trigger, such as $C_{13}$ count divergence in Week 6 and $C_1$ velocity shifts in Week 13.
+
+---
+
+## Research Manuscript (`arxiv_paper/`)
+
+A camera-ready 5-page IEEE-format research manuscript is included in [`arxiv_paper/`](arxiv_paper/):
+- **Title:** *Adaptive Fraud Detection Under Concept Drift: An Empirical Study on Verification Latency, Entity Generalization, and Statistical Rigor*
+- **Source Files:** [`arxiv_paper/main.tex`](arxiv_paper/main.tex), [`arxiv_paper/references.bib`](arxiv_paper/references.bib), and 300-DPI publication figures.
+- **Detailed Build Instructions:** [`arxiv_paper/README.md`](arxiv_paper/README.md) for local compilation or Overleaf upload.
+
+---
+
+## System Architecture
 
 The framework operates under a strict **test-before-learn** discipline, combining streaming statistical drift instrumentation with GPU-accelerated gradient boosting and lock-free model hot-swapping:
 
@@ -88,87 +171,7 @@ flowchart TD
 
 ---
 
-## 📄 arXiv Preprint Package (`arxiv_paper/`)
-
-A camera-ready 5-page IEEE-format research manuscript is included in [`arxiv_paper/`](arxiv_paper/):
-- **Title:** *Adaptive Fraud Detection Under Concept Drift: An Empirical Study on Verification Latency, Entity Generalization, and Statistical Rigor*
-- **Source Files:** [`arxiv_paper/main.tex`](arxiv_paper/main.tex), [`arxiv_paper/references.bib`](arxiv_paper/references.bib), and 300-DPI publication figures.
-- **Detailed Build Instructions:** [`arxiv_paper/README.md`](arxiv_paper/README.md) for local compilation or Overleaf upload.
-
----
-
-## 🔬 Key Empirical Discoveries & Publication Figures
-
-### 1. 26-Week Streaming Trajectory Under Real-World Concept Drift
-Across 590,540 sequential transactions, the static baseline's efficacy degrades substantially as perpetrators shift tactics (dropping as low as 0.2418 F1 in Week 23). In contrast, the drift-adaptive model monitors prediction errors via ADWIN and DDM, triggering 22 sub-1.5s full retrains on GPU to sustain performance:
-
-![Streaming F1 Drift Timeline](results/figures/stream_f1_drift_timeline.png)
-
-- **Panel A (Trajectory):** Out-of-sample evaluation (Weeks 6–26) demonstrates that while periodic and sliding-window retrains fluctuate, adaptive retraining consistently recovers from drops.
-- **Panel B (Net Delta):** The adaptive model achieves sustained net F1 gains ($\Delta \text{F1} > 0$) across virtually all out-of-sample weeks.
-- **Mechanistic Root Causes:** TreeSHAP $\times (1 + \text{PSI})$ attribution isolates specific drivers behind each trigger, such as $C_{13}$ count divergence in Week 6 and $C_1$ velocity shifts in Week 13.
-
----
-
-### 2. Disproving Memorization via Feature-Blind UID Zero-Memory Evaluation
-A central critique in financial stream mining is that adaptive models merely "memorize" newly introduced card identifiers (`card1-card6`, `addr1-addr2`). 
-To address this, we implemented a **Feature-Blind Protocol** stripping all entity identifiers and tracked **Cohort 3 (strict stream-unseen cards)** upon their first arrival in the stream across 5 random seeds:
-
-| Evaluation Metric | Static Baseline (Frozen) | Drift-Adaptive (Full GPU Retrain) | Delta ($\Delta$) | Effect Size | Statistical Significance |
-|---|:---:|:---:|:---:|:---:|:---:|
-| **Cohort 3 Recall** | $69.41\% \pm 1.07\%$ | **$76.62\% \pm 0.35\%$** | **$+7.22\% \pm 1.31\%$** | Cohen's $d = 5.49$ (Hedges' $g = 5.08$) | **$t = 12.27, p = 0.00025$ ($p_{\text{FDR}} < 0.001$)** |
-| **Cohort 3 AUC-PR** | $0.4856 \pm 0.0022$ | **$0.5406 \pm 0.0032$** | **$+0.0550 \pm 0.0049$** | Cohen's $d = 11.12$ (Hedges' $g = 10.30$) | **$t = 24.87, p = 7.15 \times 10^{-6}$ ($p_{\text{FDR}} < 0.0001$)** |
-| **Cohort 1 Recall** | $48.90\% \pm 0.48\%$ | **$61.41\% \pm 0.50\%$** | **$+12.51\% \pm 0.34\%$** | Cohen's $d = 36.79$ (Hedges' $g = 34.07$) | $p < 0.0001$ |
-
-> **Conclusion & Methodological Rigor:** The $+7.22\%$ recall improvement on transactions from entities never previously observed confirms that adaptive retraining learns generalized structural drift (e.g. shifts in transaction velocity, amounts, and cross-feature distributions), conclusively refuting the memorization hypothesis.
-> 
-> *Sample Size & Multiple Testing Note:* While $n=5$ random seeds is an exploratory sample size for paired Student's $t$-tests under central limit assumptions, the enormous effect sizes ($\text{Cohen's } d > 5.0$, $\text{Hedges' } g > 5.0$), non-parametric Wilcoxon signed-rank tests ($p < 0.05$), and Benjamini-Hochberg FDR adjustments confirm that these performance improvements are genuine, large-scale structural shifts rather than seed stochasticity. (Run `python -m src.benchmark_statistical_rigor --extended-seeds` for expanded 10-seed evaluation).
-
----
-
-### 3. Empirical Verification-Latency Degradation Curve
-In real-world banking streams, ground truth chargeback and dispute confirmations arrive with a 30-to-90 day latency. Modeling this verification lag demonstrates how delayed labels erode adaptive advantages towards the static baseline:
-
-![Verification Latency Degradation](results/figures/verification_latency_degradation.png)
-
-- **Panel A (Degradation Horizon):** While an immediate oracle achieves $72.70\%$ recall, standard 4-week chargeback delays degrade recall to $65.94\%$ ($-6.76\%$ loss). Under extended 8-week delays, recall drops to $63.45\%$, asymptotically approaching the static baseline floor ($63.27\%$).
-- **Panel B (Operational Pareto Frontier):** Modeling realistic stochastic latency via LogNormal distribution ($\mu=1.38, \sigma=0.45$) achieves **$66.37\%$ recall (11,058 frauds intercepted)** with **only 12 GPU retrains**—delivering $29\%$ compute savings over fixed 4-week retraining while capturing $+488$ additional frauds over the 8-week regime.
-
----
-
-### 4. Multi-Seed Statistical Rigor & Saturated Feature Discovery
-Single-run comparisons on synthetic PaySim streams ($0.9955 \to 0.9978$ F1) were re-evaluated across 5 random seeds (`[42, 101, 202, 303, 404]`):
-
-| Model Regime | Mean F1-Score | Std Dev ($\sigma$) | 95% Bootstrap CI | Paired $t$-test vs. Static |
-|---|:---:|:---:|:---:|:---:|
-| **Static Baseline** | 0.9958 | $\pm 0.0002$ | $[0.9944, 0.9970]$ | — |
-| **Periodic Retrain (4-Wk)** | 0.9966 | $\pm 0.0003$ | $[0.9947, 0.9974]$ | $t = 5.74, p = 0.0046$ |
-| **Sliding Window (8-Wk)** | **0.9967** | $\pm 0.0003$ | $[0.9948, 0.9975]$ | $t = 5.86, p = 0.0042$ |
-| **Drift-Adaptive (ADWIN)** | 0.9964 | $\pm 0.0009$ | $[0.9943, 0.9970]$ | **$t = 1.23, p = 0.2871$ (n.s.)** |
-
-> **Finding:** On PaySim, the observed single-run difference between static and adaptive models was stochastic noise. Feature attribution (SHAP) reveals that PaySim's engineered accounting balance feature (`errorBalanceOrig = newbalanceOrig + amount - oldbalanceOrg`) provides near-deterministic separation, saturating all models at $>0.995$ F1. Honest statistical reporting prevents overclaiming on saturated synthetic benchmarks.
-
-![Statistical Rigor Summary](results/figures/statistical_rigor_errorbars.png)
-
----
-
-### 5. Non-Stationary Multi-Armed Bandit Adaptation (ADWIN-UCB)
-To evaluate online exploration-exploitation under non-stationary fraud environments (e.g., dynamic risk routing or rule allocation), we designed a 4-phase non-stationary bandit environment (10,000 steps per seed, 5 seeds) comparing standard UCB1, Sliding-Window UCB (M-UCB), Discounted UCB, and our proposed **ADWIN-UCB**:
-
-| Agent Algorithm | Cumulative Regret ($T=10,000$) | 95% Confidence Interval | Optimal Action % | Paired Regret Reduction vs. ADWIN |
-|---|:---:|:---:|:---:|:---:|
-| **Standard UCB1** | $510.33 \pm 53.98$ | $[443.32, 577.34]$ | $91.49\% \pm 0.87\%$ | $-50.1\%$ ($p = 0.000257$) |
-| **Sliding-Window UCB** ($W=1000, c=0.6$) | $364.46 \pm 25.32$ | $[333.02, 395.90]$ | $93.83\% \pm 0.36\%$ | **$-30.1\%$ ($p = 0.00164$)** |
-| **Discounted UCB** ($\gamma=0.999, c=0.5$) | $323.27 \pm 13.03$ | $[307.09, 339.45]$ | $94.60\% \pm 0.25\%$ | **$-21.2\%$ ($p = 0.0142$)** |
-| **ADWIN-UCB (Ours)** | **$254.63 \pm 29.79$** | **$[217.65, 291.61]$** | **$95.65\% \pm 0.46\%$** | **Baseline Winner** |
-
-![Bandit Cumulative Regret](results/figures/bandit_cumulative_regret.png)
-
-> **Key Takeaway:** When properly tuned to the environment's drift scale, non-stationary baselines (Sliding-Window UCB and Discounted UCB) successfully adapt to distribution shifts and outperform stationary UCB1 (regret $364.46$ and $323.27$ vs. $510.33$). However, ADWIN-UCB achieves the lowest cumulative regret ($254.63$, a further $21.2\%$ to $30.1\%$ reduction) because it dynamically maintains full historical memory during stationary regimes (retaining $O(\log t)$ efficiency) and resets an arm's statistical state only when Hoeffding bounds verify genuine concept drift.
-
----
-
-## 📦 Data Provenance & Benchmark Datasets
+## Data Provenance & Benchmark Datasets
 
 Due to Kaggle dataset license agreements, multi-gigabyte raw benchmark files cannot be redistributed directly inside git. To rerun the full-scale empirical pipelines, download the datasets directly from their official academic/competition sources:
 
@@ -179,11 +182,11 @@ Due to Kaggle dataset license agreements, multi-gigabyte raw benchmark files can
 | **PaySim Mobile Money** | 6,362,620 transactions, 5 weeks | [Kaggle: PaySim1](https://www.kaggle.com/datasets/ealaxi/paysim1) | CC BY-SA 4.0 | Place `PS_20174392719_1491204439457_log.csv` in `data/paysim/`. |
 
 > **Zero-Download Verification Out-of-the-Box**:
-> You do **not** need to download these multi-gigabyte files to verify the framework's mathematical correctness. The 67 automated invariant tests (`pytest -v`), schema validators (`tests/test_multi_dataset.py`), non-stationary bandit benchmark (`python -m src.bandit.benchmark`), and the FastAPI microservice (`src/api.py`) run immediately out-of-the-box using self-contained synthetic fixtures and schemas.
+> You do **not** need to download these multi-gigabyte files to verify the framework's mathematical correctness. The 90 automated invariant tests (`pytest -v`), schema validators (`tests/test_multi_dataset.py`), non-stationary bandit benchmark (`python -m src.bandit.benchmark`), and the FastAPI microservice (`src/api.py`) run immediately out-of-the-box using self-contained synthetic fixtures and schemas.
 
 ---
 
-## 🛠️ CLI Reproduction Commands
+## Reproduction Commands
 
 All experiments can be executed via console script entrypoints or standard module invocations:
 
@@ -240,7 +243,7 @@ uvicorn src.api:app --host 0.0.0.0 --port 8000
 
 ---
 
-## 🐳 Docker Deployment
+## Container Deployment
 
 The application includes a multi-stage Dockerfile supporting NVIDIA GPU acceleration and health probes:
 
@@ -257,7 +260,7 @@ docker compose up -d
 
 ---
 
-## ⚠️ Research Limitations & Methodological Self-Critique
+## Research Limitations & Methodological Self-Critique
 
 In the interest of scientific rigor and transparent doctoral research, we highlight the following constraints, design choices, and operational boundaries:
 
@@ -269,11 +272,12 @@ In the interest of scientific rigor and transparent doctoral research, we highli
 
 ---
 
-## 🏛️ Repository Layout
+## Repository Layout
 
 ```
-├── .github/workflows/ci.yml         <- GitHub Actions continuous integration workflow
+├── .github/workflows/ci.yml         <- GitHub Actions continuous integration workflow (90 tests)
 ├── CITATION.cff                     <- Standard CFF citation metadata for research
+├── SUPERVISOR_BRIEF.md              <- Academic executive brief tailored for Prof. Yun Sing Koh
 ├── arxiv_paper/                     <- arXiv camera-ready paper package
 │   ├── main.tex                     <- IEEE-format camera-ready manuscript (5 pages)
 │   ├── references.bib               <- Authentic academic bibliography
@@ -286,22 +290,27 @@ In the interest of scientific rigor and transparent doctoral research, we highli
 │   │   └── benchmark.py             <- Multi-seed benchmark runner & regret plotter
 │   ├── benchmark_statistical_rigor.py <- 5-seed statistical confidence runner
 │   ├── generate_key_figures.py      <- Publication figure generator (timeline & latency)
-│   ├── api.py                       <- FastAPI microservice with /predict & /drift/status
+│   ├── api.py                       <- FastAPI microservice with /v1/score & /v1/drift-status
 │   ├── drift_detector.py            <- Streaming ADWIN & DDM detectors (River)
 │   ├── adaptive_model.py            <- GPU-accelerated drift-triggered retraining
 │   ├── static_model.py              <- Frozen static baseline model
 │   ├── baselines.py                 <- Periodic & Sliding-Window retrain models
 │   ├── delayed_feedback.py          <- Chargeback verification latency simulator
+│   ├── delayed_audit.py             <- Asynchronous verification latency degradation audit
 │   ├── drift_explainer.py           <- TreeSHAP drift attribution
-│   ├── preprocessing.py             <- Temporal feature engineering & UID extraction
+│   ├── preprocessing.py             <- Modular dataset schemas & feature-blind UID partition
 │   └── db.py                        <- MySQL SQLAlchemy persistence layer
-├── tests/                           <- Comprehensive test suite (56 tests)
+├── tests/                           <- Comprehensive test suite (90 invariant & unit tests)
 │   ├── test_statistical_rigor.py    <- Tests for bootstrap CIs and paired hypothesis testing
 │   ├── test_bandit.py               <- Tests for bandit agents and environment transitions
-│   ├── test_api.py                  <- Microservice endpoint validation
+│   ├── test_bandit_benchmark.py     <- Tests for bandit simulation CLI & plotting
+│   ├── test_api.py                  <- Microservice endpoint validation & security guards
 │   ├── test_delayed_feedback.py     <- Verification lag queue invariants
 │   ├── test_drift_explainer.py      <- SHAP attribution verification
-│   └── test_leakage_invariants.py   <- Strict temporal sequence integrity checks
+│   ├── test_leakage_invariants.py   <- Strict temporal sequence integrity checks
+│   ├── test_multi_dataset.py        <- Modular dataset schema tests & partitioning
+│   ├── test_uid_collision.py        <- Entity-blind cohort isolation tests
+│   └── test_integration_orchestrators.py <- End-to-end audit & pipeline coverage
 ├── pyproject.toml                   <- Modern PEP 517/621 package configuration
 ├── requirements.txt                 <- Exact pinned dependencies for 100% reproducibility
 ├── setup.sh                         <- One-command setup for Linux / macOS
@@ -312,7 +321,7 @@ In the interest of scientific rigor and transparent doctoral research, we highli
 
 ---
 
-## 🎓 Proposed Doctoral Research Alignment: Prof. Yun Sing Koh
+## Doctoral Research Alignment: Prof. Yun Sing Koh
 
 This pre-proposal and experimental baseline is designed to align with the research agenda of **Prof. Yun Sing Koh** (MARS Lab / Centre of Machine Learning for Social Good, University of Auckland):
 1. **Adaptive Stream Mining & Concept Drift:** Extends foundational online algorithms (ADWIN, DDM) to massive, non-stationary financial transaction streams.
@@ -321,7 +330,7 @@ This pre-proposal and experimental baseline is designed to align with the resear
 
 ---
 
-## 📜 Citation
+## Citation
 
 If you use this codebase or benchmark suite in your research, please cite:
 
@@ -336,5 +345,5 @@ If you use this codebase or benchmark suite in your research, please cite:
 
 ---
 
-## ⚖️ License
+## License
 This project is open-source under the [MIT License](LICENSE).

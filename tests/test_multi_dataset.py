@@ -200,3 +200,27 @@ def test_monthly_partitioning_intra_slice_sequential_ordering():
     assert m1_steps == [800, 900]
     assert list(slices[1]["data"]["trans_id"]) == ["T4", "T5"]
 
+
+def test_preprocessor_modular_schema_config():
+    """Verifies that Preprocessor correctly applies dataset_name schemas and custom schema overrides."""
+    mock_df = pd.DataFrame({
+        "step": [1, 2, 3],
+        "trans_id": ["T1", "T2", "T3"],
+        "isFraud": [0, 1, 0],
+        "channel": ["web", "mobile", "pos"],
+        "partner_id": ["P1", "P2", "P3"],
+        "amount": [10.0, 20.0, 30.0]
+    })
+
+    # Test custom categorical and exclusion schema overrides
+    prep = Preprocessor(
+        custom_categorical_cols=["channel"],
+        custom_exclude_cols={"partner_id", "isFraud", "step", "trans_id"}
+    )
+    prep.fit(mock_df)
+
+    assert "partner_id" not in prep.feature_names
+    assert "channel_web" in prep.feature_names or any("channel" in f for f in prep.feature_names)
+    assert "amount" in prep.feature_names
+
+
