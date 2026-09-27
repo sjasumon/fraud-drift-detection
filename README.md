@@ -4,7 +4,7 @@
 [![CUDA Acceleration](https://img.shields.io/badge/CUDA-GPU%20%7C%20CPU%20Fallback-green.svg)](https://developer.nvidia.com/cuda-zone)
 [![arXiv Preprint](https://img.shields.io/badge/arXiv-Preprint%20Ready-b31b1b.svg)](arxiv_paper/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests Passing](https://img.shields.io/badge/tests-91%20passed-brightgreen.svg)](tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-93%20passed-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-85%25%20total%20codebase-brightgreen.svg)](tests/)
 
 A reproducible, production-grade empirical research framework and pre-proposal package developed in support of a prospective PhD proposal to **Professor Yun Sing Koh** (MARS Lab / Centre of Machine Learning for Social Good, University of Auckland).
@@ -19,7 +19,7 @@ This repository provides rigorous empirical validation, statistical confidence i
 
 ## Quickstart & Verification
 
-To reproduce the environment, run the 91-test verification suite, and inspect benchmarks within 5 minutes:
+To reproduce the environment, run the 93-test verification suite, and inspect benchmarks within 5 minutes:
 
 ### Linux / macOS
 ```bash
@@ -37,7 +37,7 @@ cd "fraud-drift-detection"
 ### Run Test Suite & Coverage
 ```bash
 pytest -v --cov=src --cov-report=term-missing
-# Output: ======================= 91 passed in ~28s =======================
+# Output: ======================= 93 passed in ~28s =======================
 # Full codebase: 85% total statement coverage (90%-100% across core algorithmic and orchestrator modules)
 ```
 
@@ -45,7 +45,7 @@ pytest -v --cov=src --cov-report=term-missing
 
 This framework is architected for **universal CPU reproducibility** with optional CUDA GPU acceleration:
 
-* **100% CPU-Portable by Default**: The entire 91-test verification suite, mathematical invariant assertions, multi-armed bandit simulation, and streaming pipelines run on standard multi-core CPUs out of the box (requiring zero GPU hardware or external driver dependencies). On a standard commodity multi-core laptop CPU, the complete 26-week stream retraining runs in approximately 4–6 minutes.
+* **100% CPU-Portable by Default**: The entire 93-test verification suite, mathematical invariant assertions, multi-armed bandit simulation, and streaming pipelines run on standard multi-core CPUs out of the box (requiring zero GPU hardware or external driver dependencies). On a standard commodity multi-core laptop CPU, the complete 26-week stream retraining runs in approximately 4–6 minutes.
 * **Optional CUDA Acceleration**: When an NVIDIA GPU is available, gradient boosting automatically leverages histogram-based acceleration (`tree_method='hist'`), completing full 26-week streaming retrains across 590,540 transactions in **77.77 seconds** (~1.2s per retrain)¹.
 * **Seamless Graceful Fallback**: If CUDA is unavailable or if `USE_GPU=false` is configured in `.env`, the system automatically falls back to CPU execution with zero code changes or disruptions.
 
@@ -182,7 +182,7 @@ Due to Kaggle dataset license agreements, multi-gigabyte raw benchmark files can
 | **PaySim Mobile Money** | 6,362,620 transactions, 5 weeks | [Kaggle: PaySim1](https://www.kaggle.com/datasets/ealaxi/paysim1) | CC BY-SA 4.0 | Place `PS_20174392719_1491204439457_log.csv` in `data/paysim/`. |
 
 > **Zero-Download Verification Out-of-the-Box**:
-> You do **not** need to download these multi-gigabyte files to verify the framework's mathematical correctness. The 91 automated invariant tests (`pytest -v`), schema validators (`tests/test_multi_dataset.py`), non-stationary bandit benchmark (`python -m src.bandit.benchmark`), and the FastAPI microservice (`src/api.py`) run immediately out-of-the-box using self-contained synthetic fixtures and schemas.
+> You do **not** need to download these multi-gigabyte files to verify the framework's mathematical correctness. The 93 automated invariant tests (`pytest -v`), schema validators (`tests/test_multi_dataset.py`), non-stationary bandit benchmark (`python -m src.bandit.benchmark`), and the FastAPI microservice (`src/api.py`) run immediately out-of-the-box using self-contained synthetic fixtures and schemas.
 
 ---
 
@@ -300,7 +300,7 @@ In the interest of scientific rigor and transparent doctoral research, we highli
 │   ├── drift_explainer.py           <- TreeSHAP drift attribution
 │   ├── preprocessing.py             <- Modular dataset schemas & feature-blind UID partition
 │   └── db.py                        <- MySQL SQLAlchemy persistence layer
-├── tests/                           <- Comprehensive test suite (91 invariant & unit tests)
+├── tests/                           <- Comprehensive test suite (93 invariant & unit tests)
 │   ├── test_statistical_rigor.py    <- Tests for bootstrap CIs and paired hypothesis testing
 │   ├── test_bandit.py               <- Tests for bandit agents and environment transitions
 │   ├── test_bandit_benchmark.py     <- Tests for bandit simulation CLI & plotting

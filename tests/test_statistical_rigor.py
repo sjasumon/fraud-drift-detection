@@ -35,6 +35,21 @@ def test_compute_bootstrap_ci_bounds():
     assert 0.0 <= low <= high <= 100.0
 
 
+def test_compute_bootstrap_ci_respects_random_seed():
+    """Verifies that compute_bootstrap_ci produces deterministic results for a given seed."""
+    y_true = np.array([1, 1, 1, 1, 0, 0, 0, 0, 0, 0])
+    y_pred = np.array([1, 1, 1, 0, 0, 0, 0, 0, 1, 0])
+
+    # Same seed -> identical intervals
+    low1, high1 = compute_bootstrap_ci(y_true, y_pred, n_bootstraps=300, random_seed=123)
+    low2, high2 = compute_bootstrap_ci(y_true, y_pred, n_bootstraps=300, random_seed=123)
+    assert (low1, high1) == (low2, high2)
+
+    # Different seed yields valid bounds
+    low3, high3 = compute_bootstrap_ci(y_true, y_pred, n_bootstraps=300, random_seed=999)
+    assert 0.0 <= low3 <= high3 <= 100.0
+
+
 def test_compute_paired_tests_identical():
     a = [0.95, 0.96, 0.97]
     b = [0.95, 0.96, 0.97]

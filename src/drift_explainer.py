@@ -92,10 +92,42 @@ class DriftAttributionEngine:
 
         # 2. TreeSHAP computation
         try:
-            # Native TreeExplainer on XGBoost Booster (returns 2D ndarray in shap>=0.40)
             explainer = shap.TreeExplainer(model.model if hasattr(model, "model") else model)
-            shap_values = explainer.shap_values(X_sample)
-            mean_abs_shap = np.mean(np.abs(shap_values), axis=0)
+            shap_raw = explainer.shap_values(X_sample)
+
+            # Robust handling across SHAP/XGBoost version conventions:
+            # - List of per-class arrays (e.g. multiclass / older binary classifier conventions)
+            if isinstance(shap_raw, list):
+                shap_arr = shap_raw[1] if len(shap_raw) > 1 else shap_raw[0]
+            else:
+                shap_arr = shap_raw
+
+            shap_arr = np.asarray(shap_arr)
+
+            # - 3D ndarray (n_samples, n_features, n_classes) or (n_samples, n_classes, n_features)
+            if shap_arr.ndim == 3:
+                n_feats = len(self.feature_names)
+                if shap_arr.shape[1] == n_feats:
+                    # (n_samples, n_features, n_classes) -> slice positive fraud class (index 1)
+                    shap_arr = shap_arr[:, :, 1] if shap_arr.shape[2] > 1 else shap_arr[:, :, 0]
+                elif shap_arr.shape[2] == n_feats:
+                    # (n_samples, n_classes, n_features) -> slice positive fraud class (index 1)
+                    shap_arr = shap_arr[:, 1, :] if shap_arr.shape[1] > 1 else shap_arr[:, 0, :]
+                else:
+                    # Default slice along final class axis
+                    shap_arr = shap_arr[..., 1] if shap_arr.shape[-1] > 1 else shap_arr[..., 0]
+
+            if shap_arr.ndim != 2:
+                raise ValueError(f"Expected 2D shap_values array, got shape {shap_arr.shape}")
+
+            mean_abs_shap = np.mean(np.abs(shap_arr), axis=0)
+
+            # Enforce strict 1D feature dimension alignment
+            if mean_abs_shap.ndim != 1 or len(mean_abs_shap) != len(self.feature_names):
+                raise ValueError(
+                    f"SHAP feature dimension mismatch: got shape {mean_abs_shap.shape}, "
+                    f"expected ({len(self.feature_names)},)"
+                )
         except Exception as e:
             logger.warning(f"TreeSHAP calculation warning ({e}). Falling back to feature importances.")
             if hasattr(model, "model") and hasattr(model.model, "feature_importances_"):

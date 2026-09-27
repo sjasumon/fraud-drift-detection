@@ -25,7 +25,7 @@ To establish empirical rigor prior to doctoral admission, I designed, implemente
 
 ## 2. Core Research Questions & Empirical Discoveries
 
-Across **91 verified invariant tests** (85% total codebase statement coverage, 100% CPU-portable reproduction), the framework evaluates four core research questions:
+Across **93 verified invariant tests** (85% total codebase statement coverage, 100% CPU-portable reproduction), the framework evaluates four core research questions:
 
 ### RQ1: How severely does realistic verification latency degrade drift-adaptive detection?
 * **Experimental Protocol:** Evaluated the 26-week streaming horizon (590,540 transactions) across four verification regimes: Immediate Oracle ($0\text{w}$ delay), Standard Chargeback Delay ($4\text{w}$ / 28 days), Extended Dispute Delay ($8\text{w}$ / 56 days), and Stochastic LogNormal Latency ($\mu=1.38, \sigma=0.45$).
@@ -90,7 +90,7 @@ pip install -e ".[test]"
 pytest -v --cov=src --cov-report=term
 ```
 
-- **Test Suite:** **91 passing tests** in ~28s (0 skips, 0 failures).
+- **Test Suite:** **93 passing tests** in ~28s (0 skips, 0 failures).
 - **Code Coverage:** **85% total statement coverage** across all modules:
   - Core algorithmic models (`adaptive_model`, `static_model`, `periodic_model`, `sliding_model`): **100%**
   - Evaluator & metric computation: **100%**

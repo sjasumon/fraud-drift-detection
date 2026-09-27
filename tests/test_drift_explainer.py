@@ -129,3 +129,41 @@ def test_drift_attribution_reproducibility(synthetic_stream_df):
         assert np.isclose(a1["attribution_score"], a2["attribution_score"])
         assert np.isclose(a1["shap_importance"], a2["shap_importance"])
 
+
+def test_drift_attribution_multidimensional_shap_shapes(synthetic_stream_df, monkeypatch):
+    """
+    Asserts that DriftAttributionEngine correctly parses both 3D ndarrays
+    and list-of-arrays returned by different SHAP/XGBoost version conventions.
+    """
+    import shap
+    preprocessor = Preprocessor(hours_per_slice=24)
+    preprocessor.fit(synthetic_stream_df[synthetic_stream_df["step"] <= 24])
+    df_processed = preprocessor.transform(synthetic_stream_df)
+    slices = preprocessor.partition_time_slices(df_processed)
+
+    model = DriftAdaptiveModel(feature_names=preprocessor.feature_names, scale_pos_weight=1.0)
+    model.fit_initial(slices[0]["data"])
+
+    n_feats = len(preprocessor.feature_names)
+    explainer = DriftAttributionEngine(feature_names=preprocessor.feature_names, max_shap_samples=50, random_state=42)
+
+    # 1. Simulate 3D array: (n_samples, n_features, 2)
+    def mock_shap_values_3d(self, X):
+        return np.ones((len(X), n_feats, 2)) * 0.42
+
+    monkeypatch.setattr(shap.TreeExplainer, "shap_values", mock_shap_values_3d)
+    res_3d = explainer.explain_drift_slice(model, slices[0]["data"], slices[1]["data"], slice_index=1, slice_name="Slice_02")
+    assert len(res_3d) > 0
+    assert all(r["shap_importance"] == pytest.approx(0.42) for r in res_3d)
+
+    # 2. Simulate list of per-class arrays: [class_0, class_1]
+    def mock_shap_values_list(self, X):
+        return [np.ones((len(X), n_feats)) * 0.1, np.ones((len(X), n_feats)) * 0.75]
+
+    monkeypatch.setattr(shap.TreeExplainer, "shap_values", mock_shap_values_list)
+    res_list = explainer.explain_drift_slice(model, slices[0]["data"], slices[1]["data"], slice_index=1, slice_name="Slice_02")
+    assert len(res_list) > 0
+    # Positive fraud class (index 1) should be selected
+    assert all(r["shap_importance"] == pytest.approx(0.75) for r in res_list)
+
+

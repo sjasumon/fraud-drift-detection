@@ -33,7 +33,7 @@ import matplotlib.pyplot as plt
 
 from src.config import (
     BASE_DIR, RESULTS_DIR, METRICS_DIR, FIGURES_DIR, LOGS_DIR,
-    TRAINING_WINDOW_RATIO, USE_GPU, GPU_DEVICE
+    TRAINING_WINDOW_RATIO, USE_GPU, GPU_DEVICE, RANDOM_SEED
 )
 from src.ingestion import DatasetIngestion
 from src.preprocessing import Preprocessor
@@ -54,11 +54,18 @@ logger = logging.getLogger("fraud_drift.statistical_rigor")
 DEFAULT_SEEDS = [42, 101, 202, 303, 404]
 
 
-def compute_bootstrap_ci(y_true: np.ndarray, y_pred: np.ndarray, n_bootstraps: int = 1000, alpha: float = 0.05, metric_type: str = "recall") -> Tuple[float, float]:
+def compute_bootstrap_ci(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    n_bootstraps: int = 1000,
+    alpha: float = 0.05,
+    metric_type: str = "recall",
+    random_seed: int = RANDOM_SEED
+) -> Tuple[float, float]:
     """
     Computes empirical non-parametric percentile bootstrap confidence intervals.
     """
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(random_seed)
     n = len(y_true)
     boot_scores = []
     
