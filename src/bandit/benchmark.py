@@ -57,8 +57,8 @@ def run_bandit_simulation(
 
     agent_factories = {
         "standard_ucb": lambda: StandardUCBAgent(n_arms=n_arms, c=1.0),
-        "sliding_window_ucb": lambda: SlidingWindowUCBAgent(n_arms=n_arms, window_size=600, c=1.0),
-        "discounted_ucb": lambda: DiscountedUCBAgent(n_arms=n_arms, gamma=0.995, c=1.0),
+        "sliding_window_ucb": lambda: SlidingWindowUCBAgent(n_arms=n_arms, window_size=1000, c=0.6),
+        "discounted_ucb": lambda: DiscountedUCBAgent(n_arms=n_arms, gamma=0.999, c=0.5),
         "adwin_ucb": lambda: AdwinUCBAgent(n_arms=n_arms, delta=0.002, c=1.0)
     }
 
@@ -215,8 +215,8 @@ def generate_bandit_plots(
     }
     labels = {
         "standard_ucb": "Standard UCB1 (Stationary Control)",
-        "sliding_window_ucb": "Sliding-Window UCB (M-UCB, W=600)",
-        "discounted_ucb": "Discounted UCB (D-UCB, γ=0.995)",
+        "sliding_window_ucb": "Sliding-Window UCB (M-UCB, W=1000, c=0.6)",
+        "discounted_ucb": "Discounted UCB (D-UCB, γ=0.999, c=0.5)",
         "adwin_ucb": "ADWIN-UCB (Drift-Adaptive Proposed)"
     }
 

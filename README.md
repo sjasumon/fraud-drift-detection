@@ -147,14 +147,14 @@ To evaluate online exploration-exploitation under non-stationary fraud environme
 
 | Agent Algorithm | Cumulative Regret ($T=10,000$) | 95% Confidence Interval | Optimal Action % | Paired Regret Reduction vs. ADWIN |
 |---|:---:|:---:|:---:|:---:|
-| **Standard UCB1** | $510.33 \pm 53.98$ | $[443.32, 577.34]$ | $91.49\% \pm 0.87\%$ | $-50.1\%$ ($p = 0.00026$) |
-| **Sliding-Window UCB** | $943.44 \pm 26.90$ | $[910.04, 976.84]$ | $84.06\% \pm 0.51\%$ | **$-73.0\%$ ($p = 4.81 \times 10^{-8}$)** |
-| **Discounted UCB** | $1711.52 \pm 32.26$ | $[1671.48, 1751.56]$ | $71.27\% \pm 0.63\%$ | $-85.1\%$ ($p = 7.40 \times 10^{-9}$) |
+| **Standard UCB1** | $510.33 \pm 53.98$ | $[443.32, 577.34]$ | $91.49\% \pm 0.87\%$ | $-50.1\%$ ($p = 0.000257$) |
+| **Sliding-Window UCB** ($W=1000, c=0.6$) | $364.46 \pm 25.32$ | $[333.02, 395.90]$ | $93.83\% \pm 0.36\%$ | **$-30.1\%$ ($p = 0.00164$)** |
+| **Discounted UCB** ($\gamma=0.999, c=0.5$) | $323.27 \pm 13.03$ | $[307.09, 339.45]$ | $94.60\% \pm 0.25\%$ | **$-21.2\%$ ($p = 0.0142$)** |
 | **ADWIN-UCB (Ours)** | **$254.63 \pm 29.79$** | **$[217.65, 291.61]$** | **$95.65\% \pm 0.46\%$** | **Baseline Winner** |
 
 ![Bandit Cumulative Regret](results/figures/bandit_cumulative_regret.png)
 
-> **Key Takeaway:** Unlike Sliding-Window UCB which forces a rigid memory horizon (discarding historical evidence even during stationary phases), ADWIN-UCB dynamically adapts its window size based on Hoeffding bounds. It achieves minimum regret during stationary phases while triggering instant resets upon true concept drift.
+> **Key Takeaway:** When properly tuned to the environment's drift scale, non-stationary baselines (Sliding-Window UCB and Discounted UCB) successfully adapt to distribution shifts and outperform stationary UCB1 (regret $364.46$ and $323.27$ vs. $510.33$). However, ADWIN-UCB achieves the lowest cumulative regret ($254.63$, a further $21.2\%$ to $30.1\%$ reduction) because it dynamically maintains full historical memory during stationary regimes (retaining $O(\log t)$ efficiency) and resets an arm's statistical state only when Hoeffding bounds verify genuine concept drift.
 
 ---
 

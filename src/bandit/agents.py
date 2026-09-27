@@ -7,8 +7,9 @@ Implements:
 4. AdwinUCBAgent (Proposed Concept-Drift-Aware Adaptive Bandit with ADWIN)
 """
 
+from collections import deque
 import math
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 import numpy as np
 from river import drift
 
@@ -77,39 +78,36 @@ class SlidingWindowUCBAgent(BaseBanditAgent):
     Maintains a fixed recent window tau of pulls and rewards.
     Discarding observations older than tau enables adaptation to drift,
     at the cost of persistent exploration during stationary periods.
+    Tuned to W=1000, c=0.6 matching the empirical drift schedule scale (Garivier & Moulines, 2011).
     """
 
-    def __init__(self, n_arms: int, window_size: int = 600, c: float = 1.0):
+    def __init__(self, n_arms: int, window_size: int = 1000, c: float = 0.6):
         super().__init__(n_arms, name=f"Sliding-Window UCB (W={window_size})")
         self.window_size = window_size
         self.c = c
-        self.history: List[Tuple[int, float]] = []
+        self.window_pulls = np.zeros(n_arms, dtype=int)
+        self.window_rewards = np.zeros(n_arms, dtype=float)
+        self.history: deque = deque(maxlen=window_size)
 
     def reset(self):
         super().reset()
-        self.history = []
+        self.window_pulls.fill(0)
+        self.window_rewards.fill(0.0)
+        self.history.clear()
 
     def select_arm(self) -> int:
         self.t += 1
 
-        # Count pulls and rewards strictly within the sliding window
-        window_pulls = np.zeros(self.n_arms, dtype=int)
-        window_rewards = np.zeros(self.n_arms, dtype=float)
-
-        for arm, rew in self.history[-self.window_size:]:
-            window_pulls[arm] += 1
-            window_rewards[arm] += rew
-
         # Explore unpulled arms in current window
         for arm in range(self.n_arms):
-            if window_pulls[arm] == 0:
+            if self.window_pulls[arm] == 0:
                 return arm
 
         eff_t = min(self.t, self.window_size)
         ucb_values = np.zeros(self.n_arms)
         for a in range(self.n_arms):
-            mean_a = window_rewards[a] / window_pulls[a]
-            bonus = self.c * math.sqrt(2.0 * math.log(eff_t) / window_pulls[a])
+            mean_a = self.window_rewards[a] / self.window_pulls[a]
+            bonus = self.c * math.sqrt(2.0 * math.log(eff_t) / self.window_pulls[a])
             ucb_values[a] = mean_a + bonus
 
         return int(np.argmax(ucb_values))
@@ -117,9 +115,16 @@ class SlidingWindowUCBAgent(BaseBanditAgent):
     def update(self, arm: int, reward: float):
         self.total_pulls[arm] += 1
         self.total_rewards[arm] += reward
+
+        # If window is at capacity, subtract evicted record from running counters
+        if len(self.history) == self.window_size:
+            old_arm, old_reward = self.history[0]
+            self.window_pulls[old_arm] -= 1
+            self.window_rewards[old_arm] -= old_reward
+
         self.history.append((arm, reward))
-        if len(self.history) > self.window_size * 2:
-            self.history = self.history[-self.window_size:]
+        self.window_pulls[arm] += 1
+        self.window_rewards[arm] += reward
 
 
 # =========================================================================
@@ -127,11 +132,12 @@ class SlidingWindowUCBAgent(BaseBanditAgent):
 # =========================================================================
 class DiscountedUCBAgent(BaseBanditAgent):
     """
-    Discounted UCB (Kocsis & Szepesvári, 2006).
+    Discounted UCB (Kocsis & Szepesvári, 2006; Garivier & Moulines, 2011).
     Applies exponential decay discount factor gamma to past rewards.
+    Tuned to gamma=0.999, c=0.5 with effective horizon ~1000 steps matching the drift schedule.
     """
 
-    def __init__(self, n_arms: int, gamma: float = 0.995, c: float = 1.0):
+    def __init__(self, n_arms: int, gamma: float = 0.999, c: float = 0.5):
         super().__init__(n_arms, name=f"Discounted UCB (γ={gamma})")
         self.gamma = gamma
         self.c = c
@@ -145,15 +151,17 @@ class DiscountedUCBAgent(BaseBanditAgent):
 
     def select_arm(self) -> int:
         self.t += 1
-        for arm in range(self.n_arms):
-            if self.discounted_pulls[arm] < 1.0:
-                return arm
+
+        # Initial round-robin exploration for each arm once
+        if self.t <= self.n_arms:
+            return self.t - 1
 
         n_gamma = float(np.sum(self.discounted_pulls))
+        safe_pulls = np.maximum(self.discounted_pulls, 1e-6)
         ucb_values = np.zeros(self.n_arms)
         for a in range(self.n_arms):
-            mean_a = self.discounted_rewards[a] / self.discounted_pulls[a]
-            bonus = self.c * math.sqrt(2.0 * math.log(max(1.0, n_gamma)) / self.discounted_pulls[a])
+            mean_a = self.discounted_rewards[a] / safe_pulls[a]
+            bonus = self.c * math.sqrt(2.0 * math.log(max(1.0, n_gamma)) / safe_pulls[a])
             ucb_values[a] = mean_a + bonus
 
         return int(np.argmax(ucb_values))
