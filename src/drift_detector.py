@@ -1,0 +1,99 @@
+"""
+FR-4: Drift Detection Instrumentation Module.
+Implements ADWIN (Adaptive Windowing) and DDM (Drift Detection Method)
+applied to model prediction error streams, logging all statistical alerts
+and correlating them with adaptation triggers.
+"""
+
+import logging
+from typing import List, Dict, Any, Optional, Tuple
+from river import drift
+
+from src.config import ADWIN_DELTA
+
+logger = logging.getLogger("fraud_drift.detector")
+
+
+class DriftMonitor:
+    """
+    FR-4: Instruments real-time concept drift detection over prediction error streams.
+    Applies ADWIN and DDM concurrently to capture sudden and gradual distribution shifts.
+    """
+
+    def __init__(self, adwin_delta: float = ADWIN_DELTA):
+        self.adwin_delta = adwin_delta
+        self.adwin = drift.ADWIN(delta=adwin_delta)
+        self.ddm = drift.binary.DDM()
+        self.drift_events: List[Dict[str, Any]] = []
+        self.total_samples_monitored = 0
+        self.total_errors_observed = 0
+
+    def update(
+        self,
+        y_true: int,
+        y_pred: int,
+        slice_index: int,
+        step_number: int,
+        trans_id: str
+    ) -> Dict[str, Any]:
+        """
+        Updates detectors with single transaction prediction error.
+        Error = 1 if misclassified, 0 if correctly classified.
+        """
+        error_val = 1 if (y_pred != y_true) else 0
+        self.total_samples_monitored += 1
+        self.total_errors_observed += error_val
+
+        # Update ADWIN
+        self.adwin.update(error_val)
+        adwin_drift = self.adwin.drift_detected
+
+        # Update DDM
+        self.ddm.update(error_val)
+        ddm_drift = self.ddm.drift_detected
+        ddm_warning = self.ddm.warning_detected
+
+        alert = {
+            "adwin_drift": adwin_drift,
+            "ddm_drift": ddm_drift,
+            "ddm_warning": ddm_warning,
+            "any_drift": adwin_drift or ddm_drift,
+            "error_val": error_val
+        }
+
+        # Log drift events (FR-4.2)
+        if adwin_drift:
+            event = {
+                "slice_index": slice_index,
+                "step_number": step_number,
+                "trans_id": trans_id,
+                "detector_type": "ADWIN",
+                "error_rate": round(self.adwin.estimation, 4) if hasattr(self.adwin, "estimation") else None,
+                "confidence_score": round(self.adwin.width, 1) if hasattr(self.adwin, "width") else 0.0,
+                "status": "DRIFT",
+                "notes": f"ADWIN flagged distribution shift at step {step_number} in slice {slice_index + 1}"
+            }
+            self.drift_events.append(event)
+            logger.info(f"[FR-4 DRIFT ALERT] ADWIN: Slice {slice_index + 1}, Step {step_number}")
+
+        if ddm_drift:
+            event = {
+                "slice_index": slice_index,
+                "step_number": step_number,
+                "trans_id": trans_id,
+                "detector_type": "DDM",
+                "error_rate": round(self.total_errors_observed / max(1, self.total_samples_monitored), 4),
+                "confidence_score": None,
+                "status": "DRIFT",
+                "notes": f"DDM flagged drift level reached at step {step_number} in slice {slice_index + 1}"
+            }
+            self.drift_events.append(event)
+            logger.info(f"[FR-4 DRIFT ALERT] DDM: Slice {slice_index + 1}, Step {step_number}")
+
+        return alert
+
+    def reset_detectors(self):
+        """Resets detection windows after model adaptation event."""
+        self.adwin = drift.ADWIN(delta=self.adwin_delta)
+        self.ddm = drift.binary.DDM()
+        logger.info("Drift detectors reset following model adaptation.")
