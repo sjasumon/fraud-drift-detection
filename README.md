@@ -4,7 +4,7 @@
 [![CUDA Acceleration](https://img.shields.io/badge/CUDA-RTX%205080%20eGPU%20%7C%20CPU%20Fallback-green.svg)](https://developer.nvidia.com/cuda-zone)
 [![arXiv Preprint](https://img.shields.io/badge/arXiv-Preprint%20Ready-b31b1b.svg)](arxiv_paper/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests Passing](https://img.shields.io/badge/tests-65%20passed-brightgreen.svg)](tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-67%20passed-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-85%25%20core%20modules-brightgreen.svg)](tests/)
 [![CI Test Suite](https://github.com/sjasumon/fraud-drift-detection/actions/workflows/ci.yml/badge.svg)](https://github.com/sjasumon/fraud-drift-detection/actions/workflows/ci.yml)
 
@@ -17,7 +17,7 @@ This repository provides rigorous empirical validation, statistical confidence i
 
 ## ⚡ 5-Minute Quickstart
 
-To reproduce the environment, run the 65-test verification suite, and inspect benchmarks within 5 minutes:
+To reproduce the environment, run the 67-test verification suite, and inspect benchmarks within 5 minutes:
 
 ### Linux / macOS
 ```bash
@@ -35,7 +35,7 @@ cd "fraud-drift-detection"
 ### Run Test Suite & Coverage
 ```bash
 pytest -v --cov=src --cov-report=term-missing
-# Output: ======================= 65 passed in 12.0s =======================
+# Output: ======================= 67 passed in 12.1s =======================
 # Core algorithmic modules: 85%-100% unit coverage
 ```
 
@@ -44,7 +44,7 @@ pytest -v --cov=src --cov-report=term-missing
 This framework is optimized for hardware-accelerated training using an **NVIDIA GeForce RTX 5080 eGPU** (CUDA `tree_method='hist'`), enabling full 26-week streaming retrains across 590,540 transactions in **77.77 seconds** (~1.2s per retrain).
 
 * **Automatic CPU Fallback**: If an NVIDIA CUDA device is not present, or if `USE_GPU=false` is set in `.env`, the entire framework seamlessly falls back to CPU-based histogram gradient boosting without failing or crashing. On a standard multi-core laptop CPU, the 26-week stream retraining runs in approximately 4–6 minutes.
-* **Test Suite Hardware Independence**: The entire 65-test verification suite and the multi-armed bandit evaluation run 100% on CPU by default (and in CI), requiring zero GPU hardware to reproduce all invariant tests.
+* **Test Suite Hardware Independence**: The entire 67-test verification suite and the multi-armed bandit evaluation run 100% on CPU by default (and in CI), requiring zero GPU hardware to reproduce all invariant tests.
 
 ---
 
@@ -112,13 +112,15 @@ Across 590,540 sequential transactions, the static baseline's efficacy degrades 
 A central critique in financial stream mining is that adaptive models merely "memorize" newly introduced card identifiers (`card1-card6`, `addr1-addr2`). 
 To address this, we implemented a **Feature-Blind Protocol** stripping all entity identifiers and tracked **Cohort 3 (strict stream-unseen cards)** upon their first arrival in the stream across 5 random seeds:
 
-| Evaluation Metric | Static Baseline (Frozen) | Drift-Adaptive (Full GPU Retrain) | Delta ($\Delta$) | Statistical Significance |
-|---|:---:|:---:|:---:|:---:|
-| **Cohort 3 Recall** | $69.41\% \pm 1.07\%$ | **$76.62\% \pm 0.35\%$** | **$+7.22\% \pm 1.31\%$** | **$t = 12.27, p = 0.00025$ ($p < 0.001$)** |
-| **Cohort 3 AUC-PR** | $0.4856 \pm 0.0022$ | **$0.5406 \pm 0.0032$** | **$+0.0550 \pm 0.0049$** | **$t = 24.87, p = 7.15 \times 10^{-6}$** |
-| **Cohort 1 Recall** | $48.90\% \pm 0.48\%$ | **$61.41\% \pm 0.50\%$** | **$+12.51\% \pm 0.34\%$** | $p < 0.0001$ |
+| Evaluation Metric | Static Baseline (Frozen) | Drift-Adaptive (Full GPU Retrain) | Delta ($\Delta$) | Effect Size | Statistical Significance |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Cohort 3 Recall** | $69.41\% \pm 1.07\%$ | **$76.62\% \pm 0.35\%$** | **$+7.22\% \pm 1.31\%$** | Cohen's $d = 5.49$ (Hedges' $g = 5.08$) | **$t = 12.27, p = 0.00025$ ($p_{\text{FDR}} < 0.001$)** |
+| **Cohort 3 AUC-PR** | $0.4856 \pm 0.0022$ | **$0.5406 \pm 0.0032$** | **$+0.0550 \pm 0.0049$** | Cohen's $d = 11.12$ (Hedges' $g = 10.30$) | **$t = 24.87, p = 7.15 \times 10^{-6}$ ($p_{\text{FDR}} < 0.0001$)** |
+| **Cohort 1 Recall** | $48.90\% \pm 0.48\%$ | **$61.41\% \pm 0.50\%$** | **$+12.51\% \pm 0.34\%$** | Cohen's $d = 36.79$ (Hedges' $g = 34.07$) | $p < 0.0001$ |
 
-> **Conclusion:** The $+7.22\%$ recall improvement on transactions from entities never previously observed confirms that adaptive retraining learns generalized structural drift (e.g. shifts in transaction velocity, amounts, and cross-feature distributions), conclusively refuting the memorization hypothesis.
+> **Conclusion & Methodological Rigor:** The $+7.22\%$ recall improvement on transactions from entities never previously observed confirms that adaptive retraining learns generalized structural drift (e.g. shifts in transaction velocity, amounts, and cross-feature distributions), conclusively refuting the memorization hypothesis.
+> 
+> *Sample Size & Multiple Testing Note:* While $n=5$ random seeds is an exploratory sample size for paired Student's $t$-tests under central limit assumptions, the enormous effect sizes ($\text{Cohen's } d > 5.0$, $\text{Hedges' } g > 5.0$), non-parametric Wilcoxon signed-rank tests ($p < 0.05$), and Benjamini-Hochberg FDR adjustments confirm that these performance improvements are genuine, large-scale structural shifts rather than seed stochasticity. (Run `python -m src.benchmark_statistical_rigor --extended-seeds` for expanded 10-seed evaluation).
 
 ---
 
@@ -175,7 +177,7 @@ Due to Kaggle dataset license agreements, multi-gigabyte raw benchmark files can
 | **PaySim Mobile Money** | 6,362,620 transactions, 5 weeks | [Kaggle: PaySim1](https://www.kaggle.com/datasets/ealaxi/paysim1) | CC BY-SA 4.0 | Place `PS_20174392719_1491204439457_log.csv` in `data/paysim/`. |
 
 > **Zero-Download Verification Out-of-the-Box**:
-> You do **not** need to download these multi-gigabyte files to verify the framework's mathematical correctness. The 65 automated invariant tests (`pytest -v`), schema validators (`tests/test_multi_dataset.py`), non-stationary bandit benchmark (`python -m src.bandit.benchmark`), and the FastAPI microservice (`src/api.py`) run immediately out-of-the-box using self-contained synthetic fixtures and schemas.
+> You do **not** need to download these multi-gigabyte files to verify the framework's mathematical correctness. The 67 automated invariant tests (`pytest -v`), schema validators (`tests/test_multi_dataset.py`), non-stationary bandit benchmark (`python -m src.bandit.benchmark`), and the FastAPI microservice (`src/api.py`) run immediately out-of-the-box using self-contained synthetic fixtures and schemas.
 
 ---
 

@@ -93,18 +93,40 @@ class SliceEvaluator:
             else:
                 auc_pr = 0.0
 
-            return {
+            prec = round(float(precision_score(y, preds, zero_division=0)), 4)
+            rec = round(float(recall_score(y, preds, zero_division=0)), 4)
+            f1 = round(float(f1_score(y, preds, zero_division=0)), 4)
+            auc = round(float(auc_pr), 4)
+            is_pure_oos = "OOS Only" in scope_desc or "Pure Out-of-Sample" in scope_desc
+
+            metrics = {
                 "evaluation_scope": scope_desc,
-                "overall_precision": round(float(precision_score(y, preds, zero_division=0)), 4),
-                "overall_recall": round(float(recall_score(y, preds, zero_division=0)), 4),
-                "overall_f1": round(float(f1_score(y, preds, zero_division=0)), 4),
-                "overall_auc_pr": round(float(auc_pr), 4),
+                "is_pure_out_of_sample": is_pure_oos,
+                "overall_precision": prec,
+                "overall_recall": rec,
+                "overall_f1": f1,
+                "overall_auc_pr": auc,
                 "true_positives": tp,
                 "false_positives": fp,
                 "false_negatives": fn,
                 "true_negatives": tn,
                 "total_frauds": total_fraud
             }
+
+            if not is_pure_oos:
+                metrics["overall_f1_including_training_window"] = f1
+                metrics["overall_auc_pr_including_training_window"] = auc
+                metrics["metric_disambiguation_note"] = (
+                    "DISAMBIGUATION: This metric is evaluated across all stream slices, including the initial training "
+                    "window (in-sample + out-of-sample combined). Do not quote as pure out-of-sample generalization. "
+                    "Refer to summary['out_of_sample_stream'] for strictly leak-free generalization results."
+                )
+            else:
+                metrics["pure_oos_f1"] = f1
+                metrics["pure_oos_auc_pr"] = auc
+                metrics["metric_disambiguation_note"] = "Strictly out-of-sample test stream only (zero training slices included)."
+
+            return metrics
 
         summary = {
             "static_model": _calc_model_metrics(static_preds, static_probs, y_all, scope_desc="Combined (In-Sample Warmup Slices + OOS)"),

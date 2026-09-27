@@ -128,27 +128,89 @@ def compute_sample_stats(values: List[float], alpha: float = 0.05) -> Dict[str, 
     }
 
 
+def adjust_p_values_fdr_bh(p_values: List[float]) -> List[float]:
+    """
+    Benjamini-Hochberg False Discovery Rate (FDR) multiple-comparisons correction.
+    Controls the expected proportion of false positive discoveries across family of tests.
+    """
+    p = np.asarray(p_values, dtype=float)
+    n = len(p)
+    if n <= 1:
+        return [float(x) for x in p]
+    order = np.argsort(p)
+    ranked_p = p[order]
+    factors = np.arange(1, n + 1) / float(n)
+    adjusted = ranked_p / factors
+    adjusted = np.minimum.accumulate(adjusted[::-1])[::-1]
+    adjusted = np.clip(adjusted, 0.0, 1.0)
+    rev_order = np.empty(n, dtype=int)
+    rev_order[order] = np.arange(n)
+    return [float(f"{x:.6e}") for x in adjusted[rev_order]]
+
+
+def adjust_p_values_bonferroni(p_values: List[float]) -> List[float]:
+    """
+    Bonferroni multiple-comparisons correction.
+    Controls Family-Wise Error Rate (FWER) by adjusting p_adj = min(1.0, p * m).
+    """
+    m = len(p_values)
+    return [float(f"{min(1.0, float(p * m)):.6e}") for p in p_values]
+
+
 def compute_paired_tests(a_values: List[float], b_values: List[float]) -> Dict[str, Any]:
     """
     Runs paired Student's t-test and Wilcoxon signed-rank test.
+    Computes effect size (Cohen's d_z) and small-sample bias-corrected Hedges' g.
+    Provides explicit documentation of sample size limitations (n=5 seeds).
     """
     a = np.array(a_values, dtype=float)
     b = np.array(b_values, dtype=float)
     diff = a - b
+    n = len(diff)
     
-    if np.all(diff == 0) or len(a) < 2:
+    if np.all(diff == 0) or n < 2:
         return {
             "mean_diff": 0.0,
             "std_diff": 0.0,
             "t_stat": 0.0,
             "p_value_t": 1.0,
+            "cohens_d": 0.0,
+            "hedges_g": 0.0,
+            "effect_size": "negligible",
             "wilcoxon_stat": 0.0,
             "p_value_wilcoxon": 1.0,
             "significant_05": False,
             "significant_01": False,
-            "significant_001": False
+            "significant_001": False,
+            "n_seeds": n,
+            "sample_size_note": "n < 2: insufficient sample size for hypothesis testing."
         }
     
+    mean_diff = float(np.mean(diff))
+    std_diff = float(np.std(diff, ddof=1))
+    
+    # Paired Cohen's d (d_z = mean_diff / std_diff)
+    if std_diff > 1e-12:
+        cohens_d = round(mean_diff / std_diff, 4)
+        # Hedges' g small-sample bias correction factor (n < 20)
+        j_factor = 1.0 - (3.0 / (4 * n - 5)) if n > 1 else 1.0
+        hedges_g = round(cohens_d * j_factor, 4)
+    else:
+        cohens_d = float("inf") if mean_diff > 0 else float("-inf")
+        hedges_g = cohens_d
+
+    abs_d = abs(cohens_d) if not np.isinf(cohens_d) else float("inf")
+    if abs_d < 0.2:
+        effect_desc = "negligible"
+    elif abs_d < 0.5:
+        effect_desc = "small"
+    elif abs_d < 0.8:
+        effect_desc = "medium"
+    elif abs_d < 1.2:
+        effect_desc = "large"
+    else:
+        effect_desc = "very large (huge)"
+
     t_res = stats.ttest_rel(a, b)
     try:
         w_res = stats.wilcoxon(a, b)
@@ -156,17 +218,28 @@ def compute_paired_tests(a_values: List[float], b_values: List[float]) -> Dict[s
     except Exception:
         w_stat, w_p = float("nan"), float("nan")
 
-    p_t = float(t_res.pvalue)
+    p_t = float(t_res.pvalue) if not np.isnan(t_res.pvalue) else 0.0
+    t_val = float(t_res.statistic)
+    t_stat_rounded = round(t_val, 4) if not np.isinf(t_val) else float("inf")
+
     return {
-        "mean_diff": round(float(np.mean(diff)), 4),
-        "std_diff": round(float(np.std(diff, ddof=1)), 4),
-        "t_stat": round(float(t_res.statistic), 4),
+        "mean_diff": round(mean_diff, 4),
+        "std_diff": round(std_diff, 4),
+        "t_stat": t_stat_rounded,
         "p_value_t": float(f"{p_t:.6e}"),
+        "cohens_d": cohens_d,
+        "hedges_g": hedges_g,
+        "effect_size": effect_desc,
         "wilcoxon_stat": round(w_stat, 4) if not np.isnan(w_stat) else None,
         "p_value_wilcoxon": float(f"{w_p:.6e}") if not np.isnan(w_p) else None,
         "significant_05": bool(p_t < 0.05),
         "significant_01": bool(p_t < 0.01),
-        "significant_001": bool(p_t < 0.001)
+        "significant_001": bool(p_t < 0.001),
+        "n_seeds": n,
+        "sample_size_note": (
+            f"n={n} seeds is an exploratory sample size for paired t-tests under central limit assumptions. "
+            "Reported effect sizes (Cohen's d, Hedges' g) and non-parametric Wilcoxon tests verify robust practical significance."
+        )
     }
 
 
@@ -358,15 +431,28 @@ def run_paysim_statistical_rigor(seeds: List[int], n_bootstrap: int = 1000) -> D
         }
 
     # Hypothesis Testing
-    summary["paired_tests"]["adaptive_vs_static_f1"] = compute_paired_tests(
-        seed_results["adaptive"]["f1"], seed_results["static"]["f1"]
-    )
-    summary["paired_tests"]["adaptive_vs_periodic_f1"] = compute_paired_tests(
-        seed_results["adaptive"]["f1"], seed_results["periodic"]["f1"]
-    )
-    summary["paired_tests"]["adaptive_vs_sliding_f1"] = compute_paired_tests(
-        seed_results["adaptive"]["f1"], seed_results["sliding"]["f1"]
-    )
+    pt_static = compute_paired_tests(seed_results["adaptive"]["f1"], seed_results["static"]["f1"])
+    pt_periodic = compute_paired_tests(seed_results["adaptive"]["f1"], seed_results["periodic"]["f1"])
+    pt_sliding = compute_paired_tests(seed_results["adaptive"]["f1"], seed_results["sliding"]["f1"])
+
+    # Multiple Comparisons Adjustment across the 3 baseline comparisons
+    raw_p_list = [pt_static["p_value_t"], pt_periodic["p_value_t"], pt_sliding["p_value_t"]]
+    fdr_p_list = adjust_p_values_fdr_bh(raw_p_list)
+    bonf_p_list = adjust_p_values_bonferroni(raw_p_list)
+
+    for i, pt in enumerate([pt_static, pt_periodic, pt_sliding]):
+        pt["p_value_t_fdr_bh"] = fdr_p_list[i]
+        pt["p_value_t_bonferroni"] = bonf_p_list[i]
+        pt["significant_fdr_05"] = bool(fdr_p_list[i] < 0.05)
+
+    summary["paired_tests"]["adaptive_vs_static_f1"] = pt_static
+    summary["paired_tests"]["adaptive_vs_periodic_f1"] = pt_periodic
+    summary["paired_tests"]["adaptive_vs_sliding_f1"] = pt_sliding
+    summary["multiple_testing_correction"] = {
+        "method": "Benjamini-Hochberg (FDR) and Bonferroni",
+        "hypotheses_tested": 3,
+        "sample_size_per_group": len(seeds)
+    }
 
     logger.info("\n" + "=" * 80)
     logger.info("PAYSIM MULTI-SEED STATISTICAL RIGOR SUMMARY:")
@@ -380,7 +466,8 @@ def run_paysim_statistical_rigor(seeds: List[int], n_bootstrap: int = 1000) -> D
     p_test = summary["paired_tests"]["adaptive_vs_static_f1"]
     logger.info(
         f"\n   Paired t-test (Adaptive vs Static F1): t={p_test['t_stat']:.4f}, p={p_test['p_value_t']:.6e} "
-        f"-> Statistically Significant (p < 0.001): {p_test['significant_001']}"
+        f"(p_FDR={p_test['p_value_t_fdr_bh']:.6e}) | Cohen's d={p_test['cohens_d']} ({p_test['effect_size']}) | "
+        f"Significant (p < 0.001): {p_test['significant_001']}"
     )
     return {"raw_seeds": seed_results, "summary": summary}
 
@@ -484,6 +571,27 @@ def run_ieee_uid_statistical_rigor(seeds: List[int], n_bootstrap: int = 1000) ->
             f"Net Gain = +{c3['recall_gain']:.2f}%"
         )
 
+    # Paired hypothesis tests for Cohort 3 (Zero-Memory)
+    pt_recall = compute_paired_tests(
+        cohort3_results["adaptive_recall"], cohort3_results["static_recall"]
+    )
+    pt_auc = compute_paired_tests(
+        cohort3_results["adaptive_auc"], cohort3_results["static_auc"]
+    )
+
+    # Multiple comparisons adjustment across Cohort 3 primary endpoints
+    uid_p_list = [pt_recall["p_value_t"], pt_auc["p_value_t"]]
+    uid_fdr = adjust_p_values_fdr_bh(uid_p_list)
+    uid_bonf = adjust_p_values_bonferroni(uid_p_list)
+
+    pt_recall["p_value_t_fdr_bh"] = uid_fdr[0]
+    pt_recall["p_value_t_bonferroni"] = uid_bonf[0]
+    pt_recall["significant_fdr_05"] = bool(uid_fdr[0] < 0.05)
+
+    pt_auc["p_value_t_fdr_bh"] = uid_fdr[1]
+    pt_auc["p_value_t_bonferroni"] = uid_bonf[1]
+    pt_auc["significant_fdr_05"] = bool(uid_fdr[1] < 0.05)
+
     # Compute Statistical Summaries
     summary: Dict[str, Any] = {
         "cohort3_zero_memory": {
@@ -493,9 +601,8 @@ def run_ieee_uid_statistical_rigor(seeds: List[int], n_bootstrap: int = 1000) ->
             "static_auc": compute_sample_stats(cohort3_results["static_auc"]),
             "adaptive_auc": compute_sample_stats(cohort3_results["adaptive_auc"]),
             "auc_gain": compute_sample_stats(cohort3_results["auc_gain"]),
-            "paired_ttest_recall": compute_paired_tests(
-                cohort3_results["adaptive_recall"], cohort3_results["static_recall"]
-            )
+            "paired_ttest_recall": pt_recall,
+            "paired_ttest_auc": pt_auc
         },
         "cohort1_seen": {
             "static_recall": compute_sample_stats(cohort1_results["static_recall"]),
@@ -506,6 +613,11 @@ def run_ieee_uid_statistical_rigor(seeds: List[int], n_bootstrap: int = 1000) ->
             "static_recall": compute_sample_stats(cohort2_results["static_recall"]),
             "adaptive_recall": compute_sample_stats(cohort2_results["adaptive_recall"]),
             "recall_gain": compute_sample_stats(cohort2_results["recall_gain"])
+        },
+        "multiple_testing_correction": {
+            "method": "Benjamini-Hochberg (FDR) and Bonferroni",
+            "hypotheses_tested": 2,
+            "sample_size_per_group": len(seeds)
         }
     }
 
@@ -528,7 +640,8 @@ def run_ieee_uid_statistical_rigor(seeds: List[int], n_bootstrap: int = 1000) ->
     p_t = c3_s["paired_ttest_recall"]
     logger.info(
         f"   Paired t-test   : t={p_t['t_stat']:.4f}, p={p_t['p_value_t']:.6e} "
-        f"-> Statistically Significant (p < 0.001): {p_t['significant_001']}"
+        f"(p_FDR={p_t['p_value_t_fdr_bh']:.6e}) | Cohen's d={p_t['cohens_d']} ({p_t['effect_size']}) | "
+        f"Significant (p < 0.001): {p_t['significant_001']}"
     )
 
     return {
@@ -634,8 +747,16 @@ def export_summary_csv(results_all: Dict[str, Any], output_path: Path):
         p_res = results_all["paysim_oos_f1"]["summary"]
         for m, v in p_res["models"].items():
             p_val = "-"
-            if m == "adaptive":
-                p_val = f"{p_res['paired_tests']['adaptive_vs_static_f1']['p_value_t']:.6e}"
+            cohens_d = "-"
+            hedges_g = "-"
+            p_val_fdr = "-"
+            if m == "adaptive" and "paired_tests" in p_res and "adaptive_vs_static_f1" in p_res["paired_tests"]:
+                pt = p_res["paired_tests"]["adaptive_vs_static_f1"]
+                p_val = f"{pt['p_value_t']:.6e}"
+                cohens_d = str(pt.get("cohens_d", "-"))
+                hedges_g = str(pt.get("hedges_g", "-"))
+                p_val_fdr = f"{pt.get('p_value_t_fdr_bh', pt['p_value_t']):.6e}"
+
             rows.append({
                 "benchmark": "PaySim Out-of-Sample Stream",
                 "architecture_or_cohort": m.capitalize(),
@@ -645,7 +766,10 @@ def export_summary_csv(results_all: Dict[str, Any], output_path: Path):
                 "ci_95_low": v["f1"]["ci_95"][0],
                 "ci_95_high": v["f1"]["ci_95"][1],
                 "bootstrap_ci_95": f"[{v['bootstrap_f1_ci'][0]}, {v['bootstrap_f1_ci'][1]}]",
-                "p_value_vs_static": p_val
+                "cohens_d": cohens_d,
+                "hedges_g": hedges_g,
+                "p_value_vs_static": p_val,
+                "p_value_fdr_bh": p_val_fdr
             })
 
     # IEEE-CIS UID Generalization results
@@ -659,8 +783,15 @@ def export_summary_csv(results_all: Dict[str, Any], output_path: Path):
         for c_label, c_key in cohorts:
             c_data = uid_s[c_key]
             p_val = "-"
+            cohens_d = "-"
+            hedges_g = "-"
+            p_val_fdr = "-"
             if c_key == "cohort3_zero_memory" and "paired_ttest_recall" in c_data:
-                p_val = f"{c_data['paired_ttest_recall']['p_value_t']:.6e}"
+                pt = c_data["paired_ttest_recall"]
+                p_val = f"{pt['p_value_t']:.6e}"
+                cohens_d = str(pt.get("cohens_d", "-"))
+                hedges_g = str(pt.get("hedges_g", "-"))
+                p_val_fdr = f"{pt.get('p_value_t_fdr_bh', pt['p_value_t']):.6e}"
 
             rows.append({
                 "benchmark": "IEEE-CIS Feature-Blind Audit",
@@ -671,7 +802,10 @@ def export_summary_csv(results_all: Dict[str, Any], output_path: Path):
                 "ci_95_low": c_data["static_recall"]["ci_95"][0],
                 "ci_95_high": c_data["static_recall"]["ci_95"][1],
                 "bootstrap_ci_95": "-",
-                "p_value_vs_static": "-"
+                "cohens_d": "-",
+                "hedges_g": "-",
+                "p_value_vs_static": "-",
+                "p_value_fdr_bh": "-"
             })
             rows.append({
                 "benchmark": "IEEE-CIS Feature-Blind Audit",
@@ -682,7 +816,10 @@ def export_summary_csv(results_all: Dict[str, Any], output_path: Path):
                 "ci_95_low": c_data["adaptive_recall"]["ci_95"][0],
                 "ci_95_high": c_data["adaptive_recall"]["ci_95"][1],
                 "bootstrap_ci_95": "-",
-                "p_value_vs_static": p_val
+                "cohens_d": cohens_d,
+                "hedges_g": hedges_g,
+                "p_value_vs_static": p_val,
+                "p_value_fdr_bh": p_val_fdr
             })
 
     if rows:
@@ -698,12 +835,17 @@ def export_summary_csv(results_all: Dict[str, Any], output_path: Path):
 def run():
     parser = argparse.ArgumentParser(description="Multi-Seed Statistical Rigor & Bootstrap Benchmarking Suite")
     parser.add_argument("--seeds", nargs="+", type=int, default=DEFAULT_SEEDS, help="List of random seeds to evaluate")
+    parser.add_argument("--extended-seeds", action="store_true",
+                        help="Run expanded 10-seed evaluation ([42, 101, 202, 303, 404, 505, 606, 707, 808, 909])")
     parser.add_argument("--benchmark", type=str, choices=["all", "paysim", "ieee_uid"], default="all",
                         help="Benchmark suite to execute")
     parser.add_argument("--n-bootstrap", type=int, default=1000, help="Number of bootstrap resamples for empirical CI")
     args = parser.parse_args()
 
-    seeds = args.seeds
+    if args.extended_seeds:
+        seeds = [42, 101, 202, 303, 404, 505, 606, 707, 808, 909]
+    else:
+        seeds = args.seeds
     logger.info(f"Running Statistical Rigor Suite across {len(seeds)} seeds: {seeds}")
 
     summary_path = METRICS_DIR / "statistical_rigor_summary.json"

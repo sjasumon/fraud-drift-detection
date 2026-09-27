@@ -427,9 +427,9 @@ def run_pipeline(
     logger.info(f"Hardware Acceleration: {static_model.device_used} (NVIDIA RTX 5080 eGPU)")
     logger.info(f"Database Logged: {db_backend_name}")
     logger.info(f"Total Drift Alerts: {len(drift_monitor.drift_events)}")
-    logger.info("-" * 104)
-    logger.info(f"{'Model Architecture':<30} | {'Retrains':<8} | {'In+OOS F1*':<11} | {'In+OOS AUC':<11} | {'OOS Recall':<11} | {'OOS AUC-PR':<11}")
-    logger.info("-" * 104)
+    logger.info("-" * 108)
+    logger.info(f"{'Model Architecture':<28} | {'Retrains':<8} | {'In+OOS F1*':<11} | {'OOS F1':<10} | {'OOS Recall':<11} | {'OOS AUC-PR':<11}")
+    logger.info("-" * 108)
 
     m_names = [
         ("Static Baseline (Frozen)", "static_model", 0),
@@ -441,13 +441,13 @@ def run_pipeline(
     oos = overall_summary.get("out_of_sample_stream", {})
     for label, key, n_retrains in m_names:
         w_f1 = overall_summary[key]["overall_f1"]
-        w_auc = overall_summary[key]["overall_auc_pr"]
+        oos_f1 = oos.get(key, {}).get("overall_f1", 0.0)
         oos_rec = oos.get(key, {}).get("overall_recall", 0.0)
         oos_auc = oos.get(key, {}).get("overall_auc_pr", 0.0)
-        logger.info(f"{label:<30} | {n_retrains:<8} | {w_f1:<11.4f} | {w_auc:<11.4f} | {oos_rec*100:<10.2f}% | {oos_auc:<11.4f}")
+        logger.info(f"{label:<28} | {n_retrains:<8} | {w_f1:<11.4f} | {oos_f1:<10.4f} | {oos_rec*100:<10.2f}% | {oos_auc:<11.4f}")
 
-    logger.info("-" * 104)
-    logger.info("* Note: 'In+OOS' metrics include initial training warmup slices (Slices 1-5). Pure generalization is reported under 'OOS Recall' and 'OOS AUC-PR'.")
+    logger.info("-" * 108)
+    logger.info("* Note: 'In+OOS F1*' includes initial training warmup slices (Slices 1-5). Pure out-of-sample generalization is reported under 'OOS F1', 'OOS Recall', and 'OOS AUC-PR'.")
     logger.info(f"Outputs generated:")
     logger.info(f"  - Dataset Metrics: {dataset_metrics_csv}")
     logger.info(f"  - Dataset Summary: {dataset_summary_json}")

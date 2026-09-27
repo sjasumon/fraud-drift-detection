@@ -92,11 +92,9 @@ class DriftAttributionEngine:
 
         # 2. TreeSHAP computation
         try:
-            # Native TreeExplainer on XGBoost Booster
+            # Native TreeExplainer on XGBoost Booster (returns 2D ndarray in shap>=0.40)
             explainer = shap.TreeExplainer(model.model if hasattr(model, "model") else model)
             shap_values = explainer.shap_values(X_sample)
-            if isinstance(shap_values, list):
-                shap_values = shap_values[1]  # positive (fraud) class
             mean_abs_shap = np.mean(np.abs(shap_values), axis=0)
         except Exception as e:
             logger.warning(f"TreeSHAP calculation warning ({e}). Falling back to feature importances.")

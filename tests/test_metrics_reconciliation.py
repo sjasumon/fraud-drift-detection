@@ -167,6 +167,11 @@ def test_evaluator_zero_fraud_and_single_class_edge_cases():
     )
     assert summary["static_model"]["overall_auc_pr"] == 0.0
     assert summary["adaptive_model"]["overall_auc_pr"] == 0.0
+    assert summary["static_model"]["is_pure_out_of_sample"] is False
+    assert "overall_f1_including_training_window" in summary["static_model"]
+    assert "metric_disambiguation_note" in summary["static_model"]
     assert summary["out_of_sample_stream"]["static_model"]["overall_auc_pr"] == 0.0
     assert summary["out_of_sample_stream"]["adaptive_model"]["overall_auc_pr"] == 0.0
+    assert summary["out_of_sample_stream"]["static_model"]["is_pure_out_of_sample"] is True
+    assert "pure_oos_f1" in summary["out_of_sample_stream"]["static_model"]
 
