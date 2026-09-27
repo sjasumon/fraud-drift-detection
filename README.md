@@ -4,7 +4,7 @@
 [![CUDA Acceleration](https://img.shields.io/badge/CUDA-RTX%205080%20eGPU%20%7C%20CPU%20Fallback-green.svg)](https://developer.nvidia.com/cuda-zone)
 [![arXiv Preprint](https://img.shields.io/badge/arXiv-Preprint%20Ready-b31b1b.svg)](arxiv_paper/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests Passing](https://img.shields.io/badge/tests-61%20passed-brightgreen.svg)](tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-65%20passed-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-85%25%20core%20modules-brightgreen.svg)](tests/)
 [![CI Test Suite](https://github.com/sjasumon/fraud-drift-detection/actions/workflows/ci.yml/badge.svg)](https://github.com/sjasumon/fraud-drift-detection/actions/workflows/ci.yml)
 
@@ -17,7 +17,7 @@ This repository provides rigorous empirical validation, statistical confidence i
 
 ## ⚡ 5-Minute Quickstart
 
-To reproduce the environment, run the 61-test verification suite, and inspect benchmarks within 5 minutes:
+To reproduce the environment, run the 65-test verification suite, and inspect benchmarks within 5 minutes:
 
 ### Linux / macOS
 ```bash
@@ -35,7 +35,7 @@ cd "fraud-drift-detection"
 ### Run Test Suite & Coverage
 ```bash
 pytest -v --cov=src --cov-report=term-missing
-# Output: ======================= 61 passed in 11.8s =======================
+# Output: ======================= 65 passed in 12.0s =======================
 # Core algorithmic modules: 85%-100% unit coverage
 ```
 
@@ -44,7 +44,7 @@ pytest -v --cov=src --cov-report=term-missing
 This framework is optimized for hardware-accelerated training using an **NVIDIA GeForce RTX 5080 eGPU** (CUDA `tree_method='hist'`), enabling full 26-week streaming retrains across 590,540 transactions in **77.77 seconds** (~1.2s per retrain).
 
 * **Automatic CPU Fallback**: If an NVIDIA CUDA device is not present, or if `USE_GPU=false` is set in `.env`, the entire framework seamlessly falls back to CPU-based histogram gradient boosting without failing or crashing. On a standard multi-core laptop CPU, the 26-week stream retraining runs in approximately 4–6 minutes.
-* **Test Suite Hardware Independence**: The entire 61-test verification suite and the multi-armed bandit evaluation run 100% on CPU by default (and in CI), requiring zero GPU hardware to reproduce all invariant tests.
+* **Test Suite Hardware Independence**: The entire 65-test verification suite and the multi-armed bandit evaluation run 100% on CPU by default (and in CI), requiring zero GPU hardware to reproduce all invariant tests.
 
 ---
 
@@ -175,7 +175,7 @@ Due to Kaggle dataset license agreements, multi-gigabyte raw benchmark files can
 | **PaySim Mobile Money** | 6,362,620 transactions, 5 weeks | [Kaggle: PaySim1](https://www.kaggle.com/datasets/ealaxi/paysim1) | CC BY-SA 4.0 | Place `PS_20174392719_1491204439457_log.csv` in `data/paysim/`. |
 
 > **Zero-Download Verification Out-of-the-Box**:
-> You do **not** need to download these multi-gigabyte files to verify the framework's mathematical correctness. The 61 automated invariant tests (`pytest -v`), schema validators (`tests/test_multi_dataset.py`), non-stationary bandit benchmark (`python -m src.bandit.benchmark`), and the FastAPI microservice (`src/api.py`) run immediately out-of-the-box using self-contained synthetic fixtures and schemas.
+> You do **not** need to download these multi-gigabyte files to verify the framework's mathematical correctness. The 65 automated invariant tests (`pytest -v`), schema validators (`tests/test_multi_dataset.py`), non-stationary bandit benchmark (`python -m src.bandit.benchmark`), and the FastAPI microservice (`src/api.py`) run immediately out-of-the-box using self-contained synthetic fixtures and schemas.
 
 ---
 

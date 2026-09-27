@@ -87,12 +87,18 @@ class SliceEvaluator:
             fn = int(((y == 1) & (preds == 0)).sum())
             tn = int(((y == 0) & (preds == 0)).sum())
             total_fraud = int(np.sum(y))
+
+            if total_fraud > 0 and len(np.unique(y)) > 1:
+                auc_pr = average_precision_score(y, probs)
+            else:
+                auc_pr = 0.0
+
             return {
                 "evaluation_scope": scope_desc,
                 "overall_precision": round(float(precision_score(y, preds, zero_division=0)), 4),
                 "overall_recall": round(float(recall_score(y, preds, zero_division=0)), 4),
                 "overall_f1": round(float(f1_score(y, preds, zero_division=0)), 4),
-                "overall_auc_pr": round(float(average_precision_score(y, probs)), 4),
+                "overall_auc_pr": round(float(auc_pr), 4),
                 "true_positives": tp,
                 "false_positives": fp,
                 "false_negatives": fn,

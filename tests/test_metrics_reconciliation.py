@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from src.evaluate_uid_split import compute_metrics
+from src.evaluator import SliceEvaluator
 
 
 def test_confusion_matrix_integer_reconciliation():
@@ -133,3 +134,39 @@ def test_metric_boundary_conditions():
     }
     res_empty = compute_metrics(d_empty)
     assert res_empty == {}, "Expected empty dict when stream is empty."
+
+
+def test_evaluator_zero_fraud_and_single_class_edge_cases():
+    """Verifies that SliceEvaluator.compute_overall_summary and evaluate_slice handle zero frauds gracefully."""
+    evaluator = SliceEvaluator()
+    n = 30
+    preds = np.zeros(n, dtype=int)
+    probs = np.full(n, 0.05)
+    y_zero = np.zeros(n, dtype=int)
+
+    # 1. evaluate_slice with zero fraud
+    slice_res = evaluator.evaluate_slice(
+        y_true=y_zero,
+        y_pred=preds,
+        y_prob=probs,
+        slice_index=0,
+        slice_name="ZeroFraudSlice",
+        model_type="static"
+    )
+    assert slice_res["auc_pr"] == 0.0
+    assert slice_res["f1_score"] == 0.0
+
+    # 2. compute_overall_summary with zero fraud across stream
+    summary = evaluator.compute_overall_summary(
+        static_preds=preds,
+        static_probs=probs,
+        adaptive_preds=preds,
+        adaptive_probs=probs,
+        y_all=y_zero,
+        oos_mask=np.ones(n, dtype=bool)
+    )
+    assert summary["static_model"]["overall_auc_pr"] == 0.0
+    assert summary["adaptive_model"]["overall_auc_pr"] == 0.0
+    assert summary["out_of_sample_stream"]["static_model"]["overall_auc_pr"] == 0.0
+    assert summary["out_of_sample_stream"]["adaptive_model"]["overall_auc_pr"] == 0.0
+

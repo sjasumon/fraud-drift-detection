@@ -184,11 +184,16 @@ class Preprocessor:
                 slice_df = m_group.copy().reset_index(drop=True)
                 fraud_count = int(slice_df["isFraud"].sum())
                 total_count = len(slice_df)
+                min_step = int(slice_df["step"].min()) if "step" in slice_df.columns else int(m_val * 720 + 1)
+                max_step = int(slice_df["step"].max()) if "step" in slice_df.columns else int((m_val + 1) * 720)
+                if min_step == max_step:
+                    min_step = int(m_val * 720 + 1)
+                    max_step = int((m_val + 1) * 720)
                 slices.append({
                     "slice_index": m_idx,
                     "slice_name": f"Month_{m_idx + 1:02d}",
-                    "start_step": int(slice_df["step"].min()),
-                    "end_step": int(slice_df["step"].max()),
+                    "start_step": min_step,
+                    "end_step": max_step,
                     "total_transactions": total_count,
                     "fraud_transactions": fraud_count,
                     "fraud_ratio": round(fraud_count / float(total_count), 4),

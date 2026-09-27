@@ -150,7 +150,11 @@ class DatasetIngestion:
         df["trans_id"] = "BAF_" + pd.RangeIndex(len(df)).astype(str)
 
         # Step: map month (0-7) to hourly simulation steps (each month = 720 hours = 30 days)
-        df["step"] = (df["month"] * 720 + 1).astype(int)
+        # Distribute intra-month transactions across the 720 hourly steps
+        intra_rank = df.groupby("month").cumcount()
+        month_counts = df.groupby("month")["trans_id"].transform("count")
+        intra_step = (intra_rank / np.maximum(month_counts - 1, 1) * 719).astype(int)
+        df["step"] = (df["month"] * 720 + 1 + intra_step).astype(int)
 
         # Monetary amount proxy (proposed credit limit)
         if "proposed_credit_limit" in df.columns:
@@ -158,8 +162,8 @@ class DatasetIngestion:
         else:
             df["amount"] = 1000.0
 
-        # Sort strictly by month and trans_id
-        df = df.sort_values(by=["month", "trans_id"]).reset_index(drop=True)
+        # Sort strictly by step, month and trans_id
+        df = df.sort_values(by=["month", "step", "trans_id"]).reset_index(drop=True)
         return df
 
     def _load_paysim(self) -> pd.DataFrame:

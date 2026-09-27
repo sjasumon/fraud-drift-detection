@@ -123,6 +123,11 @@ class DatabaseManager:
             encoded_user = quote_plus(DB_USER)
             encoded_pw = quote_plus(DB_PASSWORD)
 
+            # Strictly validate DB_NAME identifier against SQL injection before DDL execution
+            import re
+            if not re.match(r"^[a-zA-Z0-9_]+$", DB_NAME):
+                raise ValueError(f"Insecure or invalid database name identifier: {DB_NAME!r}")
+
             # Connect to MySQL Server and create database if not exists
             server_url = f"mysql+pymysql://{encoded_user}:{encoded_pw}@{DB_HOST}:{DB_PORT}"
             temp_engine = create_engine(server_url, connect_args={"connect_timeout": 5})

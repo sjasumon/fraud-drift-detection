@@ -106,3 +106,52 @@ def test_preprocessor_multi_dataset_categoricals():
     assert "employment_status_CA" in preprocessor.feature_names or any("employment_status" in f for f in preprocessor.feature_names)
     assert "device_os_windows" in preprocessor.feature_names or any("device_os" in f for f in preprocessor.feature_names)
     assert len(transformed) == len(mock_df)
+
+
+def test_feedzai_baf_non_degenerate_step_ranges():
+    """Verifies that Feedzai BAF monthly partitions report non-degenerate start_step < end_step."""
+    mock_baf = pd.DataFrame({
+        "month": [0, 0, 0, 1, 1, 1],
+        "fraud_bool": [0, 1, 0, 0, 0, 1],
+        "proposed_credit_limit": [1000.0] * 6,
+    })
+    tmp_path = Path("data/feedzai/sample_baf.csv")
+    tmp_path.parent.mkdir(parents=True, exist_ok=True)
+    mock_baf.to_csv(tmp_path, index=False)
+
+    try:
+        ingestor = DatasetIngestion(tmp_path)
+        df, _ = ingestor.load_and_validate()
+        assert ingestor.dataset_type == "Feedzai-BAF"
+
+        preprocessor = Preprocessor()
+        slices = preprocessor.partition_time_slices(df)
+        assert len(slices) == 2
+        for s in slices:
+            assert s["start_step"] < s["end_step"]
+        # Month 0 spans 1 to 720, Month 1 spans 721 to 1440
+        assert slices[0]["start_step"] == 1
+        assert slices[0]["end_step"] == 720
+        assert slices[1]["start_step"] == 721
+        assert slices[1]["end_step"] == 1440
+    finally:
+        if tmp_path.exists():
+            tmp_path.unlink()
+
+
+def test_feedzai_baf_degenerate_step_fallback():
+    """Verifies that partition_time_slices guards against start_step == end_step when steps are uniform."""
+    mock_df = pd.DataFrame({
+        "month": [0, 0, 1, 1],
+        "step": [1, 1, 721, 721],  # uniform steps per month
+        "isFraud": [0, 1, 0, 0],
+        "trans_id": ["T1", "T2", "T3", "T4"]
+    })
+    preprocessor = Preprocessor()
+    slices = preprocessor.partition_time_slices(mock_df)
+    assert len(slices) == 2
+    assert slices[0]["start_step"] == 1
+    assert slices[0]["end_step"] == 720
+    assert slices[1]["start_step"] == 721
+    assert slices[1]["end_step"] == 1440
+

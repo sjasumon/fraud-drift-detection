@@ -72,6 +72,14 @@ class Settings(BaseSettings):
             raise ValueError(f"ddm_drift_level ({v}) must be strictly greater than ddm_warning_level ({warning_level})")
         return v
 
+    @field_validator("db_name")
+    @classmethod
+    def validate_db_name(cls, v: str) -> str:
+        import re
+        if not re.match(r"^[a-zA-Z0-9_]+$", v):
+            raise ValueError(f"Insecure or invalid database name identifier: {v!r}")
+        return v
+
     @model_validator(mode="after")
     def validate_production_security(self) -> "Settings":
         """

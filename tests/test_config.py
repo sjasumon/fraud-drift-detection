@@ -133,3 +133,22 @@ def test_production_security_validation():
     assert dev_settings.api_key == "dev-secret-key"
 
 
+def test_db_name_identifier_sanitization():
+    """Asserts that malicious or invalid SQL identifiers in db_name are rejected."""
+    # 1. Reject SQL injection attempt
+    with pytest.raises(ValidationError, match="Insecure or invalid database name identifier"):
+        Settings(db_name="fraud_db; DROP TABLE users;--")
+
+    # 2. Reject spaces and special characters
+    with pytest.raises(ValidationError, match="Insecure or invalid database name identifier"):
+        Settings(db_name="fraud db")
+
+    with pytest.raises(ValidationError, match="Insecure or invalid database name identifier"):
+        Settings(db_name="fraud`db")
+
+    # 3. Valid database names succeed
+    valid = Settings(db_name="valid_db_123")
+    assert valid.db_name == "valid_db_123"
+
+
+

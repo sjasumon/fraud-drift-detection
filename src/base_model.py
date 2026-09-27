@@ -1,0 +1,103 @@
+"""
+Unified Base Model Architecture for Streaming Fraud Detection.
+Provides standardized XGBoost GPU-acceleration with automatic CPU-fallback,
+execution timing, and predict() contract for all benchmark models.
+"""
+
+import time
+import logging
+from typing import Dict, Any, List, Tuple, Optional
+import numpy as np
+import pandas as pd
+import xgboost as xgb
+
+from src.config import USE_GPU, GPU_DEVICE, RANDOM_SEED
+
+logger = logging.getLogger("fraud_drift.model")
+
+
+def fit_xgb_with_fallback(
+    X: np.ndarray,
+    y: np.ndarray,
+    xgb_params: Dict[str, Any],
+    model_name: str = "Model"
+) -> Tuple[xgb.XGBClassifier, str, float]:
+    """
+    Fits an XGBoost classifier using GPU acceleration (tree_method='hist') if enabled,
+    gracefully falling back to CPU histogram gradient boosting upon any failure.
+    Returns:
+        (fitted_model, device_used, duration_seconds)
+    """
+    if USE_GPU:
+        try:
+            model = xgb.XGBClassifier(
+                **xgb_params,
+                tree_method="hist",
+                device=GPU_DEVICE
+            )
+            t0 = time.time()
+            model.fit(X, y)
+            duration = time.time() - t0
+            device_used = f"NVIDIA GPU ({GPU_DEVICE})"
+            logger.info(f"{model_name} fitted on {device_used} in {duration:.2f}s.")
+            return model, device_used, duration
+        except Exception as e:
+            logger.warning(f"GPU fitting failed for {model_name} ({e}). Falling back to CPU.")
+
+    model = xgb.XGBClassifier(**xgb_params, tree_method="hist", device="cpu")
+    t0 = time.time()
+    model.fit(X, y)
+    duration = time.time() - t0
+    device_used = "cpu"
+    logger.info(f"{model_name} fitted on CPU in {duration:.2f}s.")
+    return model, device_used, duration
+
+
+class BaseFraudModel:
+    """
+    Abstract base class providing shared GPU-accelerated fitting, fallback handling,
+    and prediction contracts for all stream fraud models.
+    """
+
+    def __init__(
+        self,
+        feature_names: List[str],
+        scale_pos_weight: float = 1.0,
+        random_seed: int = RANDOM_SEED
+    ):
+        self.feature_names = feature_names
+        self.scale_pos_weight = scale_pos_weight
+        self.random_seed = random_seed
+        self.model: Optional[xgb.XGBClassifier] = None
+        self.trained = False
+        self.device_used = "cpu"
+        self.train_duration_sec = 0.0
+
+    def _fit_xgb(
+        self,
+        X: np.ndarray,
+        y: np.ndarray,
+        params: Dict[str, Any],
+        model_name: Optional[str] = None
+    ) -> xgb.XGBClassifier:
+        """Shared GPU-accelerated XGBoost fit with automatic CPU fallback."""
+        name = model_name or self.__class__.__name__
+        model, device, dur = fit_xgb_with_fallback(X, y, params, model_name=name)
+        self.model = model
+        self.device_used = device
+        self.train_duration_sec = dur
+        self.trained = True
+        return model
+
+    def predict(self, slice_df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Evaluates the current model on a time slice before learning from it.
+        Returns:
+            Tuple of (binary_predictions, predicted_probabilities).
+        """
+        if self.model is None:
+            raise RuntimeError(f"{self.__class__.__name__} must be fitted before predict() is called.")
+        X = slice_df[self.feature_names].values
+        probs = self.model.predict_proba(X)[:, 1]
+        preds = (probs >= 0.5).astype(int)
+        return preds, probs

@@ -385,8 +385,8 @@ drift_monitor = DriftMonitor()
 training_store = FeedbackTrainingStore()
 drift_lock = threading.Lock()
 retrainer = BackgroundRetrainer(model_buffer, drift_monitor, training_store, drift_lock=drift_lock)
-recent_predictions: Dict[str, float] = {}  # In-memory LRU cache of recent transaction probabilities
-recent_features: Dict[str, Dict[str, float]] = {}  # Cached features for ground-truth feedback pairing
+recent_predictions: Dict[str, float] = {}  # Bounded FIFO eviction buffer of recent transaction probabilities
+recent_features: Dict[str, Dict[str, float]] = {}  # Bounded FIFO eviction buffer of features for feedback pairing
 predictions_lock = threading.Lock()
 MAX_CACHE_SIZE = 100000
 
