@@ -314,7 +314,10 @@ def generate_latency_audit_plots(
     return output_path
 
 
-def main(data_file_path: Optional[str] = None):
+def main(
+    data_file_path: Optional[str] = None,
+    regimes: Optional[List[Dict[str, Any]]] = None
+):
     """Entry point for running the delayed feedback audit."""
     logging.basicConfig(
         level=logging.INFO,
@@ -362,31 +365,32 @@ def main(data_file_path: Optional[str] = None):
     feature_names = preprocessor.feature_names
     scale_pos_weight = imbalance_info["scale_pos_weight"]
 
-    # Define the 4 experimental latency regimes
-    regimes = [
-        {
-            "name": "Immediate Feedback (0w)",
-            "delay_slices": 0,
-            "mode": "fixed"
-        },
-        {
-            "name": "Standard Delay (4w)",
-            "delay_slices": 4,
-            "mode": "fixed"
-        },
-        {
-            "name": "Extended Delay (8w)",
-            "delay_slices": 8,
-            "mode": "fixed"
-        },
-        {
-            "name": "Stochastic LogNormal Delay",
-            "delay_slices": 4,
-            "mode": "lognormal",
-            "lognormal_mu": 1.38,
-            "lognormal_sigma": 0.45
-        }
-    ]
+    # Define the experimental latency regimes (defaults to 4 canonical regimes)
+    if regimes is None:
+        regimes = [
+            {
+                "name": "Immediate Feedback (0w)",
+                "delay_slices": 0,
+                "mode": "fixed"
+            },
+            {
+                "name": "Standard Delay (4w)",
+                "delay_slices": 4,
+                "mode": "fixed"
+            },
+            {
+                "name": "Extended Delay (8w)",
+                "delay_slices": 8,
+                "mode": "fixed"
+            },
+            {
+                "name": "Stochastic LogNormal Delay",
+                "delay_slices": 4,
+                "mode": "lognormal",
+                "lognormal_mu": 1.38,
+                "lognormal_sigma": 0.45
+            }
+        ]
 
     all_results = []
     for reg in regimes:

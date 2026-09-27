@@ -50,7 +50,8 @@ logger = logging.getLogger("fraud_drift.pipeline")
 def run_pipeline(
     dataset_path: Path = None,
     exclude_card_identifiers: bool = False,
-    dataset_type: Optional[str] = None
+    dataset_type: Optional[str] = None,
+    db: Optional[DatabaseManager] = None
 ) -> Dict[str, Any]:
     """
     Executes the end-to-end experiment pipeline according to FRD requirements.
@@ -60,13 +61,16 @@ def run_pipeline(
     start_total_time = time.time()
 
     # 1. Initialize Database (MySQL Server 9.7 with graceful fallback to file-only persistence)
-    try:
-        db = DatabaseManager()
+    if db is None:
+        try:
+            db = DatabaseManager()
+            db_backend_name = db.backend_name
+        except Exception as e:
+            logger.warning(f"Database connection unavailable ({e}). Continuing with filesystem metrics logging.")
+            db = None
+            db_backend_name = "Filesystem Only (MySQL unavailable)"
+    else:
         db_backend_name = db.backend_name
-    except Exception as e:
-        logger.warning(f"Database connection unavailable ({e}). Continuing with filesystem metrics logging.")
-        db = None
-        db_backend_name = "Filesystem Only (MySQL unavailable)"
 
     logger.info("=" * 80)
     logger.info(f"STARTING CONCEPT-DRIFT-AWARE FRAUD DETECTION PIPELINE [{run_id}]")

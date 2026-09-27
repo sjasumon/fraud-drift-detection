@@ -8,7 +8,11 @@ import pytest
 from pathlib import Path
 import pandas as pd
 
-from src.generate_key_figures import parse_ieee_26w_metrics, plot_verification_latency_degradation
+from src.generate_key_figures import (
+    parse_ieee_26w_metrics,
+    plot_stream_f1_drift_timeline,
+    plot_verification_latency_degradation
+)
 
 
 def test_parse_ieee_26w_metrics_missing_log_raises(monkeypatch, tmp_path):
@@ -32,6 +36,13 @@ def test_parse_ieee_26w_metrics_valid_execution():
     assert df["is_retrain"].sum() == 22  # Exactly 22 GPU retrains
 
 
+def test_plot_stream_f1_drift_timeline_execution():
+    """Verifies that Figure 1 can be rendered and saved cleanly."""
+    df = parse_ieee_26w_metrics()
+    out = plot_stream_f1_drift_timeline(df)
+    assert out.exists()
+
+
 def test_plot_verification_latency_degradation_missing_json_raises(monkeypatch, tmp_path):
     """Verifies that missing delayed feedback benchmark JSON raises FileNotFoundError."""
     fake_root = tmp_path / "nonexistent_root"
@@ -39,3 +50,10 @@ def test_plot_verification_latency_degradation_missing_json_raises(monkeypatch, 
 
     with pytest.raises(FileNotFoundError, match="refusing to plot synthetic placeholder data"):
         plot_verification_latency_degradation()
+
+
+def test_plot_verification_latency_degradation_execution():
+    """Verifies that Figure 2 can be rendered and saved cleanly from benchmark JSON."""
+    out = plot_verification_latency_degradation()
+    assert out.exists()
+

@@ -351,13 +351,13 @@ def run_single_audit(
     return results
 
 
-def run():
+def run(args_list: Optional[List[str]] = None):
     default_path = "data/ieee/train_transaction.csv" if Path("data/ieee/train_transaction.csv").exists() else "ieee/train_transaction.csv"
     parser = argparse.ArgumentParser(description="UID Generalization vs Memorization Audit")
     parser.add_argument("--dataset", type=str, default=default_path, help="Path to raw CSV dataset")
     parser.add_argument("--mode", type=str, choices=["both", "standard", "feature-blind"], default="both",
                         help="Audit mode: 'both' (default), 'standard' (with IDs), or 'feature-blind' (without card/addr IDs)")
-    args = parser.parse_args()
+    args = parser.parse_args(args_list)
 
     data_path = Path(args.dataset)
     if not data_path.exists():

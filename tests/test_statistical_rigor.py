@@ -114,3 +114,77 @@ def test_adjust_p_values_fdr_and_bonferroni():
     assert fdr[0] <= fdr[1] <= fdr[2]
     assert fdr[0] < 0.05
 
+
+def test_generate_statistical_errorbar_charts(tmp_path: Path, monkeypatch):
+    """Verifies that statistical error-bar comparison plots render cleanly."""
+    from src.benchmark_statistical_rigor import generate_statistical_errorbar_charts
+
+    monkeypatch.setattr("src.benchmark_statistical_rigor.FIGURES_DIR", tmp_path)
+
+    paysim_res = {
+        "summary": {
+            "models": {
+                "static": {"f1": {"mean": 0.9955, "std": 0.0005}},
+                "periodic": {"f1": {"mean": 0.9962, "std": 0.0004}},
+                "sliding": {"f1": {"mean": 0.9960, "std": 0.0004}},
+                "adaptive": {"f1": {"mean": 0.9978, "std": 0.0003}}
+            },
+            "paired_tests": {
+                "adaptive_vs_static_f1": {"p_value_t": 0.00005}
+            }
+        }
+    }
+    ieee_uid_res = {
+        "summary": {
+            "cohort1_seen": {
+                "static_recall": {"mean": 75.0, "std": 1.2},
+                "adaptive_recall": {"mean": 82.0, "std": 1.0}
+            },
+            "cohort2_unseen": {
+                "static_recall": {"mean": 65.0, "std": 1.5},
+                "adaptive_recall": {"mean": 74.0, "std": 1.1}
+            },
+            "cohort3_zero_memory": {
+                "static_recall": {"mean": 67.82, "std": 0.8},
+                "adaptive_recall": {"mean": 77.09, "std": 0.6},
+                "recall_gain": {"mean": 9.27, "std": 0.4},
+                "paired_ttest_recall": {"p_value_t": 0.000007}
+            }
+        }
+    }
+
+    out = generate_statistical_errorbar_charts(paysim_res, ieee_uid_res, output_filename="test_errorbars.png")
+    assert out.exists()
+
+
+def test_export_summary_csv_with_ieee_uid(tmp_path: Path):
+    """Verifies exporting summary CSV with both PaySim and IEEE-CIS UID Generalization results."""
+    dummy_results = {
+        "ieee_zero_memory_uid": {
+            "summary": {
+                "cohort1_seen": {
+                    "static_recall": {"mean": 75.0, "std": 1.2, "ci_95": [73.5, 76.5]},
+                    "adaptive_recall": {"mean": 82.0, "std": 1.0, "ci_95": [80.7, 83.3]}
+                },
+                "cohort2_unseen": {
+                    "static_recall": {"mean": 65.0, "std": 1.5, "ci_95": [63.1, 66.9]},
+                    "adaptive_recall": {"mean": 74.0, "std": 1.1, "ci_95": [72.6, 75.4]}
+                },
+                "cohort3_zero_memory": {
+                    "static_recall": {"mean": 67.82, "std": 0.8, "ci_95": [66.8, 68.8]},
+                    "adaptive_recall": {"mean": 77.09, "std": 0.6, "ci_95": [76.3, 77.8]},
+                    "paired_ttest_recall": {
+                        "p_value_t": 7.15e-6,
+                        "cohens_d": 24.87,
+                        "hedges_g": 20.19,
+                        "p_value_t_fdr_bh": 1.43e-5
+                    }
+                }
+            }
+        }
+    }
+    csv_out = tmp_path / "test_ieee_summary.csv"
+    export_summary_csv(dummy_results, csv_out)
+    assert csv_out.exists()
+
+

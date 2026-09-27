@@ -112,11 +112,17 @@ class DriftAttributionRecord(Base):
 class DatabaseManager:
     """Manages database connectivity and persistence for experimental runs via MySQL Server 9.7."""
 
-    def __init__(self):
+    def __init__(self, engine: Optional[Engine] = None):
         self.engine: Optional[Engine] = None
         self.session_factory = None
         self.backend_name = "MySQL"
-        self._setup_connection()
+        if engine is not None:
+            self.engine = engine
+            Base.metadata.create_all(self.engine)
+            self.session_factory = sessionmaker(bind=self.engine)
+            self.backend_name = f"In-Memory Database ({engine.url})"
+        else:
+            self._setup_connection()
 
     def _setup_connection(self):
         try:
