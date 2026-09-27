@@ -1,0 +1,38 @@
+# ==============================================================================
+# Concept-Drift-Aware Fraud Detection - Pinned Production Dependencies
+# Python >= 3.10, <= 3.12 (Validated on Python 3.12.10)
+# ==============================================================================
+
+# Core Numerical & Data Processing
+numpy==2.5.3
+pandas==3.0.6
+scipy==1.18.1
+
+# Machine Learning & Online Stream Mining
+scikit-learn==1.9.1
+imbalanced-learn==0.14.2
+xgboost==3.4.1
+river==0.26.1
+shap==0.52.0
+
+# Visualization & Plotting
+matplotlib==3.11.2
+seaborn==0.13.2
+
+# Persistence & Database Drivers
+SQLAlchemy==2.1.1
+PyMySQL==1.2.3
+cryptography==50.0.1
+python-dotenv==1.2.3
+
+# Configuration & Data Validation
+pydantic==2.13.5
+pydantic-settings==2.15.0
+
+# Microservice API
+fastapi==0.141.1
+uvicorn==0.54.0
+
+# Testing & Continuous Integration
+pytest==9.1.1
+pytest-cov==7.1.0

@@ -1,0 +1,36 @@
+# Python virtual environments & bytecode
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Local database data & storage
+mysql_data/
+*.sqlite
+*.db
+
+# Sensitive local configurations
+.env
+
+# Large raw datasets & archives (Benchmark datasets should be downloaded via links in README/FRD)
+data/
+ieee/
+ieee-fraud-detection.zip
+*.zip
+!arxiv_paper/*.zip
+*.tar.gz
+*.csv
+!results/metrics/*.csv
+
+# OS metadata
+.DS_Store
+Thumbs.db
