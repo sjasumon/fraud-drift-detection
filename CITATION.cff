@@ -11,12 +11,15 @@ authors:
     affiliation: "Independent Researcher"
 preferred-citation:
   type: article
+  status: "in-preparation"
   authors:
     - family-names: "Sumon"
       given-names: "Sheikh Joynal Abedin"
+      email: "me@sumon.me"
+      affiliation: "Independent Researcher"
   title: "Adaptive Fraud Detection Under Concept Drift: An Empirical Study on Verification Latency, Entity Generalization, and Statistical Rigor"
-  journal: "arXiv preprint"
   year: 2026
+  notes: "Preprint manuscript in preparation. Target submission: arXiv / IEEE Trans. Information Forensics and Security."
   keywords:
     - "data stream mining"
     - "concept drift"
