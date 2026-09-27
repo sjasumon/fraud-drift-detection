@@ -1,7 +1,7 @@
 # Concept-Drift-Aware Fraud Detection Architecture
 
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
-[![CUDA Acceleration](https://img.shields.io/badge/CUDA-RTX%205080%20eGPU%20%7C%20CPU%20Fallback-green.svg)](https://developer.nvidia.com/cuda-zone)
+[![CUDA Acceleration](https://img.shields.io/badge/CUDA-GPU%20%7C%20CPU%20Fallback-green.svg)](https://developer.nvidia.com/cuda-zone)
 [![arXiv Preprint](https://img.shields.io/badge/arXiv-Preprint%20Ready-b31b1b.svg)](arxiv_paper/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Tests Passing](https://img.shields.io/badge/tests-67%20passed-brightgreen.svg)](tests/)
@@ -41,7 +41,7 @@ pytest -v --cov=src --cov-report=term-missing
 
 ### ⚡ Hardware Acceleration & Automatic CPU Fallback
 
-This framework is optimized for hardware-accelerated training using an **NVIDIA GeForce RTX 5080 eGPU** (CUDA `tree_method='hist'`), enabling full 26-week streaming retrains across 590,540 transactions in **77.77 seconds** (~1.2s per retrain).
+This framework is optimized for hardware-accelerated training using a **CUDA-accelerated GPU (tested on RTX 5080-class hardware)** (CUDA `tree_method='hist'`), enabling full 26-week streaming retrains across 590,540 transactions in **77.77 seconds** (~1.2s per retrain).
 
 * **Automatic CPU Fallback**: If an NVIDIA CUDA device is not present, or if `USE_GPU=false` is set in `.env`, the entire framework seamlessly falls back to CPU-based histogram gradient boosting without failing or crashing. On a standard multi-core laptop CPU, the 26-week stream retraining runs in approximately 4–6 minutes.
 * **Test Suite Hardware Independence**: The entire 67-test verification suite and the multi-armed bandit evaluation run 100% on CPU by default (and in CI), requiring zero GPU hardware to reproduce all invariant tests.
@@ -98,7 +98,7 @@ A camera-ready 5-page IEEE-format research manuscript is included in [`arxiv_pap
 ## 🔬 Key Empirical Discoveries & Publication Figures
 
 ### 1. 26-Week Streaming Trajectory Under Real-World Concept Drift
-Across 590,540 sequential transactions, the static baseline's efficacy degrades substantially as perpetrators shift tactics (dropping as low as 0.2418 F1 in Week 23). In contrast, the drift-adaptive model monitors prediction errors via ADWIN and DDM, triggering 22 sub-1.5s GPU full retrains on NVIDIA RTX 5080 eGPU to sustain performance:
+Across 590,540 sequential transactions, the static baseline's efficacy degrades substantially as perpetrators shift tactics (dropping as low as 0.2418 F1 in Week 23). In contrast, the drift-adaptive model monitors prediction errors via ADWIN and DDM, triggering 22 sub-1.5s full retrains on GPU to sustain performance:
 
 ![Streaming F1 Drift Timeline](results/figures/stream_f1_drift_timeline.png)
 
@@ -259,7 +259,7 @@ docker compose up -d
 In the interest of scientific rigor and transparent doctoral research, we highlight the following constraints, design choices, and operational boundaries:
 
 1. **Longitudinal Depth vs. Multi-Domain Breadth**: While the framework implements ingestion adapters for three distinct benchmark archetypes (IEEE-CIS, Feedzai BAF, PaySim), the deep 26-week streaming adaptation and TreeSHAP attribution pipeline is validated primarily on the **IEEE-CIS** e-commerce benchmark (590,540 transactions). The PaySim and Feedzai benchmarks serve as cross-domain structural consistency checks and multi-seed statistical significance controls; their drift dynamics reflect different temporal granularities (e.g. PaySim's saturated accounting-balance feature yielding $F1 > 0.995$).
-2. **Hardware Dependency of Throughput Claims**: Reported sub-15ms scoring latency and ~77-second 26-week retraining rely on dedicated hardware acceleration (NVIDIA RTX 5080 eGPU via CUDA `tree_method='hist'`). While full CPU execution is completely supported without modification, full stream retraining on standard multi-core laptop CPUs scales to approximately 4–6 minutes.
+2. **Hardware Dependency of Throughput Claims**: Reported sub-15ms scoring latency and ~77-second 26-week retraining rely on dedicated hardware acceleration (GPU via CUDA `tree_method='hist'`). While full CPU execution is completely supported without modification, full stream retraining on standard multi-core laptop CPUs scales to approximately 4–6 minutes.
 3. **Verification Latency Evaluation Semantics**: In our asynchronous verification latency audit ([`src/delayed_audit.py`](src/delayed_audit.py)), when historical dispute labels mature at slice $T_{\text{mat}}$, error metrics and drift triggers are evaluated using the *active model at maturity time* ($M_{T_{\text{mat}}}$). While this mirrors operational banking triage (avoiding unnecessary retrain triggers if intervening models have already adapted to the pattern), it differs from logging pure historical inference-time errors ($M_{T_{\text{arr}}}$). Both perspectives represent valid methodologies in the data stream mining literature, and developing hybrid dual-stream monitors is an open research area.
 4. **Microservice Distributed Concurrency**: The included FastAPI microservice utilizes thread-safe in-process memory singletons (`ModelDoubleBuffer`, `DriftMonitor`, `recent_predictions`) tailored for single-worker or edge nodes. For high-volume multi-process deployments (`uvicorn --workers N`), drift telemetry and prediction caches should be externalized to distributed key-value stores (e.g. Redis) to prevent split-brain drift states.
 

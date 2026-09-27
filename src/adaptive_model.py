@@ -2,7 +2,7 @@
 FR-5: Drift-Adaptive Full Retraining Module on NVIDIA GPU.
 Implements the full retraining strategy upon concept drift alerts (ADWIN/DDM).
 Re-trains the entire model on the accumulated historical and recent streaming data
-using NVIDIA RTX 5080 eGPU (CUDA) with histogram-based gradient boosting.
+using GPU (CUDA) with histogram-based gradient boosting.
 """
 
 import time
@@ -39,7 +39,7 @@ class DriftAdaptiveModel(BaseFraudModel):
         y = train_df["isFraud"].values
 
         logger.info(
-            f"FR-5 Initial Training on {len(X):,} transactions ({int(np.sum(y))} fraud) on NVIDIA eGPU..."
+            f"FR-5 Initial Training on {len(X):,} transactions ({int(np.sum(y))} fraud) on GPU..."
         )
 
         xgb_params = {
@@ -91,7 +91,7 @@ class DriftAdaptiveModel(BaseFraudModel):
 
             logger.info(
                 f"[FR-5 FULL RETRAIN #{self.adaptation_count}] Drift alert triggered in slice {slice_idx + 1}. "
-                f"Executing FULL RETRAIN on {len(X_all):,} accumulated transactions ({pos} fraud) on NVIDIA eGPU..."
+                f"Executing FULL RETRAIN on {len(X_all):,} accumulated transactions ({pos} fraud) on GPU..."
             )
 
             xgb_params = {

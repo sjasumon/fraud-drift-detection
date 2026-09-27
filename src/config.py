@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     # API Authentication & Security
     api_key: str = Field(default="dev-secret-key", description="Master API Key for microservice endpoints")
 
-    # Hardware Acceleration Configuration (NVIDIA RTX 5080 eGPU)
+    # Hardware Acceleration Configuration (GPU / CUDA)
     use_gpu: bool = Field(default=True, description="Enable CUDA acceleration for XGBoost")
     gpu_device: str = Field(default="cuda", description="Target GPU device string")
 

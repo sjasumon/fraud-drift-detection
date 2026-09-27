@@ -3,7 +3,7 @@
 
 **Project:** Adaptive Fraud Detection Under Concept Drift (PhD Proposal Pre-Qualification)  
 **Supervisor Alignment:** Prof. Yun Sing Koh (MARS Lab / Centre of Machine Learning for Social Good, University of Auckland)  
-**Platform:** NVIDIA GeForce RTX 5080 eGPU (CUDA 12+) | MySQL Server 9.7 (`fraud_drift_db`) | Python 3.12+  
+**Platform:** CUDA-accelerated GPU | MySQL Server 9.7 (`fraud_drift_db`) | Python 3.12+  
 **Benchmark Suite:** IEEE-CIS (590k) | Feedzai BAF NeurIPS 2022 (1.0M) | PaySim Mobile Money (6.36M)  
 **Status Tracker:** Active Implementation  
 
@@ -194,7 +194,7 @@ Implementing these two models proves that **drift-informed retraining** is compu
 
 #### 2.4 Empirical 4-Way Streaming Benchmark Results (IEEE-CIS, 590,540 Rows, 26 Weeks)
 
-Executed on NVIDIA GeForce RTX 5080 eGPU | MySQL Server 9.7 (`fraud_drift_db`) | Total Pipeline Runtime: 52.67s
+Executed on GPU | MySQL Server 9.7 (`fraud_drift_db`) | Total Pipeline Runtime: 52.67s
 
 ```
  ┌───────────────────────────────────┬───────────┬──────────────┬──────────────┬────────────────┬────────────────┬───────────────────────────┐
@@ -329,13 +329,13 @@ In streaming machine learning literature, assuming instantaneous ground-truth la
   * Methods: `enqueue(slice_df, current_slice)`, `dequeue_matured(current_slice)`, `get_all_matured_training_data(initial_train_df)`.
 - [x] **Step 5.2:** Implement unit test suite in `tests/test_delayed_feedback.py` (5/5 tests passing).
 - [x] **Step 5.3:** Create latency audit module `src/delayed_audit.py` with CLI entrypoint `fraud-latency-audit`:
-  * Evaluates 4 regimes simultaneously across the 26-week IEEE-CIS stream on NVIDIA RTX 5080 eGPU.
+  * Evaluates 4 regimes simultaneously across the 26-week IEEE-CIS stream on GPU.
 - [x] **Step 5.4:** Generated publication-grade 4-panel figure: `results/figures/delayed_feedback_impact.png`.
 - [x] **Step 5.5:** Saved summary JSON benchmark to `results/metrics/delayed_feedback_benchmark.json`.
 
 #### 5.4 Empirical Verification Latency Benchmark Results (IEEE-CIS, 590,540 Rows, 26 Weeks)
 
-Executed on NVIDIA GeForce RTX 5080 eGPU | Stream: Weeks 6–26 ($N=439,335$ transactions, $16,660$ actual frauds)
+Executed on GPU | Stream: Weeks 6–26 ($N=439,335$ transactions, $16,660$ actual frauds)
 
 ```
  ┌───────────────────────────────┬───────────┬────────────────┬──────────────┬──────────────┬─────────────────────────┐
@@ -447,11 +447,11 @@ class DatasetIngestion:
 - [x] **Step 7.2:** Extend `src/preprocessing.py` to support dynamic dataset-specific categorical lists (`payment_type`, `employment_status`, `housing_status`, `device_os`, `source`) and automatic monthly slice partitioning.
 - [x] **Step 7.3:** Extend `src/pipeline.py` with `--dataset-type` (`ieee`, `feedzai`, `paysim`) and dynamic baseline slice sizing.
 - [x] **Step 7.4:** Structured `data/feedzai/Base.csv` (1M rows) and `data/paysim/paysim_full.csv` (6.36M rows) directories.
-- [x] **Step 7.5:** Executed end-to-end multi-model benchmarks across all 3 datasets on NVIDIA RTX 5080 eGPU, logging all metrics, drift events, and SHAP attributions into MySQL Server 9.7 (`fraud_drift_db`).
+- [x] **Step 7.5:** Executed end-to-end multi-model benchmarks across all 3 datasets on GPU, logging all metrics, drift events, and SHAP attributions into MySQL Server 9.7 (`fraud_drift_db`).
 
 #### 7.4 Empirical Multi-Dataset Generalization Benchmark (7.95 Million Transactions)
 
-All benchmarks executed on NVIDIA GeForce RTX 5080 eGPU | MySQL Server 9.7 (`fraud_drift_db`)
+All benchmarks executed on GPU | MySQL Server 9.7 (`fraud_drift_db`)
 
 ```
  ┌───────────────────────────┬──────────────┬──────────────┬──────────────┬──────────────┬────────────────┬──────────────┬───────────────────────────────┐
@@ -471,7 +471,7 @@ All benchmarks executed on NVIDIA GeForce RTX 5080 eGPU | MySQL Server 9.7 (`fra
    - **IEEE-CIS:** Concept drift is driven by *transaction frequency bursts* (`C13` surrogate velocity and `TransactionAmt` ticket scaling).
    - **Feedzai BAF:** Concept drift is driven by *long-horizon applicant behavior shifts* (`velocity_4w` PSI surging >5.0 as applicants rapidly apply across multiple digital channels).
    - **PaySim:** Concept drift is driven by *adversarial account balance anomalies* (`errorBalanceOrig` balance zeroing during unauthorized transfer laundering).
-3. **Hardware Efficiency:** Total execution time across all 7.95 million transactions on the NVIDIA RTX 5080 eGPU was under 7.5 minutes combined, proving that large-scale streaming drift adaptation is viable in production without specialized distributed cluster hardware.
+3. **Hardware Efficiency:** Total execution time across all 7.95 million transactions on GPU was under 7.5 minutes combined, proving that large-scale streaming drift adaptation is viable in production without specialized distributed cluster hardware.
 
 ---
 

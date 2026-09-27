@@ -3,7 +3,7 @@ End-to-End Orchestrator Pipeline for Concept-Drift-Aware Fraud Detection.
 Configured for:
 - IEEE-CIS Fraud Detection dataset (590,540 transactions spanning 26 weeks)
 - Strict MySQL Database persistence (fraud_drift_db)
-- NVIDIA GeForce RTX 5080 eGPU Hardware Acceleration (CUDA)
+- GPU Hardware Acceleration (CUDA)
 - Full Retrain Strategy upon ADWIN/DDM Concept Drift alerts
 - Publication-quality metrics (Precision, Recall, F1, AUC-PR) and charts
 """
@@ -70,9 +70,9 @@ def run_pipeline(
 
     logger.info("=" * 80)
     logger.info(f"STARTING CONCEPT-DRIFT-AWARE FRAUD DETECTION PIPELINE [{run_id}]")
-    logger.info(f"Hardware: NVIDIA eGPU Acceleration = {USE_GPU} ({GPU_DEVICE})")
+    logger.info(f"Hardware: GPU Acceleration = {USE_GPU} ({GPU_DEVICE})")
     logger.info(f"Database Backend: {db_backend_name}")
-    logger.info(f"Adaptation Strategy: FULL RETRAINING ON NVIDIA GPU")
+    logger.info(f"Adaptation Strategy: FULL RETRAINING ON GPU")
     logger.info(f"Reproducibility Seed: {RANDOM_SEED}")
     logger.info("=" * 80)
 
@@ -403,7 +403,7 @@ def run_pipeline(
             "dataset_name": dataset_path.name,
             "total_rows": len(df_raw),
             "time_slices_count": len(time_slices),
-            "gpu_accelerated": f"{static_model.device_used} (RTX 5080)",
+            "gpu_accelerated": f"{static_model.device_used}",
             "static_f1_overall": overall_summary["static_model"]["overall_f1"],
             "adaptive_f1_overall": overall_summary["adaptive_model"]["overall_f1"],
             "drift_alerts_count": len(drift_monitor.drift_events),
@@ -424,7 +424,7 @@ def run_pipeline(
     logger.info("=" * 96)
     logger.info(f"Dataset: {dataset_path.name} ({len(df_raw):,} transactions across {len(time_slices)} weeks)")
     logger.info(f"Dataset Slug: {dataset_slug}")
-    logger.info(f"Hardware Acceleration: {static_model.device_used} (NVIDIA RTX 5080 eGPU)")
+    logger.info(f"Hardware Acceleration: {static_model.device_used} (GPU)")
     logger.info(f"Database Logged: {db_backend_name}")
     logger.info(f"Total Drift Alerts: {len(drift_monitor.drift_events)}")
     logger.info("-" * 108)

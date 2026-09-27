@@ -97,7 +97,7 @@ We benchmark four learning paradigms under identical test-before-learn streaming
     \item \textbf{Static Baseline (Frozen):} Trained exclusively on $\mathcal{D}_{base}$ and permanently frozen across the remaining stream ($S_{n_{base}+1}, \dots, S_T$).
     \item \textbf{Blind Periodic Retraining:} Retrained unconditionally every $K$ time slices (e.g., $K=4$ weeks) on all accumulated historical data without statistical drift awareness.
     \item \textbf{Sliding Window Retraining:} Retrained every $K$ time slices strictly on the most recent $W$ time slices (e.g., $W=4$ weeks), intentionally purging older history to simulate memory-bounded streaming.
-    \item \textbf{Concept-Drift-Adaptive (Proposed):} Employs dual ADWIN ($\delta = 0.002$) and DDM detectors over the prediction error stream implemented via the River streaming framework~\cite{montiel2021river}. When drift is confirmed, a full retraining of an accelerated histogram-based gradient-boosted decision tree ensemble (XGBoost)~\cite{chen2016xgboost} is triggered across all matured streaming transactions on an NVIDIA RTX 5080 eGPU.
+    \item \textbf{Concept-Drift-Adaptive (Proposed):} Employs dual ADWIN ($\delta = 0.002$) and DDM detectors over the prediction error stream implemented via the River streaming framework~\cite{montiel2021river}. When drift is confirmed, a full retraining of an accelerated histogram-based gradient-boosted decision tree ensemble (XGBoost)~\cite{chen2016xgboost} is triggered across all matured streaming transactions on a GPU.
 \end{enumerate}
 
 \subsection{Simulating Asynchronous Verification Latency}
@@ -169,7 +169,7 @@ where $\phi_{ij}$ is the local TreeSHAP value of feature $j$ for sample $i$, and
 \end{table*}
 
 \subsection{Multi-Dataset Benchmark Portfolio}
-Our experimental platform evaluates three standardized benchmarks on an NVIDIA GeForce RTX 5080 eGPU ($16$GB VRAM) and MySQL Server 9.7:
+Our experimental platform evaluates three standardized benchmarks on a GPU ($16$GB VRAM) and MySQL Server 9.7:
 \begin{enumerate}
     \item \textbf{IEEE-CIS Fraud Detection:} $590{,}540$ transactions across 26 sequential weekly slices ($182$ days), $3.50\%$ fraud prevalence ($20{,}663$ frauds).
     \item \textbf{Feedzai BAF (NeurIPS 2022 Benchmark):} $1{,}000{,}000$ digital account opening applications across 8 monthly slices ($34$ weeks), $1.10\%$ fraud prevalence ($11{,}029$ frauds).

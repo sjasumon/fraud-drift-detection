@@ -1,7 +1,7 @@
 """
 FR-3: Static Baseline Model Module.
 Trains a frozen classification model on the initial temporal window (earliest 20%),
-accelerated by NVIDIA eGPU (CUDA), and evaluates across all subsequent time slices
+accelerated by GPU (CUDA), and evaluates across all subsequent time slices
 without retraining or parameter updates.
 """
 

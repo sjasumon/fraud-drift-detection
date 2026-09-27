@@ -5,7 +5,7 @@
 **Target Academic Supervisor:** Professor Yun Sing Koh, Director, Centre of Machine Learning for Social Good / MARS Lab, University of Auckland  
 **Document Alignment:** Pre-proposal technical feasibility proof supporting Phase 1 of *"Adaptive Fraud Detection Under Concept Drift, Towards Privacy-Preserving Cross-Institution Extension"*  
 **Software Release:** `fraud-drift-detection` v0.2.0 (PEP 621, Editable Package with Console CLI)  
-**Hardware Platform:** NVIDIA GeForce RTX 5080 eGPU (CUDA acceleration via `tree_method='hist'`)  
+**Hardware Platform:** CUDA-accelerated GPU (CUDA acceleration via `tree_method='hist'`)  
 **Database Backend:** MySQL Server 9.7 (`fraud_drift_db` on port 3306)  
 **Evaluation Portfolio:** 7,953,160 transactions across 3 distinct financial fraud benchmarks (IEEE-CIS, Feedzai BAF NeurIPS 2022, PaySim Mobile Money)  
 **Test Suite Verification:** 61/61 Automated Pytest Invariant Tests Passing in 11.77s  
@@ -27,7 +27,7 @@ To demonstrate rigorous engineering competence and deep academic alignment with 
    - *Static Baseline (Frozen):* Initial training window, zero updates across stream.
    - *Blind Periodic Retraining:* Fixed scheduled retrains (every 4 weeks or 2 months) without drift intelligence.
    - *Sliding Window Retraining:* Fixed recent memory window ($W=4\text{w}$), intentionally discarding older data.
-   - *Concept-Drift-Adaptive (Proposed):* Real-time ADWIN/DDM drift monitoring with GPU-accelerated full retraining on NVIDIA RTX 5080 eGPU.
+   - *Concept-Drift-Adaptive (Proposed):* Real-time ADWIN/DDM drift monitoring with GPU-accelerated full retraining on GPU.
 3. **Mechanistic Drift Attribution & TreeSHAP $\times (1 + \text{PSI})$ Explainability:** Eliminates the "black-box" dilemma by combining Shapley values with Population Stability Index divergence to isolate the exact feature drivers responsible for every drift trigger, with **165 attribution records** persisted in MySQL.
 4. **First Rigorous Simulation of Verification Latency:** Eliminates the unrealistic "immediate verification assumption" by modeling 30–90 day dispute/chargeback lags across 4 operational regimes (0w, 4w, 8w, and LogNormal latency).
 5. **Real-Time Scoring Microservice (FastAPI/Uvicorn):** Sub-10ms real-time scoring microservice with lock-free atomic double-buffering during GPU retraining, benchmarked at **122.9 QPS** with **p95 latency of 9.88 ms**.
@@ -123,7 +123,7 @@ To demonstrate rigorous engineering competence and deep academic alignment with 
 - **FR-5.3 (Audit Logging):** Every drift trigger records the exact time slice, sample index, detector type, and transaction ID.
 
 ### FR-6: Concept-Drift-Adaptive GPU Retraining Architecture
-- **FR-6.1 (Full GPU Retraining):** Implemented in `src/adaptive_model.py`. Upon drift confirmation, triggers full retraining across all accumulated streaming transactions on the NVIDIA RTX 5080 eGPU using CUDA histogram gradient boosting (`tree_method='hist'`, `device='cuda'`).
+- **FR-6.1 (Full GPU Retraining):** Implemented in `src/adaptive_model.py`. Upon drift confirmation, triggers full retraining across all accumulated streaming transactions on GPU using CUDA histogram gradient boosting (`tree_method='hist'`, `device='cuda'`).
 - **FR-6.2 (Strict Deduplication & History Isolation):** Initial seed transactions are never re-accumulated into the streaming buffer, guaranteeing zero row duplication across the lifetime of the stream.
 - **FR-6.3 (Test-Before-Learn Evaluation):** Incoming time slice $k$ must be completely evaluated for out-of-sample inference before its transactions enter the model's training memory.
 
@@ -162,7 +162,7 @@ To demonstrate rigorous engineering competence and deep academic alignment with 
 
 - **NFR-1 (Deterministic Reproducibility):** Master random seed `RANDOM_SEED = 42` enforced across NumPy, Python random, and XGBoost booster initializations.
 - **NFR-2 (Type-Safe Environment Validation):** Configuration managed through `pydantic_settings.BaseSettings` in `src/config.py`. Invalid database ports, out-of-bounds ratios, or improper detector thresholds fail fast at initialization.
-- **NFR-3 (Hardware Acceleration SLA):** Full retrains on accumulated datasets ($N > 500,000$) execute under 3.0 seconds per retrain on the NVIDIA RTX 5080 eGPU.
+- **NFR-3 (Hardware Acceleration SLA):** Full retrains on accumulated datasets ($N > 500,000$) execute under 3.0 seconds per retrain on GPU.
 - **NFR-4 (Production Latency SLA):** Real-time API scoring delivers p95 latency $<15\text{ms}$ and median p50 latency $<10\text{ms}$.
 - **NFR-5 (Containerization SLA):** Standalone multi-stage `Dockerfile` and `docker-compose.yml` orchestrating MySQL 8.4/9.x and the GPU scoring microservice.
 - **NFR-6 (Honesty of Claims & Exact Mathematical Traceability):** All performance numbers in reports are directly traceable to raw database logs and metrics files.
@@ -190,7 +190,7 @@ To demonstrate rigorous engineering competence and deep academic alignment with 
 
 ## 6. Empirical Evaluation Across the 3 Benchmark Domains
 
-All benchmarks executed on **NVIDIA GeForce RTX 5080 eGPU** with MySQL Server 9.7 (`fraud_drift_db`):
+All benchmarks executed on **GPU** with MySQL Server 9.7 (`fraud_drift_db`):
 
 ```
  ┌───────────────────────────┬──────────────┬──────────────┬──────────────┬──────────────┬────────────────┬──────────────┬───────────────────────────────┐
@@ -372,7 +372,7 @@ This platform directly connects with the core strengths and publications of Prof
 
 In adherence to high academic standards, the following methodological boundaries are explicitly acknowledged:
 1. **Longitudinal Depth Scope:** Deep 26-week streaming adaptation and TreeSHAP attribution are validated primarily on IEEE-CIS (590K transactions). Feedzai BAF and PaySim serve as cross-domain structural consistency checks and multi-seed statistical significance controls; their drift dynamics reflect different temporal granularities.
-2. **Hardware Sensitivity:** Reported sub-15ms scoring latency and 77.77-second stream retraining rely on CUDA eGPU acceleration (NVIDIA RTX 5080). When executed in CPU-only mode, the 26-week retraining takes ~4–6 minutes.
+2. **Hardware Sensitivity:** Reported sub-15ms scoring latency and 77.77-second stream retraining rely on CUDA GPU acceleration. When executed in CPU-only mode, the 26-week retraining takes ~4–6 minutes.
 3. **Verification Latency Evaluation Semantics:** In the delayed-feedback simulation ([`src/delayed_audit.py`](src/delayed_audit.py)), matured disputes are evaluated against the active model at maturity time ($M_{t+\delta}$). This aligns with operational deployment (avoiding unnecessary retrain triggers if intervening models have already adapted to the pattern), but differs from tracking arrival-time error signals ($M_t$). Both methodologies are discussed in Section 8.
 4. **Data Provenance:** Benchmark datasets originate from Kaggle under competition and Creative Commons licenses and cannot be redistributed directly. Setup instructions and download sources are documented in [`README.md`](README.md).
 
@@ -387,7 +387,7 @@ In adherence to high academic standards, the following methodological boundaries
 - [x] **Criterion 5 (Verification Latency Simulation):** Empirical degradation curve evaluated across 4 regimes and visualized at `results/figures/delayed_feedback_impact.png`.
 - [x] **Criterion 6 (FastAPI Real-Time Microservice):** Sub-10ms inference microservice with atomic double-buffering, Dockerfile, and docker-compose.
 - [x] **Criterion 7 (Automated Test Suite):** 61/61 automated invariant tests passing cleanly in 11.77s.
-- [x] **Criterion 8 (Hardware & DB Compliance):** Ran on NVIDIA RTX 5080 eGPU (`tree_method='hist'`, `device='cuda'`); 100% persisted into MySQL Server 9.7 (`fraud_drift_db`).
+- [x] **Criterion 8 (Hardware & DB Compliance):** Ran on GPU (`tree_method='hist'`, `device='cuda'`); 100% persisted into MySQL Server 9.7 (`fraud_drift_db`).
 
 ---
 
