@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+message: "If you utilize this research framework, benchmarks, or preprint code, please cite it as below."
+title: "Adaptive Fraud Detection Under Concept Drift, Towards Privacy-Preserving Cross-Institution Extension"
+version: 0.2.0
+date-released: 2026-09-27
+url: "https://github.com/sjasumon/fraud-drift-detection"
+authors:
+  - family-names: "Sumon"
+    given-names: "Sheikh Joynal Abedin"
+    email: "me@sumon.me"
+    affiliation: "MARS Lab / School of Computer Science, University of Auckland"
+  - family-names: "Koh"
+    given-names: "Yun Sing"
+    affiliation: "Centre of Machine Learning for Social Good, University of Auckland"
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Sumon"
+      given-names: "Sheikh Joynal Abedin"
+    - family-names: "Koh"
+      given-names: "Yun Sing"
+  title: "Adaptive Fraud Detection Under Concept Drift, Towards Privacy-Preserving Cross-Institution Extension"
+  journal: "arXiv preprint"
+  year: 2026
+  keywords:
+    - "data stream mining"
+    - "concept drift"
+    - "fraud detection"
+    - "verification latency"
+    - "TreeSHAP"
+    - "XGBoost"

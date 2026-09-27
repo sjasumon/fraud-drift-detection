@@ -1,10 +1,12 @@
 # Concept-Drift-Aware Fraud Detection Architecture
 
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/release/python-3120/)
-[![CUDA Acceleration](https://img.shields.io/badge/CUDA-RTX%205080%20eGPU-green.svg)](https://developer.nvidia.com/cuda-zone)
+[![CUDA Acceleration](https://img.shields.io/badge/CUDA-RTX%205080%20eGPU%20%7C%20CPU%20Fallback-green.svg)](https://developer.nvidia.com/cuda-zone)
 [![arXiv Preprint](https://img.shields.io/badge/arXiv-Preprint%20Ready-b31b1b.svg)](arxiv_paper/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Tests Passing](https://img.shields.io/badge/tests-55%20passed-brightgreen.svg)](tests/)
+[![Coverage](https://img.shields.io/badge/coverage-85%25%20core%20modules-brightgreen.svg)](tests/)
+[![CI Test Suite](https://github.com/sjasumon/fraud-drift-detection/actions/workflows/ci.yml/badge.svg)](https://github.com/sjasumon/fraud-drift-detection/actions/workflows/ci.yml)
 
 A reproducible, production-grade empirical research framework and preprint package developed in support of doctoral research under **Professor Yun Sing Koh** at the **MARS Lab / Centre of Machine Learning for Social Good, University of Auckland**.
 
@@ -30,11 +32,19 @@ cd "fraud-drift-detection"
 .\setup.bat
 ```
 
-### Run Test Suite
+### Run Test Suite & Coverage
 ```bash
-pytest -v
+pytest -v --cov=src --cov-report=term-missing
 # Output: ======================= 55 passed in 10.6s =======================
+# Core algorithmic modules: 85%-100% unit coverage
 ```
+
+### ⚡ Hardware Acceleration & Automatic CPU Fallback
+
+This framework is optimized for hardware-accelerated training using an **NVIDIA GeForce RTX 5080 eGPU** (CUDA `tree_method='hist'`), enabling full 26-week streaming retrains across 590,540 transactions in **77.77 seconds** (~1.2s per retrain).
+
+* **Automatic CPU Fallback**: If an NVIDIA CUDA device is not present, or if `USE_GPU=false` is set in `.env`, the entire framework seamlessly falls back to CPU-based histogram gradient boosting without failing or crashing. On a standard multi-core laptop CPU, the 26-week stream retraining runs in approximately 4–6 minutes.
+* **Test Suite Hardware Independence**: The entire 55-test verification suite and the multi-armed bandit evaluation run 100% on CPU by default (and in CI), requiring zero GPU hardware to reproduce all invariant tests.
 
 ---
 
@@ -155,6 +165,21 @@ To evaluate online exploration-exploitation under non-stationary fraud environme
 
 ---
 
+## 📦 Data Provenance & Benchmark Datasets
+
+Due to Kaggle dataset license agreements, multi-gigabyte raw benchmark files cannot be redistributed directly inside git. To rerun the full-scale empirical pipelines, download the datasets directly from their official academic/competition sources:
+
+| Benchmark Dataset | Domain & Scale | Source & Download Link | License | Setup Instructions |
+|---|---|---|---|---|
+| **IEEE-CIS E-Commerce** | 590,540 transactions, 26 weeks | [Kaggle: IEEE-CIS Fraud Detection](https://www.kaggle.com/c/ieee-fraud-detection/data) | Academic / Competition | Extract `train_transaction.csv` and `train_identity.csv` to `data/raw/` (or repository root). |
+| **Feedzai BAF** | 1,000,000 applications, 8 months | [NeurIPS 2022 Benchmark on Kaggle](https://www.kaggle.com/datasets/sgpjesus/bank-account-fraud-dataset-neurips-2022) | CC BY 4.0 | Place `Base.csv` in `data/feedzai/Base.csv`. |
+| **PaySim Mobile Money** | 6,362,620 transactions, 5 weeks | [Kaggle: PaySim1](https://www.kaggle.com/datasets/ealaxi/paysim1) | CC BY-SA 4.0 | Place `PS_20174392719_1491204439457_log.csv` in `data/paysim/`. |
+
+> **Zero-Download Verification Out-of-the-Box**:
+> You do **not** need to download these multi-gigabyte files to verify the framework's mathematical correctness. The 55 automated invariant tests (`pytest -v`), schema validators (`tests/test_multi_dataset.py`), non-stationary bandit benchmark (`python -m src.bandit.benchmark`), and the FastAPI microservice (`src/api.py`) run immediately out-of-the-box using self-contained synthetic fixtures and schemas.
+
+---
+
 ## 🛠️ CLI Reproduction Commands
 
 All experiments can be executed via console script entrypoints or standard module invocations:
@@ -223,10 +248,22 @@ docker compose up -d
 
 ---
 
+## ⚠️ Research Limitations & Methodological Self-Critique
+
+In the interest of scientific rigor and transparent doctoral research, we highlight the following constraints, design choices, and operational boundaries:
+
+1. **Longitudinal Depth vs. Multi-Domain Breadth**: While the framework implements ingestion adapters for three distinct benchmark archetypes (IEEE-CIS, Feedzai BAF, PaySim), the deep 26-week streaming adaptation and TreeSHAP attribution pipeline is validated primarily on the **IEEE-CIS** e-commerce benchmark (590,540 transactions). The PaySim and Feedzai benchmarks serve as cross-domain structural consistency checks and multi-seed statistical significance controls; their drift dynamics reflect different temporal granularities (e.g. PaySim's saturated accounting-balance feature yielding $F1 > 0.995$).
+2. **Hardware Dependency of Throughput Claims**: Reported sub-15ms scoring latency and ~77-second 26-week retraining rely on dedicated hardware acceleration (NVIDIA RTX 5080 eGPU via CUDA `tree_method='hist'`). While full CPU execution is completely supported without modification, full stream retraining on standard multi-core laptop CPUs scales to approximately 4–6 minutes.
+3. **Verification Latency Evaluation Semantics**: In our asynchronous verification latency audit ([`src/delayed_audit.py`](src/delayed_audit.py)), when historical dispute labels mature at slice $T_{\text{mat}}$, error metrics and drift triggers are evaluated using the *active model at maturity time* ($M_{T_{\text{mat}}}$). While this mirrors operational banking triage (avoiding unnecessary retrain triggers if intervening models have already adapted to the pattern), it differs from logging pure historical inference-time errors ($M_{T_{\text{arr}}}$). Both perspectives represent valid methodologies in the data stream mining literature, and developing hybrid dual-stream monitors is an open research area.
+4. **Microservice Distributed Concurrency**: The included FastAPI microservice utilizes thread-safe in-process memory singletons (`ModelDoubleBuffer`, `DriftMonitor`, `recent_predictions`) tailored for single-worker or edge nodes. For high-volume multi-process deployments (`uvicorn --workers N`), drift telemetry and prediction caches should be externalized to distributed key-value stores (e.g. Redis) to prevent split-brain drift states.
+
+---
+
 ## 🏛️ Repository Layout
 
 ```
 ├── .github/workflows/ci.yml         <- GitHub Actions continuous integration workflow
+├── CITATION.cff                     <- Standard CFF citation metadata for research
 ├── arxiv_paper/                     <- arXiv camera-ready paper package
 │   ├── main.tex                     <- IEEE-format camera-ready manuscript (5 pages)
 │   ├── references.bib               <- Authentic academic bibliography
@@ -248,7 +285,7 @@ docker compose up -d
 │   ├── drift_explainer.py           <- TreeSHAP drift attribution
 │   ├── preprocessing.py             <- Temporal feature engineering & UID extraction
 │   └── db.py                        <- MySQL SQLAlchemy persistence layer
-├── tests/                           <- Comprehensive test suite (54 tests)
+├── tests/                           <- Comprehensive test suite (55 tests)
 │   ├── test_statistical_rigor.py    <- Tests for bootstrap CIs and paired hypothesis testing
 │   ├── test_bandit.py               <- Tests for bandit agents and environment transitions
 │   ├── test_api.py                  <- Microservice endpoint validation

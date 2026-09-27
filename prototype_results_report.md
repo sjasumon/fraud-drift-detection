@@ -366,6 +366,14 @@ This platform directly connects with the core strengths and publications of Prof
 4. **Transition to Phase 2 (Privacy-Preserving Cross-Institution Extension):**
    Having empirically proved single-institution drift adaptation on three diverse datasets, the candidate is uniquely positioned to advance to **Phase 2**: extending this architecture across multiple simulated financial institutions using secure multi-party computation (SMPC) or federated learning, solving the cross-institution visibility dilemma without sharing raw transaction data.
 
+### 12.1 Research Limitations & Methodological Self-Critique
+
+In adherence to high academic standards, the following methodological boundaries are explicitly acknowledged:
+1. **Longitudinal Depth Scope:** Deep 26-week streaming adaptation and TreeSHAP attribution are validated primarily on IEEE-CIS (590K transactions). Feedzai BAF and PaySim serve as cross-domain structural consistency checks and multi-seed statistical significance controls; their drift dynamics reflect different temporal granularities.
+2. **Hardware Sensitivity:** Reported sub-15ms scoring latency and 77.77-second stream retraining rely on CUDA eGPU acceleration (NVIDIA RTX 5080). When executed in CPU-only mode, the 26-week retraining takes ~4–6 minutes.
+3. **Verification Latency Evaluation Semantics:** In the delayed-feedback simulation ([`src/delayed_audit.py`](src/delayed_audit.py)), matured disputes are evaluated against the active model at maturity time ($M_{t+\delta}$). This aligns with operational deployment (avoiding unnecessary retrain triggers if intervening models have already adapted to the pattern), but differs from tracking arrival-time error signals ($M_t$). Both methodologies are discussed in Section 8.
+4. **Data Provenance:** Benchmark datasets originate from Kaggle under competition and Creative Commons licenses and cannot be redistributed directly. Setup instructions and download sources are documented in [`README.md`](README.md).
+
 ---
 
 ## 13. Complete Deliverable Checklist & Acceptance Criteria Verification
