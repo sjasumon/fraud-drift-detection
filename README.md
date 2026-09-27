@@ -8,7 +8,7 @@
 [![Coverage](https://img.shields.io/badge/coverage-85%25%20core%20modules-brightgreen.svg)](tests/)
 [![CI Test Suite](https://github.com/sjasumon/fraud-drift-detection/actions/workflows/ci.yml/badge.svg)](https://github.com/sjasumon/fraud-drift-detection/actions/workflows/ci.yml)
 
-A reproducible, production-grade empirical research framework and preprint package developed in support of doctoral research under **Professor Yun Sing Koh** at the **MARS Lab / Centre of Machine Learning for Social Good, University of Auckland**.
+A reproducible, production-grade empirical research framework and pre-proposal package developed in support of a prospective PhD proposal to **Professor Yun Sing Koh** (MARS Lab / Centre of Machine Learning for Social Good, University of Auckland).
 
 This repository provides rigorous empirical validation, statistical confidence intervals, streaming multi-armed bandit extensions, and production deployment artifacts for:
 > **"Adaptive Fraud Detection Under Concept Drift, Towards Privacy-Preserving Cross-Institution Extension"**
@@ -301,9 +301,9 @@ In the interest of scientific rigor and transparent doctoral research, we highli
 
 ---
 
-## 🎓 Academic Alignment: Prof. Yun Sing Koh
+## 🎓 Proposed Doctoral Research Alignment: Prof. Yun Sing Koh
 
-This research directly aligns with the research agenda of **Prof. Yun Sing Koh** (MARS Lab / Centre of Machine Learning for Social Good, University of Auckland):
+This pre-proposal and experimental baseline is designed to align with the research agenda of **Prof. Yun Sing Koh** (MARS Lab / Centre of Machine Learning for Social Good, University of Auckland):
 1. **Adaptive Stream Mining & Concept Drift:** Extends foundational online algorithms (ADWIN, DDM) to massive, non-stationary financial transaction streams.
 2. **GPU Stream Acceleration:** Implements sub-1.5s model retraining on 500k+ transactions using CUDA histogram gradient boosting, echoing recent MARS lab publications (*GTree: GPU-Friendly Privacy-Preserving Decision Tree Training and Inference*, Wang et al., IEEE TrustCom 2024; and *XGT*, IEEE TDSC 2025).
 3. **Phased Research Trajectory:** Forms the empirical baseline for **Phase 2** (extending adaptive models to privacy-preserving federated settings across financial institutions).

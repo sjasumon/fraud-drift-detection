@@ -1,5 +1,6 @@
 {
     "static_model": {
+        "evaluation_scope": "Combined (In-Sample Warmup Slices 1-5 + OOS)",
         "overall_precision": 0.2241,
         "overall_recall": 0.6776,
         "overall_f1": 0.3368,
@@ -11,6 +12,7 @@
         "total_frauds": 20663
     },
     "adaptive_model": {
+        "evaluation_scope": "Combined (In-Sample Warmup Slices 1-5 + OOS)",
         "overall_precision": 0.2335,
         "overall_recall": 0.7291,
         "overall_f1": 0.3538,
@@ -22,6 +24,7 @@
         "total_frauds": 20663
     },
     "periodic_model": {
+        "evaluation_scope": "Combined (In-Sample Warmup Slices 1-5 + OOS)",
         "overall_precision": 0.2328,
         "overall_recall": 0.7457,
         "overall_f1": 0.3548,
@@ -33,6 +36,7 @@
         "total_frauds": 20663
     },
     "sliding_model": {
+        "evaluation_scope": "Combined (In-Sample Warmup Slices 1-5 + OOS)",
         "overall_precision": 0.2634,
         "overall_recall": 0.702,
         "overall_f1": 0.383,
@@ -45,6 +49,7 @@
     },
     "out_of_sample_stream": {
         "static_model": {
+            "evaluation_scope": "Pure Out-of-Sample (OOS Slices 6-26 Only)",
             "overall_precision": 0.2225,
             "overall_recall": 0.6327,
             "overall_f1": 0.3293,
@@ -56,6 +61,7 @@
             "total_frauds": 16660
         },
         "adaptive_model": {
+            "evaluation_scope": "Pure Out-of-Sample (OOS Slices 6-26 Only)",
             "overall_precision": 0.2352,
             "overall_recall": 0.7358,
             "overall_f1": 0.3565,
@@ -67,6 +73,7 @@
             "total_frauds": 16660
         },
         "periodic_model": {
+            "evaluation_scope": "Pure Out-of-Sample (OOS Slices 6-26 Only)",
             "overall_precision": 0.2293,
             "overall_recall": 0.7134,
             "overall_f1": 0.3471,
@@ -78,6 +85,7 @@
             "total_frauds": 16660
         },
         "sliding_model": {
+            "evaluation_scope": "Pure Out-of-Sample (OOS Slices 6-26 Only)",
             "overall_precision": 0.2698,
             "overall_recall": 0.6592,
             "overall_f1": 0.3829,

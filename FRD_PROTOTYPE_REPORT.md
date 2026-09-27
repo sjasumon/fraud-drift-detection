@@ -194,7 +194,7 @@ All benchmarks executed on **NVIDIA GeForce RTX 5080 eGPU** with MySQL Server 9.
 
 ```
  ┌───────────────────────────┬──────────────┬──────────────┬──────────────┬──────────────┬────────────────┬──────────────┬───────────────────────────────┐
- │ Dataset Archetype         │ Volume (N)   │ Time Slices  │ Retrains     │ Whole F1     │ Whole AUC-PR   │ OOS Recall   │ Primary Drift Driver (P4)     │
+ │ Dataset Archetype         │ Volume (N)   │ Time Slices  │ Retrains     │ In+OOS F1*   │ In+OOS AUC*    │ OOS Recall   │ Primary Drift Driver (P4)     │
  ├───────────────────────────┼──────────────┼──────────────┼──────────────┼──────────────┼────────────────┼──────────────┼───────────────────────────────┤
  │ 1. IEEE-CIS E-Commerce    │ 590,540      │ 26 Weeks     │ 22 Retrains  │ 0.3538       │ 0.5263         │ 73.58%       │ C13 (Identity velocity proxy) │
  │ 2. Feedzai BAF (NeurIPS)  │ 1,000,000    │ 8 Months     │ 6 Retrains   │ 0.1112       │ 0.1801         │ 76.08%       │ velocity_4w (4-week velocity) │
@@ -203,12 +203,13 @@ All benchmarks executed on **NVIDIA GeForce RTX 5080 eGPU** with MySQL Server 9.
  │ TOTAL BENCHMARK PORTFOLIO │ 7,953,160    │ 39 Slices    │ 33 Retrains  │ 3 Disparate Financial Domains │ Top Recall   │ 165 SHAP Attributions Logged  │
  └───────────────────────────┴──────────────┴──────────────┴──────────────┴───────────────────────────────┴──────────────┴───────────────────────────────┘
 ```
+*\* Note: 'In+OOS' metrics reflect whole-stream evaluation including training warmup slices. Pure out-of-sample generalization is isolated under 'OOS Recall' and 'OOS AUC-PR'.*
 
 ### 6.1 IEEE-CIS E-Commerce Streaming Benchmark (Weeks 6–26, $N=439,335$, $16,660$ Frauds)
 
 ```
  ┌───────────────────────────────────┬───────────┬──────────────┬──────────────┬────────────────┬────────────────┬───────────────────────────┐
- │ Model Architecture                │ Retrains  │ Whole F1     │ Whole AUC-PR │ OOS Recall (%) │ OOS AUC-PR     │ Out-of-Sample Gain vs Base│
+ │ Model Architecture                │ Retrains  │ In+OOS F1*   │ In+OOS AUC*  │ OOS Recall (%) │ OOS AUC-PR     │ Out-of-Sample Gain vs Base│
  ├───────────────────────────────────┼───────────┼──────────────┼──────────────┼────────────────┼────────────────┼───────────────────────────┤
  │ 1. Static Baseline (Frozen)       │ 0         │ 0.3368       │ 0.4997       │ 63.27% (10,541)│ 0.4606         │ Control Benchmark         │
  │ 2. Sliding Window (Last 4w)       │ 5         │ 0.3830       │ 0.5416       │ 65.92% (10,983)│ 0.5099         │ +2.65% (+442 frauds)      │
@@ -216,6 +217,7 @@ All benchmarks executed on **NVIDIA GeForce RTX 5080 eGPU** with MySQL Server 9.
  │ 4. Drift-Adaptive (Proposed)      │ 22        │ 0.3538       │ 0.5263       │ 73.58% (12,259)│ 0.5318         │ +10.31% (+1,718 frauds)   │
  └───────────────────────────────────┴───────────┴──────────────┴──────────────┴────────────────┴────────────────┴───────────────────────────┘
 ```
+*\* Note: 'In+OOS' columns combine initial training warmup slices (Weeks 1–5) and streaming slices. Pure out-of-sample generalization is reported under 'OOS Recall (%)' and 'OOS AUC-PR' on unseen Weeks 6–26.*
 
 #### Key Scientific Insights for Prof. Yun Sing Koh:
 1. **Catastrophic Forgetting in Sliding Window:** While sliding window achieves higher localized precision on recent slices, its out-of-sample recall drops to **65.92%** (missing $1,276$ frauds caught by the adaptive model). Fraud attack patterns recur cyclically; purging transactions older than 4 weeks destroys recognition of historical attack vectors.

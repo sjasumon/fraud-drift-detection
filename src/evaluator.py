@@ -81,13 +81,14 @@ class SliceEvaluator:
         """
         FR-6.3: Computes overall whole-dataset and out-of-sample metrics for all active models.
         """
-        def _calc_model_metrics(preds: np.ndarray, probs: np.ndarray, y: np.ndarray) -> Dict[str, Any]:
+        def _calc_model_metrics(preds: np.ndarray, probs: np.ndarray, y: np.ndarray, scope_desc: str = "Combined (In-Sample Warmup + Out-of-Sample)") -> Dict[str, Any]:
             tp = int(((y == 1) & (preds == 1)).sum())
             fp = int(((y == 0) & (preds == 1)).sum())
             fn = int(((y == 1) & (preds == 0)).sum())
             tn = int(((y == 0) & (preds == 0)).sum())
             total_fraud = int(np.sum(y))
             return {
+                "evaluation_scope": scope_desc,
                 "overall_precision": round(float(precision_score(y, preds, zero_division=0)), 4),
                 "overall_recall": round(float(recall_score(y, preds, zero_division=0)), 4),
                 "overall_f1": round(float(f1_score(y, preds, zero_division=0)), 4),
@@ -100,30 +101,32 @@ class SliceEvaluator:
             }
 
         summary = {
-            "static_model": _calc_model_metrics(static_preds, static_probs, y_all),
-            "adaptive_model": _calc_model_metrics(adaptive_preds, adaptive_probs, y_all)
+            "static_model": _calc_model_metrics(static_preds, static_probs, y_all, scope_desc="Combined (In-Sample Warmup Slices + OOS)"),
+            "adaptive_model": _calc_model_metrics(adaptive_preds, adaptive_probs, y_all, scope_desc="Combined (In-Sample Warmup Slices + OOS)")
         }
 
         if periodic_preds is not None and periodic_probs is not None:
-            summary["periodic_model"] = _calc_model_metrics(periodic_preds, periodic_probs, y_all)
+            summary["periodic_model"] = _calc_model_metrics(periodic_preds, periodic_probs, y_all, scope_desc="Combined (In-Sample Warmup Slices + OOS)")
 
         if sliding_preds is not None and sliding_probs is not None:
-            summary["sliding_model"] = _calc_model_metrics(sliding_preds, sliding_probs, y_all)
+            summary["sliding_model"] = _calc_model_metrics(sliding_preds, sliding_probs, y_all, scope_desc="Combined (In-Sample Warmup Slices + OOS)")
 
         # Pure out-of-sample evaluation if mask provided
         if oos_mask is not None and np.sum(oos_mask) > 0:
             y_oos = y_all[oos_mask]
             summary["out_of_sample_stream"] = {
-                "static_model": _calc_model_metrics(static_preds[oos_mask], static_probs[oos_mask], y_oos),
-                "adaptive_model": _calc_model_metrics(adaptive_preds[oos_mask], adaptive_probs[oos_mask], y_oos),
+                "static_model": _calc_model_metrics(static_preds[oos_mask], static_probs[oos_mask], y_oos, scope_desc="Pure Out-of-Sample (OOS Only)"),
+                "adaptive_model": _calc_model_metrics(adaptive_preds[oos_mask], adaptive_probs[oos_mask], y_oos, scope_desc="Pure Out-of-Sample (OOS Only)"),
             }
             if periodic_preds is not None and periodic_probs is not None:
                 summary["out_of_sample_stream"]["periodic_model"] = _calc_model_metrics(
-                    periodic_preds[oos_mask], periodic_probs[oos_mask], y_oos
+                    periodic_preds[oos_mask], periodic_probs[oos_mask], y_oos,
+                    scope_desc="Pure Out-of-Sample (OOS Only)"
                 )
             if sliding_preds is not None and sliding_probs is not None:
                 summary["out_of_sample_stream"]["sliding_model"] = _calc_model_metrics(
-                    sliding_preds[oos_mask], sliding_probs[oos_mask], y_oos
+                    sliding_preds[oos_mask], sliding_probs[oos_mask], y_oos,
+                    scope_desc="Pure Out-of-Sample (OOS Only)"
                 )
 
         return summary
