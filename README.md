@@ -258,6 +258,9 @@ docker run --gpus all -p 8000:8000 fraud-drift-microservice
 docker compose up -d
 ```
 
+> [!NOTE]
+> **Network Perimeter & CORS Policy**: Cross-Origin Resource Sharing (CORS) is intentionally unconfigured on the FastAPI scoring service. The container is designed to operate within an internal, backend-to-backend Docker network perimeter or private VPC isolated from direct public browser exposure. Ingress from web frontends should terminate via a reverse proxy (e.g. NGINX, Envoy, or an API Gateway) with an explicit CORS allowlist.
+
 ---
 
 ## Research Limitations & Methodological Self-Critique

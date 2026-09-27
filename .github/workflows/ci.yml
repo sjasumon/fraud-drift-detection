@@ -36,6 +36,12 @@ jobs:
         run: |
           pytest -v --cov=src --cov-report=term --cov-report=xml
 
+      - name: Verify SHAP Drift Attribution Invariants (P4 Explainability)
+        env:
+          USE_GPU: "false"
+        run: |
+          pytest -v tests/test_drift_explainer.py
+
       - name: Run Bandit Non-Stationary Verification (Quick Demo)
         env:
           USE_GPU: "false"
