@@ -30,7 +30,7 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           pip install -e ".[test]"
 
-      - name: Run Full Test Suite (47 Invariant & Unit Tests)
+      - name: Run Full Test Suite (50 Invariant & Unit Tests)
         env:
           USE_GPU: "false"
           DB_TYPE: "sqlite"

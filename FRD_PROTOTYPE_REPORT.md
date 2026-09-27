@@ -8,7 +8,7 @@
 **Hardware Platform:** NVIDIA GeForce RTX 5080 eGPU (CUDA acceleration via `tree_method='hist'`)  
 **Database Backend:** MySQL Server 9.7 (`fraud_drift_db` on port 3306)  
 **Evaluation Portfolio:** 7,953,160 transactions across 3 distinct financial fraud benchmarks (IEEE-CIS, Feedzai BAF NeurIPS 2022, PaySim Mobile Money)  
-**Test Suite Verification:** 37/37 Automated Pytest Invariant Tests Passing in 10.30s  
+**Test Suite Verification:** 50/50 Automated Pytest Invariant Tests Passing in 10.29s  
 **Evaluation Date:** September 2026  
 
 ---
@@ -30,8 +30,8 @@ To demonstrate rigorous engineering competence and deep academic alignment with 
    - *Concept-Drift-Adaptive (Proposed):* Real-time ADWIN/DDM drift monitoring with GPU-accelerated full retraining on NVIDIA RTX 5080 eGPU.
 3. **Mechanistic Drift Attribution & TreeSHAP $\times (1 + \text{PSI})$ Explainability:** Eliminates the "black-box" dilemma by combining Shapley values with Population Stability Index divergence to isolate the exact feature drivers responsible for every drift trigger, with **165 attribution records** persisted in MySQL.
 4. **First Rigorous Simulation of Verification Latency:** Eliminates the unrealistic "immediate verification assumption" by modeling 30–90 day dispute/chargeback lags across 4 operational regimes (0w, 4w, 8w, and LogNormal latency).
-5. **Real-Time Enterprise Scoring Microservice (FastAPI/Uvicorn):** Sub-10ms real-time scoring microservice with lock-free atomic double-buffering during GPU retraining, benchmarked at **122.9 QPS** with **p95 latency of 9.88 ms**.
-6. **Automated Mathematical Invariant Guardrails:** 37 automated tests proving zero temporal lookahead leakage, zero historical data duplication, collision-free identity tokenization, and integer confusion matrix reconciliation.
+5. **Real-Time Scoring Microservice (FastAPI/Uvicorn):** Sub-10ms real-time scoring microservice with lock-free atomic double-buffering during GPU retraining, benchmarked at **122.9 QPS** with **p95 latency of 9.88 ms**.
+6. **Automated Mathematical Invariant Guardrails:** 50 automated tests proving zero temporal lookahead leakage, zero historical data duplication, collision-free identity tokenization, and integer confusion matrix reconciliation.
 
 ---
 
@@ -67,7 +67,7 @@ To demonstrate rigorous engineering competence and deep academic alignment with 
   └───────────────────────────────────────────┬────────────────────────────────────────────┘
                                               ▼
   ┌────────────────────────────────────────────────────────────────────────────────────────┐
-  │                    ENTERPRISE DEPLOYMENT & METRICS PERSISTENCE                         │
+  │                     SERVICE DEPLOYMENT & METRICS PERSISTENCE                           │
   │  FastAPI Microservice (Sub-10ms SLA) │ MySQL 9.7 Database │ High-Res Publication Plots │
   └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -149,12 +149,12 @@ To demonstrate rigorous engineering competence and deep academic alignment with 
 - **FR-10.2 (Integer Confusion Matrix Reconciliation):** Across all slices and models: $\text{TP}_k + \text{FN}_k = \sum_{i \in S_k} y_i$.
 - **FR-10.3 (High-Resolution Visual Trajectories):** The evaluator generates 300 DPI time-series trajectory plots (`results/figures/model_comparison_f1_aucpr.png`).
 
-### FR-11: Enterprise Persistence & Relational Auditing (MySQL Server 9.7)
+### FR-11: Relational Persistence & Auditing (MySQL Server 9.7)
 - **FR-11.1 (Strict Relational Persistence):** Implemented in `src/db.py` via SQLAlchemy and PyMySQL. All runs, slice metrics, drift events, and SHAP attributions are persisted in MySQL schema `fraud_drift_db`.
 
 ### FR-12: Automated Pytest Invariant Guardrails & Packaging
-- **FR-12.1 (PEP 621 Python Packaging):** Structured as modern package `fraud-drift-detection` (v0.2.0) via `pyproject.toml` with console entrypoints: `fraud-pipeline`, `fraud-audit`, `fraud-latency-audit`.
-- **FR-12.2 (Automated Test Suite):** 37 automated tests across 10 test modules verifying mathematical invariants, baseline mechanics, and API stability.
+- **FR-12.1 (PEP 621 Python Packaging):** Structured as modern package `fraud-drift-detection` (v0.3.0) via `pyproject.toml` with console entrypoints: `fraud-pipeline`, `fraud-audit`, `fraud-latency-audit`, `fraud-stats-rigor`, `fraud-bandit`.
+- **FR-12.2 (Automated Test Suite):** 50 automated tests across 11 test modules verifying mathematical invariants, baseline mechanics, and API stability.
 
 ---
 
@@ -289,7 +289,7 @@ In Method A's Cohort 3 (evaluated on verified physical cardholders upon their fi
 
 ---
 
-## 10. Enterprise Real-Time Scoring Microservice & Sub-10ms SLA (FR-9)
+## 10. Real-Time Scoring Microservice & Sub-10ms Latency SLA (FR-9)
 
 Implemented in [`src/api.py`](file:///C:/Users/Sumon/Projects/phd/Yun%20Sing%20Koh/src/api.py) and packaged with multi-stage [`Dockerfile`](file:///C:/Users/Sumon/Projects/phd/Yun%20Sing%20Koh/Dockerfile) and [`docker-compose.yml`](file:///C:/Users/Sumon/Projects/phd/Yun%20Sing%20Koh/docker-compose.yml):
 
@@ -349,7 +349,7 @@ tests/test_multi_dataset.py::test_preprocessor_multi_dataset_categoricals PASSED
 tests/test_uid_collision.py::test_missing_identity_collision_freedom PASSED [ 94%]
 tests/test_uid_collision.py::test_method_a_clean_filtering PASSED        [ 97%]
 tests/test_uid_collision.py::test_cohort_disjointness_and_exhaustiveness PASSED [100%]
-============================== 37 passed in 10.30s ===============================
+============================== 50 passed in 10.29s ===============================
 ```
 
 ---
@@ -376,7 +376,7 @@ This platform directly connects with the core strengths and publications of Prof
 - [x] **Criterion 4 (Mechanistic Explainability):** 165 TreeSHAP $\times$ PSI feature attribution records logged to MySQL table `drift_attributions`.
 - [x] **Criterion 5 (Verification Latency Simulation):** Empirical degradation curve evaluated across 4 regimes and visualized at `results/figures/delayed_feedback_impact.png`.
 - [x] **Criterion 6 (FastAPI Real-Time Microservice):** Sub-10ms inference microservice with atomic double-buffering, Dockerfile, and docker-compose.
-- [x] **Criterion 7 (Automated Test Suite):** 37/37 automated invariant tests passing cleanly in 10.30s.
+- [x] **Criterion 7 (Automated Test Suite):** 50/50 automated invariant tests passing cleanly in 10.29s.
 - [x] **Criterion 8 (Hardware & DB Compliance):** Ran on NVIDIA RTX 5080 eGPU (`tree_method='hist'`, `device='cuda'`); 100% persisted into MySQL Server 9.7 (`fraud_drift_db`).
 
 ---
@@ -386,5 +386,5 @@ This platform directly connects with the core strengths and publications of Prof
 | Version | Date | Author | Changes & Milestones |
 |:---:|:---:|:---:|---|
 | **1.0** | 2026-09-25 | Engineering Team | Initial draft prototype specification (IEEE-CIS single dataset). |
-| **2.0** | 2026-09-27 | PhD Research Candidate | Final enterprise & research master document consolidating FRD and empirical evaluation: Multi-dataset suite (Feedzai BAF & PaySim, 7.95M rows), TreeSHAP drift attribution, verification latency simulation, FastAPI microservice, Docker Compose, MySQL Server 9.7 persistence, and 37-test automated suite. |
+| **2.0** | 2026-09-27 | PhD Research Candidate | Final research master document consolidating FRD and empirical evaluation: Multi-dataset suite (Feedzai BAF & PaySim, 7.95M rows), TreeSHAP drift attribution, verification latency simulation, FastAPI microservice, Docker Compose, MySQL Server 9.7 persistence, and 50-test automated suite. |
 

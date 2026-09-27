@@ -11,7 +11,7 @@
 
 ## 📌 Executive Summary & Objective
 
-This roadmap establishes the step-by-step engineering and scientific process to evolve our concept-drift-aware fraud detection prototype into a **top-tier publication-grade research benchmark** and an **enterprise-ready financial MLOps platform**.
+This roadmap establishes the step-by-step engineering and scientific process to evolve our concept-drift-aware fraud detection prototype into a **top-tier publication-grade research benchmark** and a **production-ready streaming ML platform**.
 
 Every work package is designed to address specific methodological questions raised in data stream mining literature (Prof. Koh's domain) and financial machine learning audits, while adhering to modern production software standards.
 
@@ -471,7 +471,7 @@ All benchmarks executed on NVIDIA GeForce RTX 5080 eGPU | MySQL Server 9.7 (`fra
    - **IEEE-CIS:** Concept drift is driven by *transaction frequency bursts* (`C13` surrogate velocity and `TransactionAmt` ticket scaling).
    - **Feedzai BAF:** Concept drift is driven by *long-horizon applicant behavior shifts* (`velocity_4w` PSI surging >5.0 as applicants rapidly apply across multiple digital channels).
    - **PaySim:** Concept drift is driven by *adversarial account balance anomalies* (`errorBalanceOrig` balance zeroing during unauthorized transfer laundering).
-3. **Hardware Efficiency:** Total execution time across all 7.95 million transactions on the NVIDIA RTX 5080 eGPU was under 7.5 minutes combined, proving that enterprise-scale drift adaptation is viable in production without specialized distributed cluster hardware.
+3. **Hardware Efficiency:** Total execution time across all 7.95 million transactions on the NVIDIA RTX 5080 eGPU was under 7.5 minutes combined, proving that large-scale streaming drift adaptation is viable in production without specialized distributed cluster hardware.
 
 ---
 

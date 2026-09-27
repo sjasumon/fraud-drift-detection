@@ -127,7 +127,7 @@ def test_atomic_model_hot_swap(client):
     assert model_buffer.generation == initial_gen + 1
     assert model_buffer.feature_names == new_features
 
-    # Immediate scoring request after swap must succeed seamlessly
+    # Immediate scoring request after swap must succeed without interruption
     score_resp = client.post("/v1/score", json={
         "trans_id": "TX_POST_SWAP",
         "features": {f: 1.0 for f in new_features}
