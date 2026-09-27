@@ -371,6 +371,9 @@ class BackgroundRetrainer:
 
 
 # --- FastAPI Application & State Initialization ---
+# Note on CORS: CORS middleware is intentionally omitted by default because this microservice
+# is designed as an internal backend-to-backend scoring engine isolated within a private network
+# perimeter (e.g. Docker network or VPC). For public browser access, attach CORSMiddleware with explicit origins.
 
 app = FastAPI(
     title="Concept-Drift-Aware Fraud Detection Microservice",

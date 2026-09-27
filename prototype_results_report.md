@@ -375,6 +375,7 @@ In adherence to high academic standards, the following methodological boundaries
 2. **Hardware Sensitivity:** Reported sub-15ms scoring latency and 77.77-second stream retraining rely on CUDA GPU acceleration. When executed in CPU-only mode, the 26-week retraining takes ~4–6 minutes.
 3. **Verification Latency Evaluation Semantics:** In the delayed-feedback simulation ([`src/delayed_audit.py`](src/delayed_audit.py)), matured disputes are evaluated against the active model at maturity time ($M_{t+\delta}$). This aligns with operational deployment (avoiding unnecessary retrain triggers if intervening models have already adapted to the pattern), but differs from tracking arrival-time error signals ($M_t$). Both methodologies are discussed in Section 8.
 4. **Data Provenance:** Benchmark datasets originate from Kaggle under competition and Creative Commons licenses and cannot be redistributed directly. Setup instructions and download sources are documented in [`README.md`](README.md).
+5. **CORS & Network Perimeter:** Cross-Origin Resource Sharing (CORS) is intentionally unconfigured on the FastAPI service, as it operates as an internal backend-to-backend scoring microservice isolated within a Docker/VPC network perimeter rather than a public browser API.
 
 ---
 
