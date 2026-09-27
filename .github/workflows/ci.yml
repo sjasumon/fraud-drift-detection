@@ -1,0 +1,52 @@
+name: CI Test Suite & Invariant Verification
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Run Pytest & Mathematical Invariants (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -e ".[test]"
+
+      - name: Run Full Test Suite (47 Invariant & Unit Tests)
+        env:
+          USE_GPU: "false"
+          DB_TYPE: "sqlite"
+        run: |
+          pytest -v --cov=src --cov-report=term --cov-report=xml
+
+      - name: Run Bandit Non-Stationary Verification (Quick Demo)
+        env:
+          USE_GPU: "false"
+        run: |
+          python -m src.bandit.benchmark --seeds 42 --steps 1000 --arms 3
+
+      - name: Upload Test Coverage
+        uses: actions/upload-artifact@v4
+        if: matrix.python-version == '3.12'
+        with:
+          name: coverage-report
+          path: coverage.xml
+          retention-days: 7

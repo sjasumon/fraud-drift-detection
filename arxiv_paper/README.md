@@ -1,0 +1,58 @@
+# arXiv Preprint Package: Concept-Drift-Aware Fraud Detection
+
+This package contains the camera-ready LaTeX source, bibliography, and figures for the arXiv preprint:
+**"Adaptive Fraud Detection Under Concept Drift: An Empirical Study on Verification Latency, Entity Generalization, and Statistical Rigor"**
+
+**Author:** Sheikh Joynal Abedin Sumon  
+**Target Submission:** arXiv (Computer Science > Machine Learning / Artificial Intelligence)
+
+---
+
+## Package Directory Structure
+
+```
+arxiv_paper/
+├── main.tex                    # Master LaTeX manuscript (IEEE conference/compsoc format)
+├── references.bib              # Complete authentic BibTeX citations
+├── README.md                   # Build and submission instructions
+└── figures/
+    ├── statistical_rigor_errorbars.png  # Multi-seed error bars & significance plot (300 DPI)
+    ├── delayed_feedback_impact.png      # Verification latency degradation curve
+    ├── drift_attribution_week_06.png    # TreeSHAP x PSI waterfall attribution plot
+    └── model_comparison_f1_aucpr.png    # Longitudinal F1 & AUC-PR comparison
+```
+
+---
+
+## How to Build and Compile
+
+### Option A: Overleaf (Fastest & Recommended)
+1. Zip the `arxiv_paper` folder contents (`main.tex`, `references.bib`, and `figures/`).
+2. Go to [Overleaf](https://www.overleaf.com), click **New Project** $\to$ **Upload Project**, and select the `.zip` file.
+3. Select **pdfLaTeX** compiler in project settings and click **Recompile**.
+
+### Option B: Local Compilation via Command Line (TeX Live / MiKTeX)
+```bash
+# Run pdflatex and bibtex sequence:
+pdflatex main.tex
+bibtex main
+pdflatex main.tex
+pdflatex main.tex
+```
+
+### Option C: Upload to arXiv
+1. Ensure all files (`main.tex`, `references.bib`, and figures) are packaged into a single `.tar.gz` or `.zip` file.
+2. In the arXiv submission portal, upload the archive. arXiv automatically runs TeX Live with `IEEEtran` and compiles the camera-ready PDF.
+
+---
+
+## Key Experimental Findings Documented in Paper
+
+1. **Definitive Disproof of Entity Memorization:**
+   - On IEEE-CIS Strict Stream-Unseen Cardholders (Cohort 3), under complete feature-blindness (raw card/addr IDs stripped), the drift-adaptive model achieves **$76.62\% \pm 0.35\%$ recall** vs. **$69.41\% \pm 1.07\%$** for the static baseline (**$+7.22\% \pm 1.31\%$ gain**, $t = 12.2673$, $p = 0.000254 < 0.001$).
+2. **Deconstruction of Single-Run Micro-Gains on Saturated Streams:**
+   - Multi-seed replication on PaySim ($K=5$) proves that the initial single-run difference ($0.9955 \to 0.9978$) is within random variance ($p = 0.2871$), demonstrating the imperative for statistical rigor.
+3. **Quantified Cost of Verification Latency:**
+   - An 8-week dispute resolution lag degrades out-of-sample recall from $72.70\%$ down to $63.45\%$ (approaching the frozen static baseline of $63.27\%$), proving the necessity of unsupervised feature-space monitoring while labels mature.
+4. **Sub-10ms Real-Time Production SLA:**
+   - Benchmark throughput of $122.9$ QPS with $p95$ latency of $9.88$ ms under lock-free atomic double-buffering.
