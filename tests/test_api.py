@@ -263,4 +263,43 @@ def test_automated_shadow_retraining_on_drift(client):
     assert drift_monitor.adwin.width == 0
 
 
+def test_concurrent_feedback_thread_safety(client):
+    """
+    Verifies that concurrent requests to /v1/feedback and /v1/drift-status
+    execute without data races, corruption, or exceptions on shared drift_monitor.
+    """
+    import concurrent.futures
+
+    initial_monitored = drift_monitor.total_samples_monitored
+    num_concurrent_requests = 40
+
+    def send_feedback(idx):
+        payload = {
+            "trans_id": f"TX_CONCURRENT_{idx:03d}",
+            "is_fraud": idx % 2,
+            "predicted_probability": 0.5
+        }
+        return client.post("/v1/feedback", json=payload)
+
+    def query_status():
+        return client.get("/v1/drift-status")
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        fb_futures = [executor.submit(send_feedback, i) for i in range(num_concurrent_requests)]
+        status_futures = [executor.submit(query_status) for _ in range(10)]
+
+        for f in concurrent.futures.as_completed(fb_futures):
+            resp = f.result()
+            assert resp.status_code == 200
+            assert resp.json()["status"] == "RECORDED"
+
+        for f in concurrent.futures.as_completed(status_futures):
+            resp = f.result()
+            assert resp.status_code == 200
+            assert "total_samples_monitored" in resp.json()
+
+    assert drift_monitor.total_samples_monitored == initial_monitored + num_concurrent_requests
+
+
+
 

@@ -260,10 +260,17 @@ class BackgroundRetrainer:
     when concept drift is flagged by ADWIN / DDM.
     Guarantees non-blocking scoring during retrain and coalesces concurrent triggers.
     """
-    def __init__(self, model_buffer: ModelDoubleBuffer, drift_monitor: DriftMonitor, training_store: FeedbackTrainingStore):
+    def __init__(
+        self,
+        model_buffer: ModelDoubleBuffer,
+        drift_monitor: DriftMonitor,
+        training_store: FeedbackTrainingStore,
+        drift_lock: Optional[threading.Lock] = None
+    ):
         self.model_buffer = model_buffer
         self.drift_monitor = drift_monitor
         self.training_store = training_store
+        self.drift_lock = drift_lock or threading.Lock()
         self._retrain_lock = threading.Lock()
         self._is_retraining = False
         self._total_retrains = 0
@@ -341,8 +348,9 @@ class BackgroundRetrainer:
             # Atomic hot-swap pointer to activate new model without dropping in-flight scoring
             self.model_buffer.atomic_swap(shadow_model, feature_names, is_dummy=False)
 
-            # Re-baseline detectors: flush pre-retrain error statistics
-            self.drift_monitor.reset_detectors()
+            # Re-baseline detectors under lock: flush pre-retrain error statistics
+            with self.drift_lock:
+                self.drift_monitor.reset_detectors()
 
             dur = time.time() - t0
             self._last_retrain_duration = round(dur, 3)
@@ -375,7 +383,8 @@ start_time = time.time()
 model_buffer = ModelDoubleBuffer()
 drift_monitor = DriftMonitor()
 training_store = FeedbackTrainingStore()
-retrainer = BackgroundRetrainer(model_buffer, drift_monitor, training_store)
+drift_lock = threading.Lock()
+retrainer = BackgroundRetrainer(model_buffer, drift_monitor, training_store, drift_lock=drift_lock)
 recent_predictions: Dict[str, float] = {}  # In-memory LRU cache of recent transaction probabilities
 recent_features: Dict[str, Dict[str, float]] = {}  # Cached features for ground-truth feedback pairing
 predictions_lock = threading.Lock()
@@ -563,27 +572,29 @@ def log_chargeback_feedback(payload: FeedbackPayload, background_tasks: Backgrou
 
     predicted_binary = int(predicted_prob >= 0.5)
 
-    alert = drift_monitor.update(
-        y_true=payload.is_fraud,
-        y_pred=predicted_binary,
-        slice_index=0,
-        step_number=drift_monitor.total_samples_monitored,
-        trans_id=payload.trans_id
-    )
+    with drift_lock:
+        alert = drift_monitor.update(
+            y_true=payload.is_fraud,
+            y_pred=predicted_binary,
+            slice_index=0,
+            step_number=drift_monitor.total_samples_monitored,
+            trans_id=payload.trans_id
+        )
+        monitored_samples = drift_monitor.total_samples_monitored
+        total_errors = drift_monitor.total_errors_observed
+        err_rate = (total_errors / monitored_samples) if monitored_samples > 0 else 0.0
 
     # Automated background retrain trigger on concept drift
     retrain_dispatched = False
     if alert["any_drift"]:
         retrain_dispatched = retrainer.trigger_retrain_async(background_tasks=background_tasks)
 
-    err_rate = (drift_monitor.total_errors_observed / drift_monitor.total_samples_monitored) if drift_monitor.total_samples_monitored > 0 else 0.0
-
     return FeedbackResponse(
         status="RECORDED",
         trans_id=payload.trans_id,
         drift_alert_triggered=alert["any_drift"],
         current_error_rate=round(err_rate, 4),
-        monitored_samples_total=drift_monitor.total_samples_monitored,
+        monitored_samples_total=monitored_samples,
         shadow_retrain_triggered=retrain_dispatched,
         model_generation=model_buffer.generation
     )
@@ -592,14 +603,15 @@ def log_chargeback_feedback(payload: FeedbackPayload, background_tasks: Backgrou
 @app.get("/v1/drift-status", response_model=DriftStatusResponse, dependencies=[Depends(verify_api_key)], tags=["Monitoring"])
 def get_drift_status():
     """Returns real-time drift telemetry from the error stream."""
-    err_rate = (drift_monitor.total_errors_observed / drift_monitor.total_samples_monitored) if drift_monitor.total_samples_monitored > 0 else 0.0
+    with drift_lock:
+        snapshot = drift_monitor.get_telemetry_snapshot()
     return DriftStatusResponse(
-        total_samples_monitored=drift_monitor.total_samples_monitored,
-        total_errors_observed=drift_monitor.total_errors_observed,
-        current_error_rate=round(err_rate, 4),
-        adwin_drift_detected=drift_monitor.adwin.drift_detected,
-        ddm_drift_detected=drift_monitor.ddm.drift_detected,
-        ddm_warning_detected=drift_monitor.ddm.warning_detected,
+        total_samples_monitored=snapshot["total_samples_monitored"],
+        total_errors_observed=snapshot["total_errors_observed"],
+        current_error_rate=snapshot["current_error_rate"],
+        adwin_drift_detected=snapshot["adwin_drift_detected"],
+        ddm_drift_detected=snapshot["ddm_drift_detected"],
+        ddm_warning_detected=snapshot["ddm_warning_detected"],
         model_generation=model_buffer.generation,
         last_retrain_timestamp=model_buffer.last_retrain_time,
         is_retraining=retrainer.is_retraining,
