@@ -34,6 +34,8 @@ class ExperimentRun(Base):
     gpu_accelerated = Column(String(128))
     static_f1_overall = Column(Float)
     adaptive_f1_overall = Column(Float)
+    static_f1_oos = Column(Float, nullable=True)
+    adaptive_f1_oos = Column(Float, nullable=True)
     drift_alerts_count = Column(Integer)
     db_backend = Column(String(64))
     notes = Column(Text, nullable=True)
@@ -181,6 +183,8 @@ class DatabaseManager:
                 gpu_accelerated=run_data.get("gpu_accelerated", "cuda"),
                 static_f1_overall=run_data.get("static_f1_overall", 0.0),
                 adaptive_f1_overall=run_data.get("adaptive_f1_overall", 0.0),
+                static_f1_oos=run_data.get("static_f1_oos"),
+                adaptive_f1_oos=run_data.get("adaptive_f1_oos"),
                 drift_alerts_count=run_data.get("drift_alerts_count", 0),
                 db_backend=self.backend_name,
                 notes=run_data.get("notes", "")

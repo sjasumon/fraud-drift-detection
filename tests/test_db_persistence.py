@@ -44,6 +44,8 @@ def test_db_ensure_run_and_log_run(in_memory_db):
         "gpu_accelerated": "cpu",
         "static_f1_overall": 0.75,
         "adaptive_f1_overall": 0.88,
+        "static_f1_oos": 0.71,
+        "adaptive_f1_oos": 0.86,
         "drift_alerts_count": 2,
         "notes": "Fast test execution"
     })
@@ -53,7 +55,10 @@ def test_db_ensure_run_and_log_run(in_memory_db):
         assert rec.dataset_name == "TestSet_Updated"
         assert rec.total_rows == 600
         assert rec.time_slices_count == 4
+        assert rec.static_f1_overall == 0.75
         assert rec.adaptive_f1_overall == 0.88
+        assert rec.static_f1_oos == 0.71
+        assert rec.adaptive_f1_oos == 0.86
 
 
 def test_db_log_slices(in_memory_db):

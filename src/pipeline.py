@@ -402,6 +402,10 @@ def run_pipeline(
             db.log_attributions(run_id, all_attributions)
             logger.info(f"P4: Persisted {len(all_attributions)} drift attribution records to MySQL `drift_attributions`.")
 
+        oos_stream = overall_summary.get("out_of_sample_stream", {})
+        static_oos_f1 = oos_stream.get("static_model", {}).get("overall_f1")
+        adaptive_oos_f1 = oos_stream.get("adaptive_model", {}).get("overall_f1")
+
         run_record = {
             "run_id": run_id,
             "dataset_name": dataset_path.name,
@@ -410,6 +414,8 @@ def run_pipeline(
             "gpu_accelerated": f"{static_model.device_used}",
             "static_f1_overall": overall_summary["static_model"]["overall_f1"],
             "adaptive_f1_overall": overall_summary["adaptive_model"]["overall_f1"],
+            "static_f1_oos": static_oos_f1,
+            "adaptive_f1_oos": adaptive_oos_f1,
             "drift_alerts_count": len(drift_monitor.drift_events),
             "notes": (
                 f"Periodic retrains: {periodic_model.retrain_count}. "
