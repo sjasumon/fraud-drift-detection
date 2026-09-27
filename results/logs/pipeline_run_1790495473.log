@@ -1,0 +1,104 @@
+2026-09-27 13:51:13,610 [INFO] fraud_drift.pipeline: ================================================================================
+2026-09-27 13:51:13,611 [INFO] fraud_drift.pipeline: STARTING CONCEPT-DRIFT-AWARE FRAUD DETECTION PIPELINE [RUN_863633E89E]
+2026-09-27 13:51:13,611 [INFO] fraud_drift.pipeline: Hardware: NVIDIA eGPU Acceleration = True (cuda)
+2026-09-27 13:51:13,611 [INFO] fraud_drift.pipeline: Database: Strict MySQL Server 9.7 (fraud_drift_db)
+2026-09-27 13:51:13,611 [INFO] fraud_drift.pipeline: Adaptation Strategy: FULL RETRAINING ON NVIDIA GPU
+2026-09-27 13:51:13,611 [INFO] fraud_drift.pipeline: Reproducibility Seed: 42
+2026-09-27 13:51:13,612 [INFO] fraud_drift.pipeline: ================================================================================
+2026-09-27 13:51:13,785 [INFO] fraud_drift.db: Connected strictly to MySQL: MySQL Server 9.7 (`fraud_drift_db` on 127.0.0.1:3306)
+2026-09-27 13:51:13,785 [INFO] fraud_drift.pipeline: Database connected: MySQL Server 9.7 (`fraud_drift_db` on 127.0.0.1:3306)
+2026-09-27 13:51:13,785 [INFO] fraud_drift.ingestion: Loading transaction dataset from data\feedzai\Base.csv...
+2026-09-27 13:51:13,792 [INFO] fraud_drift.ingestion: Loading Feedzai BAF dataset from data\feedzai\Base.csv...
+2026-09-27 13:51:16,946 [INFO] fraud_drift.ingestion: Validation PASSED for Feedzai-BAF: 1,000,000 records, 1.10% fraud, spanning 30.0 weeks (210.0 days).
+2026-09-27 13:51:17,300 [INFO] fraud_drift.preprocessing: FR-2.4: Dataset partitioned by month into 8 non-overlapping sequential monthly slices.
+2026-09-27 13:51:17,449 [INFO] fraud_drift.preprocessing: FR-2.1: Computing median imputation for 31 numerical features on training partition...
+2026-09-27 13:51:17,692 [INFO] fraud_drift.preprocessing: FR-2: Preprocessor fitted strictly on training partition (260,060 samples). Feature count: 57. Class balance: 1.04% positive (scale_pos_weight=95.39).
+2026-09-27 13:51:18,916 [INFO] fraud_drift.pipeline: FR-3.1: Assembling baseline training window from first 2 slices (260,060 transactions, 2698 fraud instances, scale_pos_weight=95.39).
+2026-09-27 13:51:18,972 [INFO] fraud_drift.static_model: Training FR-3 Static Model on 260,060 samples (2698 fraud instances)...
+2026-09-27 13:51:19,831 [INFO] fraud_drift.static_model: Static Model fitted successfully on NVIDIA eGPU in 0.86s.
+2026-09-27 13:51:19,894 [INFO] fraud_drift.periodic_model: [Periodic Baseline] Initial Training on 260,060 transactions (2698 fraud) on GPU...
+2026-09-27 13:51:20,562 [INFO] fraud_drift.periodic_model: [Periodic Baseline] Initial Model fitted on NVIDIA GPU in 0.67s.
+2026-09-27 13:51:20,626 [INFO] fraud_drift.sliding_model: [Sliding Window Baseline] Initial Training on 260,060 transactions (2698 fraud) on GPU...
+2026-09-27 13:51:21,311 [INFO] fraud_drift.sliding_model: [Sliding Window Baseline] Initial Model fitted on NVIDIA GPU in 0.68s.
+2026-09-27 13:51:21,374 [INFO] fraud_drift.adaptive_model: FR-5 Initial Training on 260,060 transactions (2698 fraud) on NVIDIA eGPU...
+2026-09-27 13:51:22,048 [INFO] fraud_drift.adaptive_model: FR-5 Initial Model fitted on NVIDIA eGPU in 0.67s.
+2026-09-27 13:51:22,054 [INFO] fraud_drift.pipeline: 
+================================================================================
+2026-09-27 13:51:22,054 [INFO] fraud_drift.pipeline: BEGINNING SEQUENTIAL STREAMING EVALUATION ACROSS 8 WEEKS (4 MODELS)
+2026-09-27 13:51:22,054 [INFO] fraud_drift.pipeline: ================================================================================
+2026-09-27 13:51:26,619 [INFO] fraud_drift.pipeline: Slice Month_01 (01/8): Static F1=0.1334 | Period F1=0.1444 | Slide F1=0.1444 | Adapt F1=0.1444
+2026-09-27 13:51:27,895 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] ADWIN: Slice 2, Step 721
+2026-09-27 13:51:30,992 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN #1] Drift alert triggered in slice 2. Executing FULL RETRAIN on 260,060 accumulated transactions (2698 fraud) on NVIDIA eGPU...
+2026-09-27 13:51:31,753 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN COMPLETED] #1 finished in 0.87s on NVIDIA GPU (cuda).
+2026-09-27 13:51:31,769 [INFO] fraud_drift.explainer: [Drift Attribution] Explaining drift in Month_02 (Slice 2)...
+2026-09-27 13:51:32,369 [INFO] fraud_drift.explainer: [Drift Attribution Top Driver] Month_02: #1 housing_status_BA (PSI=0.000, SHAP=0.424)
+2026-09-27 13:51:32,371 [INFO] fraud_drift.pipeline: Slice Month_02 (02/8): Static F1=0.1289 | Period F1=0.1378 | Slide F1=0.1378 | Adapt F1=0.1378 [DRIFT -> FULL GPU RETRAIN!]
+2026-09-27 13:51:37,055 [INFO] fraud_drift.pipeline: Slice Month_03 (03/8): Static F1=0.0896 | Period F1=0.0928 | Slide F1=0.0928 | Adapt F1=0.0957
+2026-09-27 13:51:38,416 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] ADWIN: Slice 4, Step 2161
+2026-09-27 13:51:42,083 [INFO] fraud_drift.periodic_model: [Periodic Retrain #1] Scheduled interval reached at slice 4. Retraining on 547,975 accumulated transactions (5288 fraud) on GPU...
+2026-09-27 13:51:43,313 [INFO] fraud_drift.periodic_model: [Periodic Retrain Completed] #1 finished in 1.44s on NVIDIA GPU (cuda).
+2026-09-27 13:51:43,562 [INFO] fraud_drift.sliding_model: [Sliding Window Retrain #1] Retraining on 287,915 transactions across last 2 slices (2590 fraud) on GPU...
+2026-09-27 13:51:44,446 [INFO] fraud_drift.sliding_model: [Sliding Window Retrain Completed] #1 finished in 1.00s on NVIDIA GPU (cuda).
+2026-09-27 13:51:44,769 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN #2] Drift alert triggered in slice 4. Executing FULL RETRAIN on 547,975 accumulated transactions (5288 fraud) on NVIDIA eGPU...
+2026-09-27 13:51:45,953 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN COMPLETED] #2 finished in 1.40s on NVIDIA GPU (cuda).
+2026-09-27 13:51:45,987 [INFO] fraud_drift.explainer: [Drift Attribution] Explaining drift in Month_04 (Slice 4)...
+2026-09-27 13:51:46,748 [INFO] fraud_drift.explainer: [Drift Attribution Top Driver] Month_04: #1 housing_status_BA (PSI=0.000, SHAP=0.487)
+2026-09-27 13:51:46,749 [INFO] fraud_drift.pipeline: Slice Month_04 (04/8): Static F1=0.0831 | Period F1=0.0849 | Slide F1=0.0849 | Adapt F1=0.0874 [DRIFT -> FULL GPU RETRAIN!]
+2026-09-27 13:51:47,744 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] ADWIN: Slice 5, Step 2881
+2026-09-27 13:51:51,079 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN #3] Drift alert triggered in slice 5. Executing FULL RETRAIN on 675,666 accumulated transactions (6740 fraud) on NVIDIA eGPU...
+2026-09-27 13:51:52,487 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN COMPLETED] #3 finished in 1.66s on NVIDIA GPU (cuda).
+2026-09-27 13:51:52,528 [INFO] fraud_drift.explainer: [Drift Attribution] Explaining drift in Month_05 (Slice 5)...
+2026-09-27 13:51:53,117 [INFO] fraud_drift.explainer: [Drift Attribution Top Driver] Month_05: #1 velocity_4w (PSI=4.793, SHAP=0.176)
+2026-09-27 13:51:53,118 [INFO] fraud_drift.pipeline: Slice Month_05 (05/8): Static F1=0.0859 | Period F1=0.0860 | Slide F1=0.1044 | Adapt F1=0.0860 [DRIFT -> FULL GPU RETRAIN!]
+2026-09-27 13:51:54,135 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] ADWIN: Slice 6, Step 3601
+2026-09-27 13:51:57,275 [INFO] fraud_drift.periodic_model: [Periodic Retrain #2] Scheduled interval reached at slice 6. Retraining on 794,989 accumulated transactions (8151 fraud) on GPU...
+2026-09-27 13:51:58,903 [INFO] fraud_drift.periodic_model: [Periodic Retrain Completed] #2 finished in 1.94s on NVIDIA GPU (cuda).
+2026-09-27 13:51:59,130 [INFO] fraud_drift.sliding_model: [Sliding Window Retrain #2] Retraining on 247,014 transactions across last 2 slices (2863 fraud) on GPU...
+2026-09-27 13:51:59,965 [INFO] fraud_drift.sliding_model: [Sliding Window Retrain Completed] #2 finished in 0.93s on NVIDIA GPU (cuda).
+2026-09-27 13:52:00,369 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN #4] Drift alert triggered in slice 6. Executing FULL RETRAIN on 794,989 accumulated transactions (8151 fraud) on NVIDIA eGPU...
+2026-09-27 13:52:01,811 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN COMPLETED] #4 finished in 1.75s on NVIDIA GPU (cuda).
+2026-09-27 13:52:01,858 [INFO] fraud_drift.explainer: [Drift Attribution] Explaining drift in Month_06 (Slice 6)...
+2026-09-27 13:52:02,439 [INFO] fraud_drift.explainer: [Drift Attribution Top Driver] Month_06: #1 velocity_4w (PSI=5.188, SHAP=0.130)
+2026-09-27 13:52:02,815 [INFO] fraud_drift.explainer: [Drift Attribution Plot] Chart saved to C:\Users\Sumon\Projects\phd\Yun Sing Koh\results\figures\drift_attribution_month_06.png
+2026-09-27 13:52:02,815 [INFO] fraud_drift.pipeline: Slice Month_06 (06/8): Static F1=0.1108 | Period F1=0.1141 | Slide F1=0.1279 | Adapt F1=0.1219 [DRIFT -> FULL GPU RETRAIN!]
+2026-09-27 13:52:03,615 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] ADWIN: Slice 7, Step 4321
+2026-09-27 13:52:06,611 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN #5] Drift alert triggered in slice 7. Executing FULL RETRAIN on 903,157 accumulated transactions (9601 fraud) on NVIDIA eGPU...
+2026-09-27 13:52:08,330 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN COMPLETED] #5 finished in 2.06s on NVIDIA GPU (cuda).
+2026-09-27 13:52:08,383 [INFO] fraud_drift.explainer: [Drift Attribution] Explaining drift in Month_07 (Slice 7)...
+2026-09-27 13:52:09,101 [INFO] fraud_drift.explainer: [Drift Attribution Top Driver] Month_07: #1 velocity_4w (PSI=5.332, SHAP=0.154)
+2026-09-27 13:52:09,102 [INFO] fraud_drift.pipeline: Slice Month_07 (07/8): Static F1=0.1162 | Period F1=0.1096 | Slide F1=0.1252 | Adapt F1=0.1096 [DRIFT -> FULL GPU RETRAIN!]
+2026-09-27 13:52:09,978 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] ADWIN: Slice 8, Step 5041
+2026-09-27 13:52:12,502 [INFO] fraud_drift.periodic_model: [Periodic Retrain #3] Scheduled interval reached at slice 8. Retraining on 1,000,000 accumulated transactions (11029 fraud) on GPU...
+2026-09-27 13:52:14,211 [INFO] fraud_drift.periodic_model: [Periodic Retrain Completed] #3 finished in 2.09s on NVIDIA GPU (cuda).
+2026-09-27 13:52:14,425 [INFO] fraud_drift.sliding_model: [Sliding Window Retrain #3] Retraining on 205,011 transactions across last 2 slices (2878 fraud) on GPU...
+2026-09-27 13:52:15,226 [INFO] fraud_drift.sliding_model: [Sliding Window Retrain Completed] #3 finished in 0.89s on NVIDIA GPU (cuda).
+2026-09-27 13:52:15,691 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN #6] Drift alert triggered in slice 8. Executing FULL RETRAIN on 1,000,000 accumulated transactions (11029 fraud) on NVIDIA eGPU...
+2026-09-27 13:52:17,358 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN COMPLETED] #6 finished in 2.06s on NVIDIA GPU (cuda).
+2026-09-27 13:52:17,417 [INFO] fraud_drift.explainer: [Drift Attribution] Explaining drift in Month_08 (Slice 8)...
+2026-09-27 13:52:17,981 [INFO] fraud_drift.explainer: [Drift Attribution Top Driver] Month_08: #1 velocity_4w (PSI=4.800, SHAP=0.157)
+2026-09-27 13:52:17,981 [INFO] fraud_drift.pipeline: Slice Month_08 (08/8): Static F1=0.1345 | Period F1=0.1301 | Slide F1=0.1849 | Adapt F1=0.1325 [DRIFT -> FULL GPU RETRAIN!]
+2026-09-27 13:52:22,959 [INFO] fraud_drift.evaluator: FR-6.2: Multi-model comparison chart saved to C:\Users\Sumon\Projects\phd\Yun Sing Koh\results\figures\model_comparison_f1_aucpr.png
+2026-09-27 13:52:23,001 [INFO] fraud_drift.pipeline: P4: Persisted 30 drift attribution records to MySQL `drift_attributions`.
+2026-09-27 13:52:23,007 [INFO] fraud_drift.pipeline: 
+================================================================================================
+2026-09-27 13:52:23,007 [INFO] fraud_drift.pipeline: MULTI-MODEL STREAMING BENCHMARK COMPLETE — SUMMARY OF RESULTS
+2026-09-27 13:52:23,007 [INFO] fraud_drift.pipeline: ================================================================================================
+2026-09-27 13:52:23,007 [INFO] fraud_drift.pipeline: Dataset: Base.csv (1,000,000 transactions across 8 weeks)
+2026-09-27 13:52:23,007 [INFO] fraud_drift.pipeline: Hardware Acceleration: NVIDIA GPU (cuda) (NVIDIA RTX 5080 eGPU)
+2026-09-27 13:52:23,007 [INFO] fraud_drift.pipeline: Database Logged: MySQL Server 9.7 (`fraud_drift_db` on 127.0.0.1:3306)
+2026-09-27 13:52:23,007 [INFO] fraud_drift.pipeline: Total Drift Alerts: 6
+2026-09-27 13:52:23,007 [INFO] fraud_drift.pipeline: ------------------------------------------------------------------------------------------------
+2026-09-27 13:52:23,007 [INFO] fraud_drift.pipeline: Model Architecture               | Retrains  | Whole F1  | Whole AUC  | OOS Recall  | OOS AUC-PR 
+2026-09-27 13:52:23,007 [INFO] fraud_drift.pipeline: ------------------------------------------------------------------------------------------------
+2026-09-27 13:52:23,008 [INFO] fraud_drift.pipeline: Static Baseline (Frozen)         | 0         | 0.1070    | 0.1648     | 74.70     % | 0.1396     
+2026-09-27 13:52:23,008 [INFO] fraud_drift.pipeline: Periodic Retraining (4w)         | 3         | 0.1093    | 0.1828     | 77.07     % | 0.1620     
+2026-09-27 13:52:23,008 [INFO] fraud_drift.pipeline: Sliding Window (4w)              | 3         | 0.1190    | 0.1703     | 68.90     % | 0.1404     
+2026-09-27 13:52:23,008 [INFO] fraud_drift.pipeline: Drift-Adaptive (ADWIN/DDM)       | 6         | 0.1112    | 0.1801     | 76.08     % | 0.1583     
+2026-09-27 13:52:23,008 [INFO] fraud_drift.pipeline: ------------------------------------------------------------------------------------------------
+2026-09-27 13:52:23,008 [INFO] fraud_drift.pipeline: Outputs generated:
+2026-09-27 13:52:23,008 [INFO] fraud_drift.pipeline:   - Metrics Table: C:\Users\Sumon\Projects\phd\Yun Sing Koh\results\metrics\slice_comparison_metrics.csv
+2026-09-27 13:52:23,008 [INFO] fraud_drift.pipeline:   - Summary JSON:  C:\Users\Sumon\Projects\phd\Yun Sing Koh\results\metrics\summary_metrics.json
+2026-09-27 13:52:23,008 [INFO] fraud_drift.pipeline:   - Chart:         C:\Users\Sumon\Projects\phd\Yun Sing Koh\results\figures\model_comparison_f1_aucpr.png
+2026-09-27 13:52:23,008 [INFO] fraud_drift.pipeline:   - Log File:      C:\Users\Sumon\Projects\phd\Yun Sing Koh\results\logs\pipeline_run_1790495473.log
+2026-09-27 13:52:23,008 [INFO] fraud_drift.pipeline: Pipeline executed in 69.40s.
+2026-09-27 13:52:23,008 [INFO] fraud_drift.pipeline: ================================================================================

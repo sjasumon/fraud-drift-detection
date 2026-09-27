@@ -1,0 +1,9 @@
+2026-09-27 13:07:17,680 [INFO] fraud_drift.pipeline: ================================================================================
+2026-09-27 13:07:17,680 [INFO] fraud_drift.pipeline: STARTING CONCEPT-DRIFT-AWARE FRAUD DETECTION PIPELINE [RUN_320E28DF62]
+2026-09-27 13:07:17,680 [INFO] fraud_drift.pipeline: Hardware: NVIDIA eGPU Acceleration = True (cuda)
+2026-09-27 13:07:17,680 [INFO] fraud_drift.pipeline: Database: Strict MySQL Server 9.7 (fraud_drift_db)
+2026-09-27 13:07:17,680 [INFO] fraud_drift.pipeline: Adaptation Strategy: FULL RETRAINING ON NVIDIA GPU
+2026-09-27 13:07:17,680 [INFO] fraud_drift.pipeline: Reproducibility Seed: 42
+2026-09-27 13:07:17,681 [INFO] fraud_drift.pipeline: ================================================================================
+2026-09-27 13:07:19,862 [ERROR] fraud_drift.db: Failed to connect to MySQL database at 127.0.0.1:3306: (pymysql.err.OperationalError) (2003, "Can't connect to MySQL server on '127.0.0.1' ([WinError 10061] No connection could be made because the target machine actively refused it)")
+(Background on this error at: https://sqlalche.me/e/21/e3q8)

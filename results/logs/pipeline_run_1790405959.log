@@ -1,0 +1,15 @@
+2026-09-26 12:59:19,914 [INFO] fraud_drift.pipeline: ================================================================================
+2026-09-26 12:59:19,915 [INFO] fraud_drift.pipeline: STARTING CONCEPT-DRIFT-AWARE FRAUD DETECTION PIPELINE [RUN_482CD22FF8]
+2026-09-26 12:59:19,915 [INFO] fraud_drift.pipeline: Hardware: NVIDIA eGPU Acceleration = True (cuda)
+2026-09-26 12:59:19,915 [INFO] fraud_drift.pipeline: Database: Strict MySQL Server 9.7 (fraud_drift_db)
+2026-09-26 12:59:19,915 [INFO] fraud_drift.pipeline: Adaptation Strategy: FULL RETRAINING ON NVIDIA GPU
+2026-09-26 12:59:19,915 [INFO] fraud_drift.pipeline: Reproducibility Seed: 42
+2026-09-26 12:59:19,915 [INFO] fraud_drift.pipeline: ================================================================================
+2026-09-26 12:59:20,051 [INFO] fraud_drift.db: Connected strictly to MySQL: MySQL Server 9.7 (`fraud_drift_db` on 127.0.0.1:3306)
+2026-09-26 12:59:20,051 [INFO] fraud_drift.pipeline: Database connected: MySQL Server 9.7 (`fraud_drift_db` on 127.0.0.1:3306)
+2026-09-26 12:59:20,051 [INFO] fraud_drift.ingestion: Loading transaction dataset from ieee\train_transaction.csv...
+2026-09-26 12:59:20,066 [INFO] fraud_drift.ingestion: Loading 50 high-signal features from IEEE-CIS...
+2026-09-26 12:59:23,481 [INFO] fraud_drift.ingestion: Validation PASSED for IEEE-CIS: 590,540 records, 3.50% fraud, spanning 26.0 weeks (182.0 days).
+2026-09-26 12:59:23,725 [INFO] fraud_drift.preprocessing: FR-2.1: Computing median imputation for numerical features...
+2026-09-26 12:59:24,499 [INFO] fraud_drift.preprocessing: FR-2: Preprocessing complete. Feature count: 64. Class balance: 3.50% positive (scale_pos_weight=27.58).
+2026-09-26 12:59:25,246 [INFO] fraud_drift.preprocessing: FR-2.4: Dataset partitioned into 26 non-overlapping sequential time slices.

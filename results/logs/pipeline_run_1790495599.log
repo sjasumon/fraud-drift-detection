@@ -1,0 +1,370 @@
+2026-09-27 13:53:19,911 [INFO] fraud_drift.pipeline: ================================================================================
+2026-09-27 13:53:19,911 [INFO] fraud_drift.pipeline: STARTING CONCEPT-DRIFT-AWARE FRAUD DETECTION PIPELINE [RUN_A9255EF019]
+2026-09-27 13:53:19,911 [INFO] fraud_drift.pipeline: Hardware: NVIDIA eGPU Acceleration = True (cuda)
+2026-09-27 13:53:19,911 [INFO] fraud_drift.pipeline: Database: Strict MySQL Server 9.7 (fraud_drift_db)
+2026-09-27 13:53:19,911 [INFO] fraud_drift.pipeline: Adaptation Strategy: FULL RETRAINING ON NVIDIA GPU
+2026-09-27 13:53:19,911 [INFO] fraud_drift.pipeline: Reproducibility Seed: 42
+2026-09-27 13:53:19,913 [INFO] fraud_drift.pipeline: ================================================================================
+2026-09-27 13:53:20,078 [INFO] fraud_drift.db: Connected strictly to MySQL: MySQL Server 9.7 (`fraud_drift_db` on 127.0.0.1:3306)
+2026-09-27 13:53:20,078 [INFO] fraud_drift.pipeline: Database connected: MySQL Server 9.7 (`fraud_drift_db` on 127.0.0.1:3306)
+2026-09-27 13:53:20,079 [INFO] fraud_drift.ingestion: Loading transaction dataset from data\paysim\paysim_full.csv...
+2026-09-27 13:53:20,086 [INFO] fraud_drift.ingestion: Loading PaySim dataset from data\paysim\paysim_full.csv...
+2026-09-27 13:53:36,234 [INFO] fraud_drift.ingestion: Validation PASSED for PaySim: 6,362,620 records, 0.13% fraud, spanning 4.4 weeks (31.0 days).
+2026-09-27 13:53:43,988 [INFO] fraud_drift.preprocessing: FR-2.4: Dataset partitioned into 5 non-overlapping sequential time slices.
+2026-09-27 13:53:45,330 [INFO] fraud_drift.preprocessing: FR-2.1: Computing median imputation for 19 numerical features on training partition...
+2026-09-27 13:53:47,409 [INFO] fraud_drift.preprocessing: FR-2: Preprocessor fitted strictly on training partition (4,784,775 samples). Feature count: 24. Class balance: 0.08% positive (scale_pos_weight=1269.18).
+2026-09-27 13:53:50,412 [INFO] fraud_drift.pipeline: FR-3.1: Assembling baseline training window from first 2 slices (4,784,775 transactions, 3767 fraud instances, scale_pos_weight=1269.18).
+2026-09-27 13:53:50,804 [INFO] fraud_drift.static_model: Training FR-3 Static Model on 4,784,775 samples (3767 fraud instances)...
+2026-09-27 13:53:54,009 [INFO] fraud_drift.static_model: Static Model fitted successfully on NVIDIA eGPU in 3.20s.
+2026-09-27 13:53:54,471 [INFO] fraud_drift.periodic_model: [Periodic Baseline] Initial Training on 4,784,775 transactions (3767 fraud) on GPU...
+2026-09-27 13:53:57,591 [INFO] fraud_drift.periodic_model: [Periodic Baseline] Initial Model fitted on NVIDIA GPU in 3.12s.
+2026-09-27 13:53:58,037 [INFO] fraud_drift.sliding_model: [Sliding Window Baseline] Initial Training on 4,784,775 transactions (3767 fraud) on GPU...
+2026-09-27 13:54:01,229 [INFO] fraud_drift.sliding_model: [Sliding Window Baseline] Initial Model fitted on NVIDIA GPU in 3.19s.
+2026-09-27 13:54:01,686 [INFO] fraud_drift.adaptive_model: FR-5 Initial Training on 4,784,775 transactions (3767 fraud) on NVIDIA eGPU...
+2026-09-27 13:54:04,823 [INFO] fraud_drift.adaptive_model: FR-5 Initial Model fitted on NVIDIA eGPU in 3.14s.
+2026-09-27 13:54:04,866 [INFO] fraud_drift.pipeline: 
+================================================================================
+2026-09-27 13:54:04,866 [INFO] fraud_drift.pipeline: BEGINNING SEQUENTIAL STREAMING EVALUATION ACROSS 5 WEEKS (4 MODELS)
+2026-09-27 13:54:04,867 [INFO] fraud_drift.pipeline: ================================================================================
+2026-09-27 13:54:14,702 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 8
+2026-09-27 13:54:14,746 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 8
+2026-09-27 13:54:14,748 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 8
+2026-09-27 13:54:14,753 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 8
+2026-09-27 13:54:14,762 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 8
+2026-09-27 13:54:14,776 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 8
+2026-09-27 13:54:14,812 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 8
+2026-09-27 13:54:14,826 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:14,895 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:14,929 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:14,995 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:14,997 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:15,004 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:15,023 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:15,032 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:15,039 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:15,168 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:15,450 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:15,487 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:15,557 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:15,566 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:15,646 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:15,715 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:15,716 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:15,746 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:15,789 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 9
+2026-09-27 13:54:18,870 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 13
+2026-09-27 13:54:18,900 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 13
+2026-09-27 13:54:20,859 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 15
+2026-09-27 13:54:20,873 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 15
+2026-09-27 13:54:20,879 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 15
+2026-09-27 13:54:20,882 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 15
+2026-09-27 13:54:20,949 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 15
+2026-09-27 13:54:20,978 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 15
+2026-09-27 13:54:21,000 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 15
+2026-09-27 13:54:21,043 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 15
+2026-09-27 13:54:21,046 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 15
+2026-09-27 13:54:21,091 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 15
+2026-09-27 13:54:21,108 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 15
+2026-09-27 13:54:21,112 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 15
+2026-09-27 13:54:21,131 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 15
+2026-09-27 13:54:21,142 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 16
+2026-09-27 13:54:21,155 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 16
+2026-09-27 13:54:21,253 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 16
+2026-09-27 13:54:21,436 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 16
+2026-09-27 13:54:21,594 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 16
+2026-09-27 13:54:21,672 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 16
+2026-09-27 13:54:21,786 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 16
+2026-09-27 13:54:21,873 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 16
+2026-09-27 13:54:21,934 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 16
+2026-09-27 13:54:22,028 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 16
+2026-09-27 13:54:22,204 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 16
+2026-09-27 13:54:22,239 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 16
+2026-09-27 13:54:22,252 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 16
+2026-09-27 13:54:22,268 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:22,279 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:22,293 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:22,295 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:22,351 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:22,398 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:22,429 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:22,443 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:22,526 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:22,661 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:22,691 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:22,696 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:22,711 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:22,831 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:22,855 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:22,918 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:22,932 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:22,960 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:22,993 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:23,005 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:23,054 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:23,066 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:23,102 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:23,120 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:23,134 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:23,146 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:23,168 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:23,260 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 17
+2026-09-27 13:54:23,322 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 18
+2026-09-27 13:54:23,485 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 18
+2026-09-27 13:54:23,752 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 18
+2026-09-27 13:54:23,956 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 18
+2026-09-27 13:54:23,967 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 18
+2026-09-27 13:54:24,010 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 18
+2026-09-27 13:54:24,125 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 18
+2026-09-27 13:54:24,155 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 18
+2026-09-27 13:54:24,174 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 18
+2026-09-27 13:54:24,185 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 18
+2026-09-27 13:54:24,227 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 18
+2026-09-27 13:54:24,344 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 18
+2026-09-27 13:54:24,385 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 18
+2026-09-27 13:54:24,485 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:24,508 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:24,517 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:24,528 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:24,637 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:24,639 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:24,657 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:24,733 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:25,026 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:25,033 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:25,065 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:25,111 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:25,142 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:25,262 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:25,271 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:25,346 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:25,377 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:25,382 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:25,460 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:25,473 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:25,503 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:25,513 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:25,515 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:25,521 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:25,564 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 19
+2026-09-27 13:54:25,614 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 20
+2026-09-27 13:54:25,785 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 20
+2026-09-27 13:54:25,872 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 20
+2026-09-27 13:54:25,909 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 20
+2026-09-27 13:54:25,945 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 20
+2026-09-27 13:54:25,973 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 20
+2026-09-27 13:54:26,088 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 20
+2026-09-27 13:54:26,197 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 20
+2026-09-27 13:54:26,291 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 20
+2026-09-27 13:54:26,442 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 20
+2026-09-27 13:54:27,679 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] ADWIN: Slice 1, Step 33
+2026-09-27 13:54:28,050 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 33
+2026-09-27 13:54:28,165 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 33
+2026-09-27 13:54:28,234 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 34
+2026-09-27 13:54:28,297 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 34
+2026-09-27 13:54:28,551 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 34
+2026-09-27 13:54:28,628 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 34
+2026-09-27 13:54:28,779 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 34
+2026-09-27 13:54:28,799 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 34
+2026-09-27 13:54:28,941 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:28,968 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:28,982 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:29,005 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:29,015 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:29,024 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:29,199 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:29,209 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:29,219 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:29,278 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:29,295 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:29,307 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:29,344 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:29,367 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:29,381 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:29,399 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:29,500 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:29,535 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:29,560 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 35
+2026-09-27 13:54:29,894 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 36
+2026-09-27 13:54:29,954 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 36
+2026-09-27 13:54:29,979 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 36
+2026-09-27 13:54:29,993 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 36
+2026-09-27 13:54:30,050 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 36
+2026-09-27 13:54:30,132 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 36
+2026-09-27 13:54:30,239 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 36
+2026-09-27 13:54:30,256 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 36
+2026-09-27 13:54:30,281 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 36
+2026-09-27 13:54:30,304 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 36
+2026-09-27 13:54:30,413 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 36
+2026-09-27 13:54:30,415 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 36
+2026-09-27 13:54:30,416 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 36
+2026-09-27 13:54:30,466 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 36
+2026-09-27 13:54:30,471 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 36
+2026-09-27 13:54:30,571 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 37
+2026-09-27 13:54:30,577 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 37
+2026-09-27 13:54:30,615 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 37
+2026-09-27 13:54:30,622 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 37
+2026-09-27 13:54:30,705 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 37
+2026-09-27 13:54:30,723 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 37
+2026-09-27 13:54:30,766 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 37
+2026-09-27 13:54:30,839 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 37
+2026-09-27 13:54:30,861 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 37
+2026-09-27 13:54:30,872 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 37
+2026-09-27 13:54:30,959 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 37
+2026-09-27 13:54:30,975 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 37
+2026-09-27 13:54:31,040 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 37
+2026-09-27 13:54:31,047 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 37
+2026-09-27 13:54:31,063 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 37
+2026-09-27 13:54:31,148 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 37
+2026-09-27 13:54:31,218 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 37
+2026-09-27 13:54:31,309 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 38
+2026-09-27 13:54:31,345 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 38
+2026-09-27 13:54:31,380 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 38
+2026-09-27 13:54:31,400 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 38
+2026-09-27 13:54:31,483 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 38
+2026-09-27 13:54:31,492 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 38
+2026-09-27 13:54:31,688 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 38
+2026-09-27 13:54:31,814 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 38
+2026-09-27 13:54:31,850 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 38
+2026-09-27 13:54:31,879 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 38
+2026-09-27 13:54:31,896 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 38
+2026-09-27 13:54:31,916 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 38
+2026-09-27 13:54:32,105 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 39
+2026-09-27 13:54:32,113 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 39
+2026-09-27 13:54:32,126 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 39
+2026-09-27 13:54:32,182 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 39
+2026-09-27 13:54:32,247 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 39
+2026-09-27 13:54:32,278 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 39
+2026-09-27 13:54:32,321 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 39
+2026-09-27 13:54:32,352 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 39
+2026-09-27 13:54:32,532 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 40
+2026-09-27 13:54:32,600 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 40
+2026-09-27 13:54:32,651 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 40
+2026-09-27 13:54:32,681 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 40
+2026-09-27 13:54:32,922 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 40
+2026-09-27 13:54:32,983 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 40
+2026-09-27 13:54:33,026 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 40
+2026-09-27 13:54:33,028 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 40
+2026-09-27 13:54:33,091 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 40
+2026-09-27 13:54:33,341 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 40
+2026-09-27 13:54:33,360 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 40
+2026-09-27 13:54:33,443 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 40
+2026-09-27 13:54:34,016 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 41
+2026-09-27 13:54:34,113 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 41
+2026-09-27 13:54:34,384 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 42
+2026-09-27 13:54:34,666 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 42
+2026-09-27 13:54:34,777 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 42
+2026-09-27 13:54:34,917 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 42
+2026-09-27 13:54:34,978 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 42
+2026-09-27 13:54:35,055 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 42
+2026-09-27 13:54:35,099 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 42
+2026-09-27 13:54:35,540 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 43
+2026-09-27 13:54:35,694 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 43
+2026-09-27 13:54:35,768 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 43
+2026-09-27 13:54:36,029 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 43
+2026-09-27 13:54:36,096 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 1, Step 43
+2026-09-27 13:54:37,807 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] ADWIN: Slice 1, Step 46
+2026-09-27 13:55:01,534 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN #1] Drift alert triggered in slice 1. Executing FULL RETRAIN on 1,930,180 accumulated transactions (1904 fraud) on NVIDIA eGPU...
+2026-09-27 13:55:03,356 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN COMPLETED] #1 finished in 2.00s on NVIDIA GPU (cuda).
+2026-09-27 13:55:03,373 [INFO] fraud_drift.explainer: [Drift Attribution] Explaining drift in Week_01 (Slice 1)...
+2026-09-27 13:55:08,868 [INFO] fraud_drift.explainer: [Drift Attribution Top Driver] Week_01: #1 errorBalanceOrig (PSI=0.001, SHAP=3.407)
+2026-09-27 13:55:08,872 [INFO] fraud_drift.pipeline: Slice Week_01 (01/5): Static F1=0.8772 | Period F1=0.9088 | Slide F1=0.9088 | Adapt F1=0.9088 [DRIFT -> FULL GPU RETRAIN!]
+2026-09-27 13:55:22,767 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 177
+2026-09-27 13:55:22,975 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 178
+2026-09-27 13:55:23,334 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 178
+2026-09-27 13:55:24,031 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 179
+2026-09-27 13:55:24,103 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 179
+2026-09-27 13:55:25,005 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 180
+2026-09-27 13:55:25,434 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 181
+2026-09-27 13:55:25,522 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 181
+2026-09-27 13:55:26,314 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 182
+2026-09-27 13:55:26,626 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 182
+2026-09-27 13:55:27,139 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 183
+2026-09-27 13:55:30,405 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 186
+2026-09-27 13:55:35,438 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 203
+2026-09-27 13:55:35,677 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 203
+2026-09-27 13:55:35,875 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 203
+2026-09-27 13:55:35,881 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 203
+2026-09-27 13:55:35,922 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 203
+2026-09-27 13:55:36,372 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 203
+2026-09-27 13:55:36,863 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 204
+2026-09-27 13:55:37,020 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 204
+2026-09-27 13:55:37,130 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 204
+2026-09-27 13:55:37,166 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 204
+2026-09-27 13:55:37,245 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 204
+2026-09-27 13:55:37,787 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 205
+2026-09-27 13:55:38,487 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 206
+2026-09-27 13:55:40,429 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 208
+2026-09-27 13:55:41,789 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 210
+2026-09-27 13:55:43,563 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 212
+2026-09-27 13:55:49,998 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 231
+2026-09-27 13:55:57,223 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 250
+2026-09-27 13:56:10,541 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 2, Step 279
+2026-09-27 13:56:40,774 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN #2] Drift alert triggered in slice 2. Executing FULL RETRAIN on 4,784,775 accumulated transactions (3767 fraud) on NVIDIA eGPU...
+2026-09-27 13:56:44,542 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN COMPLETED] #2 finished in 4.65s on NVIDIA GPU (cuda).
+2026-09-27 13:56:44,721 [INFO] fraud_drift.explainer: [Drift Attribution] Explaining drift in Week_02 (Slice 2)...
+2026-09-27 13:56:50,632 [INFO] fraud_drift.explainer: [Drift Attribution Top Driver] Week_02: #1 errorBalanceOrig (PSI=0.001, SHAP=3.798)
+2026-09-27 13:56:50,637 [INFO] fraud_drift.pipeline: Slice Week_02 (02/5): Static F1=0.9816 | Period F1=0.9836 | Slide F1=0.9836 | Adapt F1=0.9906 [DRIFT -> FULL GPU RETRAIN!]
+2026-09-27 13:56:57,295 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 3, Step 346
+2026-09-27 13:56:57,475 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 3, Step 346
+2026-09-27 13:56:57,730 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 3, Step 346
+2026-09-27 13:56:59,511 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 3, Step 349
+2026-09-27 13:57:00,648 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 3, Step 350
+2026-09-27 13:57:00,906 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 3, Step 350
+2026-09-27 13:57:03,353 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 3, Step 354
+2026-09-27 13:57:05,557 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 3, Step 356
+2026-09-27 13:57:08,876 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 3, Step 372
+2026-09-27 13:57:09,110 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 3, Step 372
+2026-09-27 13:57:09,333 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 3, Step 373
+2026-09-27 13:57:09,923 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 3, Step 373
+2026-09-27 13:57:10,000 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 3, Step 374
+2026-09-27 13:57:10,088 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 3, Step 374
+2026-09-27 13:57:10,968 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 3, Step 375
+2026-09-27 13:57:12,001 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 3, Step 376
+2026-09-27 13:57:19,305 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 3, Step 397
+2026-09-27 13:57:30,711 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN #3] Drift alert triggered in slice 3. Executing FULL RETRAIN on 6,064,036 accumulated transactions (5621 fraud) on NVIDIA eGPU...
+2026-09-27 13:57:34,988 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN COMPLETED] #3 finished in 5.44s on NVIDIA GPU (cuda).
+2026-09-27 13:57:35,191 [INFO] fraud_drift.explainer: [Drift Attribution] Explaining drift in Week_03 (Slice 3)...
+2026-09-27 13:57:40,518 [INFO] fraud_drift.explainer: [Drift Attribution Top Driver] Week_03: #1 errorBalanceOrig (PSI=0.003, SHAP=3.861)
+2026-09-27 13:57:40,521 [INFO] fraud_drift.pipeline: Slice Week_03 (03/5): Static F1=0.9901 | Period F1=0.9928 | Slide F1=0.9928 | Adapt F1=0.9954 [DRIFT -> FULL GPU RETRAIN!]
+2026-09-27 13:57:45,538 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 4, Step 586
+2026-09-27 13:57:47,286 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 4, Step 646
+2026-09-27 13:57:48,915 [INFO] fraud_drift.periodic_model: [Periodic Retrain #1] Scheduled interval reached at slice 4. Retraining on 6,296,171 accumulated transactions (7413 fraud) on GPU...
+2026-09-27 13:57:53,807 [INFO] fraud_drift.periodic_model: [Periodic Retrain Completed] #1 finished in 6.11s on NVIDIA GPU (cuda).
+2026-09-27 13:57:54,489 [INFO] fraud_drift.sliding_model: [Sliding Window Retrain #1] Retraining on 1,511,396 transactions across last 2 slices (3646 fraud) on GPU...
+2026-09-27 13:57:55,799 [INFO] fraud_drift.sliding_model: [Sliding Window Retrain Completed] #1 finished in 1.62s on NVIDIA GPU (cuda).
+2026-09-27 13:57:57,163 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN #4] Drift alert triggered in slice 4. Executing FULL RETRAIN on 6,296,171 accumulated transactions (7413 fraud) on NVIDIA eGPU...
+2026-09-27 13:58:01,814 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN COMPLETED] #4 finished in 5.89s on NVIDIA GPU (cuda).
+2026-09-27 13:58:02,032 [INFO] fraud_drift.explainer: [Drift Attribution] Explaining drift in Week_04 (Slice 4)...
+2026-09-27 13:58:06,751 [INFO] fraud_drift.explainer: [Drift Attribution Top Driver] Week_04: #1 errorBalanceOrig (PSI=0.005, SHAP=3.820)
+2026-09-27 13:58:06,753 [INFO] fraud_drift.pipeline: Slice Week_04 (04/5): Static F1=0.9994 | Period F1=0.9994 | Slide F1=0.9994 | Adapt F1=0.9994 [DRIFT -> FULL GPU RETRAIN!]
+2026-09-27 13:58:08,245 [INFO] fraud_drift.detector: [FR-4 DRIFT ALERT] DDM: Slice 5, Step 690
+2026-09-27 13:58:10,371 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN #5] Drift alert triggered in slice 5. Executing FULL RETRAIN on 6,362,620 accumulated transactions (8213 fraud) on NVIDIA eGPU...
+2026-09-27 13:58:14,895 [INFO] fraud_drift.adaptive_model: [FR-5 FULL RETRAIN COMPLETED] #5 finished in 5.80s on NVIDIA GPU (cuda).
+2026-09-27 13:58:15,110 [INFO] fraud_drift.explainer: [Drift Attribution] Explaining drift in Week_05 (Slice 5)...
+2026-09-27 13:58:19,713 [INFO] fraud_drift.explainer: [Drift Attribution Top Driver] Week_05: #1 errorBalanceOrig (PSI=0.008, SHAP=3.764)
+2026-09-27 13:58:19,715 [INFO] fraud_drift.pipeline: Slice Week_05 (05/5): Static F1=0.9994 | Period F1=0.9994 | Slide F1=1.0000 | Adapt F1=0.9994 [DRIFT -> FULL GPU RETRAIN!]
+2026-09-27 13:58:39,555 [INFO] fraud_drift.evaluator: FR-6.2: Multi-model comparison chart saved to C:\Users\Sumon\Projects\phd\Yun Sing Koh\results\figures\model_comparison_f1_aucpr.png
+2026-09-27 13:58:39,674 [INFO] fraud_drift.pipeline: P4: Persisted 25 drift attribution records to MySQL `drift_attributions`.
+2026-09-27 13:58:39,680 [INFO] fraud_drift.pipeline: 
+================================================================================================
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline: MULTI-MODEL STREAMING BENCHMARK COMPLETE — SUMMARY OF RESULTS
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline: ================================================================================================
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline: Dataset: paysim_full.csv (6,362,620 transactions across 5 weeks)
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline: Hardware Acceleration: NVIDIA GPU (cuda) (NVIDIA RTX 5080 eGPU)
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline: Database Logged: MySQL Server 9.7 (`fraud_drift_db` on 127.0.0.1:3306)
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline: Total Drift Alerts: 288
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline: ------------------------------------------------------------------------------------------------
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline: Model Architecture               | Retrains  | Whole F1  | Whole AUC  | OOS Recall  | OOS AUC-PR 
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline: ------------------------------------------------------------------------------------------------
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline: Static Baseline (Frozen)         | 0         | 0.9623    | 0.9997     | 99.96     % | 0.9996     
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline: Periodic Retraining (4w)         | 1         | 0.9719    | 0.9998     | 99.96     % | 0.9997     
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline: Sliding Window (4w)              | 1         | 0.9720    | 0.9998     | 99.96     % | 0.9997     
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline: Drift-Adaptive (ADWIN/DDM)       | 5         | 0.9740    | 0.9989     | 99.96     % | 0.9997     
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline: ------------------------------------------------------------------------------------------------
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline: Outputs generated:
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline:   - Metrics Table: C:\Users\Sumon\Projects\phd\Yun Sing Koh\results\metrics\slice_comparison_metrics.csv
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline:   - Summary JSON:  C:\Users\Sumon\Projects\phd\Yun Sing Koh\results\metrics\summary_metrics.json
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline:   - Chart:         C:\Users\Sumon\Projects\phd\Yun Sing Koh\results\figures\model_comparison_f1_aucpr.png
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline:   - Log File:      C:\Users\Sumon\Projects\phd\Yun Sing Koh\results\logs\pipeline_run_1790495599.log
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline: Pipeline executed in 319.77s.
+2026-09-27 13:58:39,681 [INFO] fraud_drift.pipeline: ================================================================================
