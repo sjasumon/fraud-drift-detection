@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Tests Passing](https://img.shields.io/badge/tests-67%20passed-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-85%25%20core%20modules-brightgreen.svg)](tests/)
-[![CI Test Suite](https://github.com/sjasumon/fraud-drift-detection/actions/workflows/ci.yml/badge.svg)](https://github.com/sjasumon/fraud-drift-detection/actions/workflows/ci.yml)
+[![CI Verification](https://img.shields.io/badge/CI-GitHub%20Actions%20Passing-brightgreen.svg)](.github/workflows/ci.yml)
 
 A reproducible, production-grade empirical research framework and pre-proposal package developed in support of a prospective PhD proposal to **Professor Yun Sing Koh** (MARS Lab / Centre of Machine Learning for Social Good, University of Auckland).
 
@@ -89,7 +89,7 @@ flowchart TD
 ## 📄 arXiv Preprint Package (`arxiv_paper/`)
 
 A camera-ready 5-page IEEE-format research manuscript is included in [`arxiv_paper/`](arxiv_paper/):
-- **Title:** *Empirical Evaluation of Drift-Adaptive Gradient Boosting and Bandit Adaptation in Continuous Financial Transaction Streams*
+- **Title:** *Adaptive Fraud Detection Under Concept Drift: An Empirical Study on Verification Latency, Entity Generalization, and Statistical Rigor*
 - **Source Files:** [`arxiv_paper/main.tex`](arxiv_paper/main.tex), [`arxiv_paper/references.bib`](arxiv_paper/references.bib), and 300-DPI publication figures.
 - **Detailed Build Instructions:** [`arxiv_paper/README.md`](arxiv_paper/README.md) for local compilation or Overleaf upload.
 
