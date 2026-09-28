@@ -33,7 +33,7 @@ class Settings(BaseSettings):
         description="Deployment environment ('development', 'staging', 'production')"
     )
 
-    # Database Configuration (MySQL Server 9.7)
+    # Database Configuration (MySQL 8.4 LTS)
     db_host: str = Field(default="127.0.0.1", description="Database host IP or hostname")
     db_port: int = Field(default=3306, ge=1024, le=65535, description="Database port number")
     db_user: str = Field(default="root", description="Database username")
@@ -52,7 +52,7 @@ class Settings(BaseSettings):
 
     # Temporal Slicing & Window Configuration
     default_hours_per_week: int = Field(default=168, gt=0, description="Hours per temporal slice")
-    total_simulation_weeks: int = Field(default=24, gt=0, description="Default stream slice count")
+    total_simulation_weeks: int = Field(default=26, gt=0, description="Default stream slice count")
     training_window_ratio: float = Field(
         default=0.20, gt=0.0, lt=1.0,
         description="Fraction of initial stream reserved for baseline training (e.g. 0.20 = Weeks 1-5)"
@@ -116,8 +116,11 @@ FIGURES_DIR = RESULTS_DIR / "figures"
 METRICS_DIR = RESULTS_DIR / "metrics"
 LOGS_DIR = RESULTS_DIR / "logs"
 
-for d in [DATA_DIR, RAW_DATA_DIR, PROCESSED_DATA_DIR, RESULTS_DIR, FIGURES_DIR, METRICS_DIR, LOGS_DIR]:
-    d.mkdir(parents=True, exist_ok=True)
+
+def ensure_directories_exist() -> None:
+    """Lazily creates required data and result directories when invoked by runtime tasks."""
+    for d in [DATA_DIR, RAW_DATA_DIR, PROCESSED_DATA_DIR, RESULTS_DIR, FIGURES_DIR, METRICS_DIR, LOGS_DIR]:
+        d.mkdir(parents=True, exist_ok=True)
 
 # Backward-Compatible Module-Level Constants
 APP_ENV = settings.app_env

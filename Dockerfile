@@ -36,7 +36,6 @@ RUN pip install --upgrade pip setuptools wheel && \
 
 # Copy application source code
 COPY src/ /app/src/
-COPY data/ /app/data/
 
 # Expose microservice HTTP port
 EXPOSE 8000
@@ -45,5 +44,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Production entrypoint
-CMD ["uvicorn", "src.api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--log-level", "info"]
+# Production entrypoint (Single worker for coherent in-memory atomic double-buffering & drift monitoring)
+CMD ["uvicorn", "src.api:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--log-level", "info"]
+

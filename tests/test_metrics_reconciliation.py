@@ -175,3 +175,67 @@ def test_evaluator_zero_fraud_and_single_class_edge_cases():
     assert summary["out_of_sample_stream"]["static_model"]["is_pure_out_of_sample"] is True
     assert "pure_oos_f1" in summary["out_of_sample_stream"]["static_model"]
 
+
+def test_operational_alert_budget_and_fpr_metrics():
+    """Verifies that compute_recall_at_fpr and compute_recall_at_alert_budget satisfy mathematical bounds."""
+    from src.evaluator import compute_recall_at_fpr, compute_recall_at_alert_budget
+
+    y_true = np.array([1, 1, 0, 0, 0, 0, 0, 0, 0, 0])
+    y_prob = np.array([0.9, 0.8, 0.7, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01])
+
+    # Top 20% alert budget (2 alerts out of 10)
+    budget_20 = compute_recall_at_alert_budget(y_true, y_prob, budget_ratio=0.20)
+    assert budget_20["alert_count"] == 2
+    assert budget_20["recall"] == 1.0  # Caught both frauds
+    assert budget_20["precision"] == 1.0
+
+    # Top 10% alert budget (1 alert out of 10)
+    budget_10 = compute_recall_at_alert_budget(y_true, y_prob, budget_ratio=0.10)
+    assert budget_10["alert_count"] == 1
+    assert budget_10["recall"] == 0.5  # Caught 1 of 2 frauds
+    assert budget_10["precision"] == 1.0
+
+    # Recall at FPR <= 15% (8 negatives * 0.15 = 1.2 -> at most 1 FP allowed)
+    fpr_res = compute_recall_at_fpr(y_true, y_prob, target_fpr=0.15)
+    assert fpr_res["actual_fpr"] <= 0.15
+    assert 0.0 <= fpr_res["recall"] <= 1.0
+    assert 0.0 <= fpr_res["precision"] <= 1.0
+
+
+def test_cost_weighted_dollar_recall_metrics():
+    """Verifies that compute_cost_weighted_metrics accurately weights losses by TransactionAmt."""
+    from src.evaluator import compute_cost_weighted_metrics, SliceEvaluator
+
+    y_true = np.array([1, 1, 0, 0])
+    y_pred = np.array([1, 0, 1, 0])  # Caught fraud 0, missed fraud 1, 1 false alarm
+    amounts = np.array([10000.0, 50.0, 20.0, 10.0])  # Caught $10k fraud, missed $50 fraud
+
+    # Dollar recall: 10000 / (10000 + 50) = 10000 / 10050 = 0.9950
+    # Standard unweighted recall: 1 / 2 = 0.50
+    cost_m = compute_cost_weighted_metrics(y_true, y_pred, amounts, cost_per_investigation=10.0)
+    assert cost_m["dollar_recall"] == round(10000.0 / 10050.0, 4)
+    assert cost_m["total_fraud_dollars"] == 10050.0
+    assert cost_m["intercepted_fraud_dollars"] == 10000.0
+    assert cost_m["missed_fraud_dollars"] == 50.0
+    assert cost_m["total_alerts"] == 2
+    assert cost_m["investigation_cost"] == 20.0
+    assert cost_m["net_financial_savings"] == 9980.0
+
+    # Test integrated evaluate_slice with amounts
+    evaluator = SliceEvaluator()
+    entry = evaluator.evaluate_slice(
+        y_true=y_true,
+        y_pred=y_pred,
+        y_prob=np.array([0.9, 0.4, 0.6, 0.1]),
+        slice_index=0,
+        slice_name="CostSlice",
+        model_type="adaptive",
+        amounts=amounts
+    )
+    assert "dollar_recall" in entry
+    assert "intercepted_fraud_dollars" in entry
+    assert "net_financial_savings" in entry
+    assert "recall_at_alert_budget_1pct" in entry
+    assert "recall_at_fpr_1pct" in entry
+
+

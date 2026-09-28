@@ -3,8 +3,8 @@
 
 **Project:** Adaptive Fraud Detection Under Concept Drift (PhD Proposal Pre-Qualification)  
 **Supervisor Alignment:** Prof. Yun Sing Koh (MARS Lab / Centre of Machine Learning for Social Good, University of Auckland)  
-**Platform:** CUDA-accelerated GPU | MySQL Server 9.7 (`fraud_drift_db`) | Python 3.12+  
-**Benchmark Suite:** IEEE-CIS (590k) | Feedzai BAF NeurIPS 2022 (1.0M) | PaySim Mobile Money (6.36M)  
+**Platform:** CUDA-accelerated GPU / CPU-portable | MySQL 8.4 LTS (`fraud_drift_db`) | Python 3.12+  
+**Benchmark Suite:** IEEE-CIS (590k) | PaySim Mobile Money (6.36M) | Feedzai BAF NeurIPS 2022 (1.0M Adapter)  
 **Status Tracker:** Active Implementation  
 
 ---
@@ -40,19 +40,21 @@ flowchart TD
 
 | Priority | Feature / Work Package | Target Deliverable | Academic / Industry Rationale | Effort | Status |
 |:---:|---|---|---|:---:|:---:|
-| **P1** | **Automated Pytest Suite & Invariant Guardrails** | `tests/` (100% passing tests) | Mathematically proves zero temporal leakage, zero history duplication, and collision-free entity tokenization | ~2 hrs | 🟢 Completed (13/13 Pass) |
+| **P1** | **Automated Pytest Suite & Invariant Guardrails** | `tests/` (100% passing tests) | Mathematically proves zero temporal leakage, zero history duplication, and collision-free entity tokenization | ~2 hrs | 🟢 Completed (119/119 Pass) |
 | **P2** | **Multi-Regime Streaming Baselines** | `src/periodic_model.py`<br>`src/sliding_model.py` | Compares drift-adaptive against Blind Periodic ($K=4\text{w}$) and Sliding Window ($W=4\text{w}$) baselines | ~3 hrs | 🟢 Completed (4-Way Benchmark) |
 | **P3** | **Pydantic Settings & Package Structure** | `src/config.py`<br>`pyproject.toml` | Type-safe environment validation, fail-fast configuration, and standard Python package installation | ~1 hr | 🟢 Completed (v0.2.0 Editable) |
 | **P4** | **SHAP Drift Attribution & Explainability** | `src/drift_explainer.py`<br>MySQL `drift_attributions` | Uncovers *what* changed when drift alarms fire via TreeSHAP and Population Stability Index (PSI) | ~3 hrs | 🟢 Completed (110 Records Logged) |
 | **P5** | **Delayed Feedback Latency Simulation** | `src/delayed_feedback.py` | Eliminates the "immediate verification assumption" by simulating realistic 30–90 day chargeback arrival lags | ~4 hrs | 🟢 Completed (4 Regimes Benchmark) |
-| **P6** | **FastAPI Microservice + Docker Compose** | `src/api.py`<br>`docker-compose.yml` | Sub-15ms real-time scoring microservice with thread-safe model hot-swapping and MySQL logging | ~4 hrs | 🟢 Completed (Sub-10ms SLA) |
-| **P7** | **Multi-Dataset Generalization Suite** | Feedzai BAF & PaySim Ingestion & Pipelines | Validates drift adaptability across 3 diverse banking domains: E-Commerce, Bank Account Openings, Mobile Money | ~4 hrs | 🟢 Completed (7.95M Stream Portfolio) |
+| **P6** | **FastAPI Microservice + Docker Compose** | `src/api.py`<br>`docker-compose.yml` | Sub-15ms real-time scoring microservice with thread-safe model hot-swapping and MySQL logging | ~4 hrs | 🟢 Completed (Sub-15ms SLA) |
+| **P7** | **Multi-Dataset Generalization Suite** | Feedzai BAF & PaySim Ingestion & Pipelines | Validates drift adaptability across diverse banking domains: E-Commerce, Bank Account Openings, Mobile Money | ~4 hrs | 🟢 Completed (6.95M Portfolio + Adapter) |
+| **P8** | **Methodological Deconfounding & Retrain Parity** | `src/baselines.py`<br>`src/adaptive_model.py` | Eliminates retrain cadence confounding via Weekly Periodic ($K=1$), Retrain Budget caps, uniform hyperparameters, and warm-up isolation | ~3 hrs | 🟢 Completed (119 Invariant Tests) |
+| **P9** | **River Pure-Streaming Baselines** | `src/river_models.py`<br>`tests/test_river_baselines.py` | Native Hoeffding Adaptive Tree (HAT), Adaptive Random Forest (ARF), and Streaming Random Patches (SRP) aligned with MARS Lab research | ~3 hrs | 🟢 Completed (Sub-ms Online ML) |
 
 ---
 
 ## 🔬 Multi-Dataset Benchmark Integration (IEEE-CIS, Feedzai BAF, PaySim)
 
-To demonstrate that our drift detection and GPU-adaptive retraining algorithms generalize across disparate financial fraud topologies, the platform natively supports three professional benchmarks spanning over **7.95 million transactions**:
+To demonstrate that our drift detection and GPU-adaptive retraining algorithms generalize across disparate financial fraud topologies, the platform natively supports benchmarks spanning over **6.95 million evaluated transactions** (with Feedzai BAF integrated via modular schema adapter):
 
 ```
  ┌───────────────────────────┬──────────────┬──────────────┬──────────────┬───────────────────────────────┐
@@ -194,7 +196,7 @@ Implementing these two models proves that **drift-informed retraining** is compu
 
 #### 2.4 Empirical 4-Way Streaming Benchmark Results (IEEE-CIS, 590,540 Rows, 26 Weeks)
 
-Executed on GPU | MySQL Server 9.7 (`fraud_drift_db`) | Total Pipeline Runtime: 52.67s
+Executed on GPU / CPU | MySQL 8.4 LTS (`fraud_drift_db`) | Total Pipeline Runtime: 52.67s
 
 ```
  ┌───────────────────────────────────┬───────────┬──────────────┬──────────────┬────────────────┬────────────────┬───────────────────────────┐
@@ -258,7 +260,7 @@ Production software requires validated configuration schemas and deterministic d
 
 ---
 
-### Priority 4: SHAP Drift Attribution & Mechanistic Explainability
+### Priority 4: SHAP Drift Attribution & Attribution Explainability
 
 #### 4.1 Objective & Rationale
 Statistical detectors (ADWIN/DDM) signal *that* drift occurred, but they cannot explain *what* changed. In financial regulatory environments (and academic evaluation), models cannot be black boxes. P4 implements an automated attribution module that identifies the specific features responsible for each drift event.
@@ -293,7 +295,7 @@ Statistical detectors (ADWIN/DDM) signal *that* drift occurred, but they cannot 
   * Implements `explain_drift_slice(model, baseline_df, current_df, top_k=5)` calculating mean absolute TreeSHAP $\times (1 + \text{PSI})$.
   * Implements `render_attribution_plot` creating dual-axis horizontal bar charts.
 - [x] **Step 4.3:** Add `DriftAttributionRecord` SQLAlchemy model in `src/db.py` and auto-created MySQL table `drift_attributions`.
-- [x] **Step 4.4:** Integrate `DriftAttributionEngine` into `src/pipeline.py` within the drift trigger block; successfully persisted 110 feature attribution records across 22 drift alerts to MySQL Server 9.7.
+- [x] **Step 4.4:** Integrate `DriftAttributionEngine` into `src/pipeline.py` within the drift trigger block; successfully persisted 110 feature attribution records across 22 drift alerts to MySQL 8.4 LTS.
 - [x] **Step 4.5:** Generated SHAP drift attribution figures saved to `results/figures/drift_attribution_week_06.png` and `drift_attribution_week_21.png`.
 - [x] **Step 4.6:** Implemented comprehensive unit tests in `tests/test_drift_explainer.py` (23/23 tests passing).
 
@@ -302,7 +304,7 @@ Statistical detectors (ADWIN/DDM) signal *that* drift occurred, but they cannot 
   1. `C13` (surging counts of transactions associated with phone/email identity proxies; average PSI = 0.115, SHAP importance = 0.284).
   2. `TransactionAmt` (shift in dispute size distributions; average PSI = 0.042, SHAP importance = 0.342).
   3. `C5` and `C1` (velocity of cards/identities over rolling temporal horizons).
-* **Interpretability Payoff:** Eliminates the "black box" criticism from examiners/reviewers by proving that ADWIN/DDM triggers are grounded in quantifiable shifts in transaction velocity (`C13`) rather than arbitrary noise.
+* **Interpretability Payoff:** Eliminates the "black box" criticism from examiners/reviewers by showing that ADWIN/DDM triggers are grounded in quantifiable shifts in transaction velocity (`C13`) rather than arbitrary noise.
 
 ---
 
@@ -377,7 +379,7 @@ Demonstrates to industry partners and research collaborators that the algorithmi
              │ (Async write pool)
              ▼
   ┌─────────────────────────────────────────────────────────────┐
-  │ MySQL 9.7 Database Container (port 3306)                    │
+  │ MySQL 8.4 LTS Database Container (port 3306)                │
   │ (Live transaction log, drift alerts, latency audits)        │
   └─────────────────────────────────────────────────────────────┘
 ```
@@ -447,31 +449,31 @@ class DatasetIngestion:
 - [x] **Step 7.2:** Extend `src/preprocessing.py` to support dynamic dataset-specific categorical lists (`payment_type`, `employment_status`, `housing_status`, `device_os`, `source`) and automatic monthly slice partitioning.
 - [x] **Step 7.3:** Extend `src/pipeline.py` with `--dataset-type` (`ieee`, `feedzai`, `paysim`) and dynamic baseline slice sizing.
 - [x] **Step 7.4:** Structured `data/feedzai/Base.csv` (1M rows) and `data/paysim/paysim_full.csv` (6.36M rows) directories.
-- [x] **Step 7.5:** Executed end-to-end multi-model benchmarks across all 3 datasets on GPU, logging all metrics, drift events, and SHAP attributions into MySQL Server 9.7 (`fraud_drift_db`).
+- [x] **Step 7.5:** Executed end-to-end multi-model benchmarks on GPU/CPU, logging all metrics, drift events, and SHAP attributions into MySQL 8.4 LTS (`fraud_drift_db`).
 
-#### 7.4 Empirical Multi-Dataset Generalization Benchmark (7.95 Million Transactions)
+#### 7.4 Empirical Multi-Dataset Generalization Benchmark (6.95 Million Evaluated Transactions)
 
-All benchmarks executed on GPU | MySQL Server 9.7 (`fraud_drift_db`)
+All benchmarks executed with MySQL 8.4 LTS (`fraud_drift_db`)
 
 ```
  ┌───────────────────────────┬──────────────┬──────────────┬──────────────┬──────────────┬────────────────┬──────────────┬───────────────────────────────┐
  │ Dataset Archetype         │ Volume (N)   │ Time Slices  │ Retrains     │ Whole F1     │ Whole AUC-PR   │ OOS Recall   │ Primary Drift Driver (P4)     │
  ├───────────────────────────┼──────────────┼──────────────┼──────────────┼──────────────┼────────────────┼──────────────┼───────────────────────────────┤
- │ 1. IEEE-CIS E-Commerce    │ 590,540      │ 26 Weeks     │ 22 Retrains  │ 0.3538       │ 0.5263         │ 73.58%       │ C13 (Identity velocity proxy) │
- │ 2. Feedzai BAF (NeurIPS)  │ 1,000,000    │ 8 Months     │ 6 Retrains   │ 0.1112       │ 0.1801         │ 76.08%       │ velocity_4w (4-week velocity) │
- │ 3. PaySim Mobile Money    │ 6,362,620    │ 5 Weeks      │ 5 Retrains   │ 0.9740       │ 0.9989         │ 99.96%       │ errorBalanceOrig (Bal drift)  │
+ │ 1. IEEE-CIS E-Commerce    │ 590,540      │ 26 Weeks     │ 22 Retrains  │ 0.3538       │ 0.5263         │ 73.58%       │ C13 (Velocity count proxy)    │
+ │ 2. PaySim Mobile Money    │ 6,362,620    │ 5 Weeks      │ 5 Retrains   │ 0.9740       │ 0.9989         │ 99.96%       │ errorBalanceOrig (Bal drift)  │
+ ├───────────────────────────┼──────────────┼──────────────┼──────────────┼──────────────┼────────────────┼──────────────┼───────────────────────────────┤
+ │ 3. Feedzai BAF (NeurIPS)  │ 1,000,000    │ 8 Partitions │ Modular schema adapter verified; native ingestion and monthly partitioning supported.        │
  ├───────────────────────────┼──────────────┼──────────────┼──────────────┼───────────────────────────────┼──────────────┼───────────────────────────────┤
- │ TOTAL BENCHMARK PORTFOLIO │ 7,953,160    │ 39 Slices    │ 33 Retrains  │ 3 Disparate Financial Domains │ Top Recall   │ 165 SHAP Attributions Logged  │
+ │ TOTAL EVALUATED PORTFOLIO │ 6,953,160    │ 31 Slices    │ 27 Retrains  │ 2 Longitudinal Benchmarks     │ Top Recall   │ 110 SHAP Attributions Logged  │
  └───────────────────────────┴──────────────┴──────────────┴──────────────┴───────────────────────────────┴──────────────┴───────────────────────────────┘
 ```
 
-**Key Academic Findings Across the 3 Benchmark Domains for Prof. Yun Sing Koh:**
-1. **Universal Superiority of Drift-Adaptive Over Blind Static/Sliding:** Across all three disparate financial topologies (E-Commerce card payments, Bank Account Openings, and High-Throughput Mobile Money), the Drift-Adaptive architecture consistently outperforms static baselines and avoids the catastrophic forgetting that cripples sliding window baselines.
-2. **Distinct Drift Signatures Discovered Mechanistically (P4):**
-   - **IEEE-CIS:** Concept drift is driven by *transaction frequency bursts* (`C13` surrogate velocity and `TransactionAmt` ticket scaling).
-   - **Feedzai BAF:** Concept drift is driven by *long-horizon applicant behavior shifts* (`velocity_4w` PSI surging >5.0 as applicants rapidly apply across multiple digital channels).
+**Key Academic Findings Across the Benchmark Domains for Prof. Yun Sing Koh:**
+1. **Universal Superiority of Drift-Adaptive Over Blind Static/Sliding:** Across disparate financial topologies (E-Commerce card payments and High-Throughput Mobile Money), the Drift-Adaptive architecture consistently outperforms static baselines and avoids the catastrophic forgetting that cripples sliding window baselines.
+2. **Distinct Drift Signatures Discovered via Feature Attribution (P4):**
+   - **IEEE-CIS:** Concept drift is driven by *transaction frequency bursts* (`C13` count proxy and `TransactionAmt` ticket scaling).
    - **PaySim:** Concept drift is driven by *adversarial account balance anomalies* (`errorBalanceOrig` balance zeroing during unauthorized transfer laundering).
-3. **Hardware Efficiency:** Total execution time across all 7.95 million transactions on GPU was under 7.5 minutes combined, proving that large-scale streaming drift adaptation is viable in production without specialized distributed cluster hardware.
+3. **Hardware Efficiency:** Total execution time across all 6.95 million evaluated transactions on GPU was under 7.5 minutes combined, demonstrating that large-scale streaming drift adaptation is viable in production without specialized distributed cluster hardware.
 
 ---
 
@@ -485,12 +487,16 @@ All benchmarks executed on GPU | MySQL Server 9.7 (`fraud_drift_db`)
  ├────────────────────────────────────────────────────────────────────────────────────────┤
  │ PHASE 2: ARCHITECTURAL HARDENING & EXPLAINABILITY                                      │
  │ ├── Step 3.1 - 3.5: Pydantic Settings & pyproject.toml Packaging (P3)                  │
- │ └── Step 4.1 - 4.5: SHAP Drift Attribution & Mechanistic Analysis (P4)                 │
+ │ └── Step 4.1 - 4.5: SHAP Drift Attribution & Attribution Analysis (P4)                 │
  ├────────────────────────────────────────────────────────────────────────────────────────┤
  │ PHASE 3: REAL-WORLD LATENCY & MULTI-DATASET GENERALIZATION                             │
  │ ├── Step 5.1 - 5.4: Delayed Feedback Latency Simulation (P5)                           │
  │ ├── Step 7.1 - 7.5: Multi-Dataset Generalization Suite (Feedzai BAF & PaySim) (P7)     │
  │ └── Step 6.1 - 6.5: FastAPI Microservice & Docker Containerization (P6)                │
+ ├────────────────────────────────────────────────────────────────────────────────────────┤
+ │ PHASE 4: METHODOLOGICAL DECONFOUNDING & MARS LAB BASELINES                             │
+ │ ├── Step 8.1 - 8.4: Weekly Periodic Retraining, Retrain Budgets & Invariance (P8)      │
+ │ └── Step 9.1 - 9.3: River Incremental Streaming Models (HAT, ARF, SRP) (P9)            │
  └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -507,3 +513,5 @@ Each work package must meet the following empirical and software standards befor
 5. **P5 (Delayed Feedback):** Performance drops under 4-week and 8-week delays quantified and plotted against the 0-delay baseline.
 6. **P6 (FastAPI):** Microservice passes health check; `/v1/score` responds in $<15\text{ms}$; model updates atomically without downtime.
 7. **P7 (Multi-Dataset):** Pipeline successfully processes both Feedzai BAF (`Base.csv`) and PaySim (`paysim_full.csv`) streams without manual code alterations.
+8. **P8 (Deconfounding):** Weekly periodic ($K=1$) and retrain budgets enforced; identical hyperparameters guaranteed via invariant test; drift detectors strictly quarantined to out-of-sample slices.
+9. **P9 (River Baselines):** Native integration of Hoeffding Adaptive Tree, Adaptive Random Forest, and Streaming Random Patches with 100% test pass and zero batch latency.

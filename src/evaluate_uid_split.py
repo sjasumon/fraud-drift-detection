@@ -206,26 +206,14 @@ def run_single_audit(
     adaptive_model.fit_initial(train_df)
     drift_monitor = DriftMonitor()
 
-    # 4. Warmup Drift Monitor across Baseline Window (Weeks 1-5, slices 0-4)
-    logger.info("Warming up streaming drift monitor across baseline window (Weeks 1-5)...")
+    # 4. Initialize Streaming State across Baseline Window (Weeks 1-5, slices 0-4)
+    # The detector MUST NOT run on warm-up weeks 1-5 where the model predicts on its own training data.
+    logger.info("Initializing streaming history across baseline window (Weeks 1-5) without training-data detector leakage...")
     for s in raw_slices[:n_train_slices]:
         slice_data = preprocessor.transform(s["data"])
-        y_true = slice_data["isFraud"].values
-        adapt_preds, _ = adaptive_model.predict(slice_data)
-        slice_drift = False
-        for i in range(len(slice_data)):
-            alert = drift_monitor.update(
-                int(y_true[i]), int(adapt_preds[i]),
-                s["slice_index"], int(slice_data["step"].iloc[i]),
-                slice_data["trans_id"].iloc[i]
-            )
-            if alert["any_drift"]:
-                slice_drift = True
-        adaptive_model.update_with_slice(slice_data, slice_drift, s["slice_index"])
-        if slice_drift:
-            drift_monitor.reset_detectors()
+        adaptive_model.update_with_slice(slice_data, drift_triggered=False, slice_idx=s["slice_index"])
 
-    logger.info(f"Baseline warmup complete. Drift alerts in warmup: {len(drift_monitor.drift_events)}.")
+    logger.info("Baseline warmup history initialized (zero in-sample drift alerts).")
 
     # 5. Out-of-Sample Sequential Streaming Evaluation (Weeks 6-26, slices 5-25)
     logger.info("Evaluating sequential streaming slices (Weeks 6-26) with zero temporal lookahead...")

@@ -1,0 +1,14 @@
+\begin{table}[t]
+\centering
+\caption{\textbf{Drift Detection Evaluation on Synthetic Streams with Ground-Truth Change Points ($S=5$ Seeds, $N=6{,}000$ Samples/Stream).}\\Measures Mean Time to Detect (MTTD in samples) and False Alarm Rates.}
+\label{tab:drift_detection_benchmark}
+\small
+\begin{tabularx}{0.48\textwidth}{l c c c c}
+\toprule
+\textbf{Detector} & \textbf{Abrupt Drift Delay} & \textbf{Gradual Drift Delay} & \textbf{False Alarms} & \textbf{Detection Rate} \\
+\midrule
+ADWIN & $79.0 \pm 20.2$ & $95.0 \pm 35.0$ & \textbf{0.0} & \textbf{100\%} \\
+DDM   & $186.6 \pm 260.1$ & \textbf{$75.0 \pm 0.0$} & 2.2 & \textbf{100\%} \\
+\bottomrule
+\end{tabularx}
+\end{table}

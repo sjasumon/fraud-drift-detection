@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from src.config import RANDOM_SEED
-from src.base_model import BaseFraudModel
+from src.base_model import BaseFraudModel, DEFAULT_XGB_HYPERPARAMS
 
 logger = logging.getLogger("fraud_drift.static_model")
 
@@ -36,14 +36,9 @@ class StaticBaselineModel(BaseFraudModel):
         logger.info(f"Training FR-3 Static Model on {len(X):,} samples ({np.sum(y)} fraud instances)...")
 
         xgb_params = {
-            "n_estimators": 100,
-            "max_depth": 6,
-            "learning_rate": 0.08,
-            "subsample": 0.8,
-            "colsample_bytree": 0.8,
+            **DEFAULT_XGB_HYPERPARAMS,
             "scale_pos_weight": self.scale_pos_weight,
-            "random_state": self.random_seed,
-            "eval_metric": "logloss"
+            "random_state": self.random_seed
         }
 
         self._fit_xgb(X, y, xgb_params, model_name="Static Model")

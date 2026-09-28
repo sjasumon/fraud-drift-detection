@@ -1,0 +1,21 @@
+{
+    "benchmark_description": "Concept drift detection delay and false alarm benchmark on synthetic stream",
+    "n_seeds": 5,
+    "n_samples_per_seed": 6000,
+    "ADWIN": {
+        "abrupt_drift_mean_delay_samples": 79.0,
+        "abrupt_drift_std_delay_samples": 20.24,
+        "gradual_drift_mean_delay_samples": 95.0,
+        "gradual_drift_std_delay_samples": 35.05,
+        "mean_false_alarms_per_stream": 0.0,
+        "detection_rate_pct": 100.0
+    },
+    "DDM": {
+        "abrupt_drift_mean_delay_samples": 186.6,
+        "abrupt_drift_std_delay_samples": 260.08,
+        "gradual_drift_mean_delay_samples": 75.0,
+        "gradual_drift_std_delay_samples": 0.0,
+        "mean_false_alarms_per_stream": 2.2,
+        "detection_rate_pct": 100.0
+    }
+}

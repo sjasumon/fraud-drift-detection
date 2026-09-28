@@ -1,0 +1,194 @@
+{
+  "n_seeds": 5,
+  "drifted_predictive_indices": [
+    0,
+    1
+  ],
+  "drifted_noise_index": 9,
+  "predictive_detected_rate": 1.0,
+  "noise_suppressed_rate": 1.0,
+  "mean_noise_psi": 6.000719999999999,
+  "mean_noise_shap": 0.059539999999999996,
+  "seed_results": [
+    {
+      "seed": 42,
+      "pred_features": [
+        "feat_0",
+        "feat_1"
+      ],
+      "noise_feature": "feat_9",
+      "ranks": {
+        "feat_0": 1,
+        "feat_1": 2,
+        "feat_9": 3,
+        "feat_6": 4,
+        "feat_3": 5,
+        "feat_5": 6,
+        "feat_2": 7,
+        "feat_7": 8,
+        "feat_4": 9,
+        "feat_8": 10
+      },
+      "scores": {
+        "feat_0": 19.006,
+        "feat_1": 17.4708,
+        "feat_9": 0.2294,
+        "feat_6": 0.0611,
+        "feat_3": 0.0559,
+        "feat_5": 0.0368,
+        "feat_2": 0.021,
+        "feat_7": 0.0195,
+        "feat_4": 0.0053,
+        "feat_8": 0.0034
+      },
+      "psi_noise": 5.6242,
+      "shap_noise": 0.0346,
+      "pred_in_top_k": true,
+      "noise_suppressed": true
+    },
+    {
+      "seed": 43,
+      "pred_features": [
+        "feat_0",
+        "feat_1"
+      ],
+      "noise_feature": "feat_9",
+      "ranks": {
+        "feat_0": 1,
+        "feat_1": 2,
+        "feat_9": 3,
+        "feat_6": 4,
+        "feat_3": 5,
+        "feat_7": 6,
+        "feat_8": 7,
+        "feat_5": 8,
+        "feat_4": 9,
+        "feat_2": 10
+      },
+      "scores": {
+        "feat_0": 19.8712,
+        "feat_1": 17.7159,
+        "feat_9": 0.1555,
+        "feat_6": 0.0205,
+        "feat_3": 0.0127,
+        "feat_7": 0.0114,
+        "feat_8": 0.0,
+        "feat_5": 0.0,
+        "feat_4": 0.0,
+        "feat_2": 0.0
+      },
+      "psi_noise": 6.2036,
+      "shap_noise": 0.0216,
+      "pred_in_top_k": true,
+      "noise_suppressed": true
+    },
+    {
+      "seed": 44,
+      "pred_features": [
+        "feat_0",
+        "feat_1"
+      ],
+      "noise_feature": "feat_9",
+      "ranks": {
+        "feat_0": 1,
+        "feat_1": 2,
+        "feat_9": 3,
+        "feat_5": 4,
+        "feat_7": 5,
+        "feat_8": 6,
+        "feat_6": 7,
+        "feat_2": 8,
+        "feat_3": 9,
+        "feat_4": 10
+      },
+      "scores": {
+        "feat_0": 17.9697,
+        "feat_1": 16.0218,
+        "feat_9": 1.601,
+        "feat_5": 0.0888,
+        "feat_7": 0.0454,
+        "feat_8": 0.0446,
+        "feat_6": 0.0324,
+        "feat_2": 0.032,
+        "feat_3": 0.0021,
+        "feat_4": 0.0
+      },
+      "psi_noise": 6.4323,
+      "shap_noise": 0.2154,
+      "pred_in_top_k": true,
+      "noise_suppressed": true
+    },
+    {
+      "seed": 45,
+      "pred_features": [
+        "feat_0",
+        "feat_1"
+      ],
+      "noise_feature": "feat_9",
+      "ranks": {
+        "feat_0": 1,
+        "feat_1": 2,
+        "feat_3": 3,
+        "feat_8": 4,
+        "feat_6": 5,
+        "feat_7": 6,
+        "feat_9": 7,
+        "feat_4": 8,
+        "feat_5": 9,
+        "feat_2": 10
+      },
+      "scores": {
+        "feat_0": 20.2815,
+        "feat_1": 18.2039,
+        "feat_3": 0.0767,
+        "feat_8": 0.0635,
+        "feat_6": 0.0569,
+        "feat_7": 0.0376,
+        "feat_9": 0.0323,
+        "feat_4": 0.0202,
+        "feat_5": 0.017,
+        "feat_2": 0.0037
+      },
+      "psi_noise": 5.9118,
+      "shap_noise": 0.0047,
+      "pred_in_top_k": true,
+      "noise_suppressed": true
+    },
+    {
+      "seed": 46,
+      "pred_features": [
+        "feat_0",
+        "feat_1"
+      ],
+      "noise_feature": "feat_9",
+      "ranks": {
+        "feat_0": 1,
+        "feat_1": 2,
+        "feat_9": 3,
+        "feat_4": 4,
+        "feat_2": 5,
+        "feat_6": 6,
+        "feat_8": 7,
+        "feat_7": 8,
+        "feat_5": 9,
+        "feat_3": 10
+      },
+      "scores": {
+        "feat_0": 20.7739,
+        "feat_1": 18.2887,
+        "feat_9": 0.1459,
+        "feat_4": 0.0727,
+        "feat_2": 0.0462,
+        "feat_6": 0.0405,
+        "feat_8": 0.0265,
+        "feat_7": 0.0251,
+        "feat_5": 0.0232,
+        "feat_3": 0.0186
+      },
+      "psi_noise": 5.8317,
+      "shap_noise": 0.0214,
+      "pred_in_top_k": true,
+      "noise_suppressed": true
+    }
+  ]
+}

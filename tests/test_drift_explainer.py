@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.drift_explainer import calculate_psi, DriftAttributionEngine
+from src.drift_explainer import calculate_psi, DriftAttributionEngine, validate_attribution_on_injected_drift
 from src.adaptive_model import DriftAdaptiveModel
 from src.preprocessing import Preprocessor
 
@@ -165,5 +165,26 @@ def test_drift_attribution_multidimensional_shap_shapes(synthetic_stream_df, mon
     assert len(res_list) > 0
     # Positive fraud class (index 1) should be selected
     assert all(r["shap_importance"] == pytest.approx(0.75) for r in res_list)
+
+
+def test_validate_attribution_on_injected_drift():
+    """
+    Asserts that TreeSHAP x (1 + PSI) correctly attributes drift to predictive features
+    and suppresses pure noise features undergoing benign covariate shift across multiple seeds.
+    """
+    summary = validate_attribution_on_injected_drift(
+        n_samples=500,
+        n_features=8,
+        drifted_predictive_indices=[0, 1],
+        drifted_noise_index=7,
+        seeds=[101, 102, 103],
+        save_results=False
+    )
+
+    assert summary["predictive_detected_rate"] == 1.0
+    assert summary["noise_suppressed_rate"] == 1.0
+    assert summary["mean_noise_psi"] >= 0.25
+    assert summary["mean_noise_shap"] < 0.20
+
 
 

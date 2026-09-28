@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 
 from src.config import RANDOM_SEED
-from src.base_model import BaseFraudModel
+from src.base_model import BaseFraudModel, DEFAULT_XGB_HYPERPARAMS
 
 logger = logging.getLogger("fraud_drift.adaptive_model")
 
@@ -23,11 +23,19 @@ class DriftAdaptiveModel(BaseFraudModel):
     Evaluates each time slice sequentially (test-then-train paradigm).
     When concept drift is flagged by FR-4 (ADWIN/DDM), triggers a FULL RETRAIN
     on the accumulated data stream using CUDA GPU acceleration.
+    Supports an optional retrain_budget to match periodic retraining baselines.
     """
 
-    def __init__(self, feature_names: List[str], scale_pos_weight: float = 1.0, random_seed: int = RANDOM_SEED):
+    def __init__(
+        self,
+        feature_names: List[str],
+        scale_pos_weight: float = 1.0,
+        random_seed: int = RANDOM_SEED,
+        retrain_budget: Optional[int] = None
+    ):
         super().__init__(feature_names, scale_pos_weight=scale_pos_weight, random_seed=random_seed)
         self.adaptation_count = 0
+        self.retrain_budget = retrain_budget
         self.cumulative_history: List[pd.DataFrame] = []
         self.retrain_log: List[Dict[str, Any]] = []
 
@@ -43,14 +51,9 @@ class DriftAdaptiveModel(BaseFraudModel):
         )
 
         xgb_params = {
-            "n_estimators": 120,
-            "max_depth": 6,
-            "learning_rate": 0.08,
-            "subsample": 0.85,
-            "colsample_bytree": 0.85,
+            **DEFAULT_XGB_HYPERPARAMS,
             "scale_pos_weight": self.scale_pos_weight,
-            "random_state": self.random_seed,
-            "eval_metric": "logloss"
+            "random_state": self.random_seed
         }
 
         self._fit_xgb(X, y, xgb_params, model_name="FR-5 Initial Model")
@@ -64,15 +67,22 @@ class DriftAdaptiveModel(BaseFraudModel):
     ):
         """
         FR-5.2 & FR-5.3: Updates cumulative history with the evaluated slice.
-        If drift was flagged by FR-4 (ADWIN/DDM), triggers a FULL RETRAIN
-        on the entire accumulated stream (or strictly matured data under delayed feedback).
+        If drift was flagged by FR-4 (ADWIN/DDM) and retrain budget allows,
+        triggers a FULL RETRAIN on the entire accumulated stream (or matured data).
         """
         # Accumulate into internal history only when not using an external training dataset override
         # (e.g. DelayedFeedbackQueue maintains its own leak-free matured training buffer).
         if training_df_override is None:
             self.cumulative_history.append(slice_df.copy())
 
-        if drift_triggered:
+        can_retrain = (self.retrain_budget is None) or (self.adaptation_count < self.retrain_budget)
+        if drift_triggered and not can_retrain:
+            logger.info(
+                f"[FR-5 RETRAIN BUDGET EXHAUSTED] Drift alert flagged in slice {slice_idx + 1}, "
+                f"but adaptation count reached budget limit ({self.retrain_budget}). Skipping retraining."
+            )
+
+        if drift_triggered and can_retrain:
             self.adaptation_count += 1
             start_t = time.time()
 
@@ -95,14 +105,9 @@ class DriftAdaptiveModel(BaseFraudModel):
             )
 
             xgb_params = {
-                "n_estimators": 150,
-                "max_depth": 6,
-                "learning_rate": 0.08,
-                "subsample": 0.85,
-                "colsample_bytree": 0.85,
+                **DEFAULT_XGB_HYPERPARAMS,
                 "scale_pos_weight": current_scale_weight,
-                "random_state": self.random_seed,
-                "eval_metric": "logloss"
+                "random_state": self.random_seed
             }
 
             self._fit_xgb(X_all, y_all, xgb_params, model_name=f"[FR-5 FULL RETRAIN #{self.adaptation_count}]")

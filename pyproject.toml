@@ -7,7 +7,7 @@ name = "fraud-drift-detection"
 version = "0.3.0"
 description = "Concept-Drift-Aware Fraud Detection Platform under Streaming Financial Distributions"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [
     { name = "Sheikh Joynal Abedin Sumon", email = "me@sumon.me" }
@@ -17,10 +17,10 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
+
 
 dependencies = [
     "numpy==2.5.3",
@@ -57,6 +57,7 @@ fraud-audit = "src.evaluate_uid_split:run"
 fraud-latency-audit = "src.delayed_audit:main"
 fraud-stats-rigor = "src.benchmark_statistical_rigor:run"
 fraud-bandit = "src.bandit.benchmark:main"
+fraud-federated = "src.federated:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

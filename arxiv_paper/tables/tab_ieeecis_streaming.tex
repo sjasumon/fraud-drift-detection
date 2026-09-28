@@ -1,0 +1,18 @@
+\begin{table}[t]
+\centering
+\caption{\textbf{IEEE-CIS 26-Week Streaming Benchmark ($N=439{,}335$ Out-of-Sample Transactions, $16,660$ Frauds, Weeks 6--26 / Slices 5--25).}\\Exposes the precision-recall trade-off under continuous non-stationarity.}
+\label{tab:ieeecis_streaming}
+\small
+\begin{tabularx}{0.48\textwidth}{l c c c c c}
+\toprule
+\textbf{Model Regime} & \textbf{Retrains} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-Score} & \textbf{AUC-PR} \\
+\midrule
+Static Baseline (Frozen) & 0 & $22.25\%$ & $63.27\%$ & $0.3293$ & $0.4606$ \\
+Periodic ($K=4\text{w}$) & 5 & $22.93\%$ & $71.34\%$ & $0.3471$ & $0.5097$ \\
+Sliding Window ($W=4\text{w}$) & 5 & $\mathbf{26.98\%}$ & $65.92\%$ & $\mathbf{0.3829}$ & $0.5099$ \\
+\textbf{Drift-Adaptive (GPU)} & \textbf{22*} & $23.52\%$ & $\mathbf{73.58\%}$ & $0.3565$ & $\mathbf{0.5318}$ \\
+\bottomrule
+\end{tabularx}
+\vspace{1mm}
+\footnotesize{*Note: Adaptive model fired on 17 of 21 test weeks (plus slice 4 baseline transition and warm-up triggers), operating on a near-weekly retraining cadence. Sliding window achieves higher precision and F1 by purging stale concepts, while adaptive retraining achieves highest recall and AUC-PR.}
+\end{table}

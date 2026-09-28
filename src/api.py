@@ -1,9 +1,9 @@
 """
-Real-Time Concept-Drift-Aware Fraud Detection Microservice.
+Serving Demonstration Prototype for Concept-Drift-Aware Fraud Detection.
 Built with FastAPI and Uvicorn.
 
-Key Production Capabilities:
-1. Sub-15ms Real-Time Inference (/v1/score and /v1/batch-score) via active double-buffer pointer.
+Key Prototype Capabilities:
+1. Sub-15ms Real-Time Inference Demo (/v1/score and /v1/batch-score) via active double-buffer pointer.
 2. Asynchronous Chargeback / Ground-Truth Feedback Stream (/v1/feedback) updating ADWIN & DDM detectors.
 3. Automated Background Shadow Retraining: When concept drift is flagged by ADWIN/DDM on /v1/feedback,
    FastAPI dispatches an asynchronous background retrain worker that builds a shadow XGBoost model.
@@ -23,6 +23,8 @@ except ImportError:
     psutil = None
 import logging
 import threading
+from collections import OrderedDict
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional, Tuple
 
@@ -30,7 +32,7 @@ import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Security, Depends, status
 from fastapi.security import APIKeyHeader
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from src.config import USE_GPU, GPU_DEVICE, RANDOM_SEED, ADWIN_DELTA, API_KEY, APP_ENV
 from src.drift_detector import DriftMonitor
@@ -40,13 +42,24 @@ logger = logging.getLogger("fraud_drift.api")
 # --- Pydantic Data Contracts ---
 
 class TransactionPayload(BaseModel):
-    trans_id: str = Field(..., description="Unique transaction reference ID")
+    trans_id: str = Field(..., min_length=1, max_length=128, description="Unique transaction reference ID")
     features: Dict[str, float] = Field(..., description="Key-value mapping of engineered transaction features")
     timestamp: Optional[float] = Field(default=None, description="Unix epoch timestamp")
 
+    @field_validator("features")
+    @classmethod
+    def validate_features_bounds(cls, v: Dict[str, float]) -> Dict[str, float]:
+        if not v:
+            raise ValueError("Features dictionary must not be empty.")
+        if len(v) > 500:
+            raise ValueError(f"Features payload exceeds maximum bound of 500 attributes (received {len(v)}).")
+        return v
+
 
 class BatchTransactionPayload(BaseModel):
-    transactions: List[TransactionPayload] = Field(..., description="Array of transactions to score")
+    transactions: List[TransactionPayload] = Field(
+        ..., min_length=1, max_length=1000, description="Array of transactions to score (max 1000 per batch)"
+    )
 
 
 class ScoreResponse(BaseModel):
@@ -67,10 +80,10 @@ class BatchScoreResponse(BaseModel):
 
 
 class FeedbackPayload(BaseModel):
-    trans_id: str = Field(..., description="Transaction ID corresponding to previous score")
+    trans_id: str = Field(..., min_length=1, max_length=128, description="Transaction ID corresponding to previous score")
     is_fraud: int = Field(..., ge=0, le=1, description="Ground truth outcome: 1 if fraud/chargeback, 0 if legitimate")
-    dispute_reason: Optional[str] = Field(default=None, description="Reason code for chargeback")
-    predicted_probability: Optional[float] = Field(default=None, description="Logged prediction probability")
+    dispute_reason: Optional[str] = Field(default=None, max_length=256, description="Reason code for chargeback")
+    predicted_probability: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="Logged prediction probability")
 
 
 class FeedbackResponse(BaseModel):
@@ -81,6 +94,7 @@ class FeedbackResponse(BaseModel):
     monitored_samples_total: int
     shadow_retrain_triggered: bool = False
     model_generation: int = 1
+
 
 
 class DriftStatusResponse(BaseModel):
@@ -131,11 +145,12 @@ class ModelDoubleBuffer:
     while background retrain threads build shadow_model and perform an atomic pointer swap.
     """
 
-    def __init__(self, initial_model=None, feature_names: Optional[List[str]] = None, is_dummy: bool = True):
+    def __init__(self, initial_model=None, feature_names: Optional[List[str]] = None, is_dummy: bool = True, is_ready: Optional[bool] = None):
         self._active_model = initial_model
         self._feature_names = feature_names or []
         self._generation = 1
         self._is_dummy = is_dummy
+        self._is_ready = is_ready if is_ready is not None else (initial_model is not None)
         self._last_retrain_time: Optional[str] = datetime.now(timezone.utc).isoformat()
         self._swap_lock = threading.Lock()
 
@@ -161,10 +176,17 @@ class ModelDoubleBuffer:
 
     @property
     def is_ready(self) -> bool:
-        return self.is_loaded and not self._is_dummy
+        return self.is_loaded and bool(self._is_ready)
+
+    def set_ready(self, ready: bool):
+        """Allows testing and runtime toggling of serving readiness."""
+        with self._swap_lock:
+            self._is_ready = ready
 
     def predict_single(self, features_dict: Dict[str, float]) -> Tuple[float, bool]:
         """Performs non-blocking inference on the active model pointer."""
+        if not self.is_ready:
+            raise RuntimeError("Scoring model is not ready.")
         model = self._active_model
         if model is None:
             raise RuntimeError("Scoring model is not initialized.")
@@ -181,6 +203,8 @@ class ModelDoubleBuffer:
 
     def predict_batch(self, features_list: List[Dict[str, float]]) -> Tuple[np.ndarray, np.ndarray]:
         """Performs vectorized batch inference on the active model pointer."""
+        if not self.is_ready:
+            raise RuntimeError("Scoring model is not ready.")
         model = self._active_model
         if model is None:
             raise RuntimeError("Scoring model is not initialized.")
@@ -194,13 +218,14 @@ class ModelDoubleBuffer:
         preds = (probs >= 0.5).astype(bool)
         return probs, preds
 
-    def atomic_swap(self, new_model, new_feature_names: Optional[List[str]] = None, is_dummy: bool = False):
+    def atomic_swap(self, new_model, new_feature_names: Optional[List[str]] = None, is_dummy: bool = False, is_ready: bool = True):
         """Atomically hot-swaps the active model pointer with the newly trained shadow model."""
         with self._swap_lock:
             self._active_model = new_model
             if new_feature_names is not None:
                 self._feature_names = new_feature_names
             self._is_dummy = is_dummy
+            self._is_ready = is_ready
             self._generation += 1
             self._last_retrain_time = datetime.now(timezone.utc).isoformat()
             logger.info(
@@ -370,26 +395,54 @@ class BackgroundRetrainer:
             self._retrain_lock.release()
 
 
+def startup_security_check():
+    """Validates runtime configuration hygiene upon microservice initialization."""
+    if APP_ENV.lower() in ("production", "prod", "staging"):
+        if secrets.compare_digest(API_KEY, "dev-secret-key") or len(API_KEY) < 16:
+            raise RuntimeError(
+                f"FATAL: Production mode ('{APP_ENV}') detected with insecure API_KEY. "
+                "Set a secure, high-entropy API_KEY in production."
+            )
+        logger.info("Microservice initialized securely in '%s' mode.", APP_ENV)
+    else:
+        if secrets.compare_digest(API_KEY, "dev-secret-key"):
+            logger.warning(
+                "Microservice initialized in '%s' mode with default API_KEY ('dev-secret-key'). "
+                "Ensure production deployments provide a non-default secret.", APP_ENV
+            )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Modern lifespan handler replacing deprecated @app.on_event startup/shutdown."""
+    startup_security_check()
+    yield
+
+
 # --- FastAPI Application & State Initialization ---
 # Note on CORS: CORS middleware is intentionally omitted by default because this microservice
 # is designed as an internal backend-to-backend scoring engine isolated within a private network
 # perimeter (e.g. Docker network or VPC). For public browser access, attach CORSMiddleware with explicit origins.
 
 app = FastAPI(
-    title="Concept-Drift-Aware Fraud Detection Microservice",
-    description="Sub-15ms real-time scoring microservice with atomic model hot-swapping and live ADWIN/DDM drift telemetry.",
-    version="0.2.0"
+    title="Concept-Drift-Aware Fraud Detection Serving Prototype",
+    description="Serving-overhead demonstration prototype for real-time scoring with atomic model hot-swapping and live ADWIN/DDM drift telemetry.",
+    version="0.2.0",
+    lifespan=lifespan
 )
 
-# Global State Singletons
+# Global State Singletons (Single-Worker in-memory architecture)
 start_time = time.time()
 model_buffer = ModelDoubleBuffer()
 drift_monitor = DriftMonitor()
 training_store = FeedbackTrainingStore()
 drift_lock = threading.Lock()
 retrainer = BackgroundRetrainer(model_buffer, drift_monitor, training_store, drift_lock=drift_lock)
-recent_predictions: Dict[str, float] = {}  # Bounded FIFO eviction buffer of recent transaction probabilities
-recent_features: Dict[str, Dict[str, float]] = {}  # Bounded FIFO eviction buffer of features for feedback pairing
+
+# Bounded FIFO eviction buffers using OrderedDict for O(1) in-place eviction without key copying
+recent_predictions: OrderedDict[str, float] = OrderedDict()
+recent_features: OrderedDict[str, Dict[str, float]] = OrderedDict()
+processed_feedback_ids: OrderedDict[str, int] = OrderedDict()  # Deduplication store: trans_id -> is_fraud
 predictions_lock = threading.Lock()
 MAX_CACHE_SIZE = 100000
 
@@ -411,23 +464,6 @@ def verify_api_key(api_key: Optional[str] = Security(api_key_header)) -> str:
         )
     return api_key
 
-
-@app.on_event("startup")
-def startup_security_check():
-    """Validates runtime configuration hygiene upon microservice initialization."""
-    if APP_ENV.lower() in ("production", "prod", "staging"):
-        if secrets.compare_digest(API_KEY, "dev-secret-key") or len(API_KEY) < 16:
-            raise RuntimeError(
-                f"FATAL: Production mode ('{APP_ENV}') detected with insecure API_KEY. "
-                "Set a secure, high-entropy API_KEY in production."
-            )
-        logger.info("Microservice initialized securely in '%s' mode.", APP_ENV)
-    else:
-        if secrets.compare_digest(API_KEY, "dev-secret-key"):
-            logger.warning(
-                "Microservice initialized in '%s' mode with default API_KEY ('dev-secret-key'). "
-                "Ensure production deployments provide a non-default secret.", APP_ENV
-            )
 
 
 def assign_risk_tier(prob: float) -> str:
@@ -472,9 +508,14 @@ def health_check():
 @app.post("/v1/score", response_model=ScoreResponse, dependencies=[Depends(verify_api_key)], tags=["Inference"])
 def score_transaction(payload: TransactionPayload):
     """
-    Sub-15ms real-time scoring endpoint for payment gateways.
-    Reads active model via atomic lock-free pointer.
+    Real-time scoring endpoint demonstration for payment gateways.
+    Reads active model via atomic lock-free pointer. Returns 503 if model is not ready.
     """
+    if not model_buffer.is_ready:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Scoring service unavailable: model is not ready."
+        )
     t0 = time.perf_counter()
     try:
         prob, is_fraud = model_buffer.predict_single(payload.features)
@@ -487,11 +528,10 @@ def score_transaction(payload: TransactionPayload):
     with predictions_lock:
         recent_predictions[payload.trans_id] = prob
         recent_features[payload.trans_id] = payload.features
-        if len(recent_predictions) > MAX_CACHE_SIZE:
-            first_keys = list(recent_predictions.keys())[:10_000]
-            for k in first_keys:
-                recent_predictions.pop(k, None)
-                recent_features.pop(k, None)
+        # O(1) in-place FIFO eviction of oldest items when exceeding MAX_CACHE_SIZE
+        while len(recent_predictions) > MAX_CACHE_SIZE:
+            recent_predictions.popitem(last=False)
+            recent_features.popitem(last=False)
 
     return ScoreResponse(
         trans_id=payload.trans_id,
@@ -506,7 +546,12 @@ def score_transaction(payload: TransactionPayload):
 
 @app.post("/v1/batch-score", response_model=BatchScoreResponse, dependencies=[Depends(verify_api_key)], tags=["Inference"])
 def score_batch(payload: BatchTransactionPayload):
-    """Vectorized high-throughput batch scoring endpoint."""
+    """Vectorized high-throughput batch scoring endpoint demonstration. Returns 503 if model is not ready."""
+    if not model_buffer.is_ready:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Scoring service unavailable: model is not ready."
+        )
     t0 = time.perf_counter()
     if not payload.transactions:
         return BatchScoreResponse(results=[], total_processed=0, total_latency_ms=0.0, throughput_qps=0.0)
@@ -536,6 +581,9 @@ def score_batch(payload: BatchTransactionPayload):
                 model_version="0.2.0",
                 model_generation=model_buffer.generation
             ))
+        while len(recent_predictions) > MAX_CACHE_SIZE:
+            recent_predictions.popitem(last=False)
+            recent_features.popitem(last=False)
 
     return BatchScoreResponse(
         results=results,
@@ -552,22 +600,81 @@ def log_chargeback_feedback(payload: FeedbackPayload, background_tasks: Backgrou
     Updates ADWIN and DDM statistical test streams. If concept drift is flagged,
     automatically dispatches an asynchronous background retrain task that trains a shadow
     XGBoost model, atomically swaps the serving pointer, and resets drift detectors.
-    """
-    predicted_prob = payload.predicted_probability
-    with predictions_lock:
-        tx_features = recent_features.get(payload.trans_id)
 
-    if predicted_prob is None:
-        with predictions_lock:
-            if payload.trans_id not in recent_predictions:
+    Security & Integrity Guardrails:
+    1. Deduplication on trans_id prevents repeated labels from double-counting error statistics.
+    2. Server-authoritative predictions: cached model predictions take strict precedence over
+       client-supplied probabilities, preventing forgeable drift injection.
+    """
+    # 1. Deduplication check on trans_id to prevent double-counting drift errors and training data
+    with predictions_lock:
+        if payload.trans_id in processed_feedback_ids:
+            prev_label = processed_feedback_ids[payload.trans_id]
+            logger.warning(
+                f"Duplicate feedback received for transaction '{payload.trans_id}' "
+                f"(previous_label={prev_label}, incoming_label={payload.is_fraud}). Ignoring duplicate."
+            )
+            with drift_lock:
+                monitored_samples = drift_monitor.total_samples_monitored
+                total_errors = drift_monitor.total_errors_observed
+                err_rate = (total_errors / monitored_samples) if monitored_samples > 0 else 0.0
+            return FeedbackResponse(
+                status="DUPLICATE_IGNORED",
+                trans_id=payload.trans_id,
+                drift_alert_triggered=False,
+                current_error_rate=round(err_rate, 4),
+                monitored_samples_total=monitored_samples,
+                shadow_retrain_triggered=False,
+                model_generation=model_buffer.generation
+            )
+        tx_features = recent_features.get(payload.trans_id)
+        has_cached_pred = payload.trans_id in recent_predictions
+        cached_prob = recent_predictions.get(payload.trans_id)
+
+    # 2. Server-authoritative prediction check to prevent forgeable drift signals
+    if has_cached_pred:
+        # Transaction was scored by this serving pipeline: server score is strictly authoritative
+        predicted_prob = cached_prob
+        if payload.predicted_probability is not None and abs(payload.predicted_probability - cached_prob) > 1e-3:
+            if APP_ENV.lower() in ("production", "prod", "staging"):
                 raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
+                    status_code=status.HTTP_400_BAD_REQUEST,
                     detail=(
-                        f"Transaction '{payload.trans_id}' was not found in the recent prediction cache. "
-                        "Provide 'predicted_probability' explicitly to log ground-truth feedback."
+                        f"Prediction mismatch for transaction '{payload.trans_id}': "
+                        f"client-supplied probability ({payload.predicted_probability}) contradicts "
+                        f"authoritative server prediction ({cached_prob:.4f})."
                     )
                 )
-            predicted_prob = recent_predictions[payload.trans_id]
+            else:
+                logger.warning(
+                    f"Client-supplied predicted_probability ({payload.predicted_probability}) differs from "
+                    f"authoritative score ({cached_prob:.4f}) for '{payload.trans_id}'. Overriding with server score."
+                )
+    else:
+        # Transaction not in server cache
+        if payload.predicted_probability is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=(
+                    f"Transaction '{payload.trans_id}' was not found in the recent prediction cache. "
+                    "Provide 'predicted_probability' explicitly to log ground-truth feedback."
+                )
+            )
+        if APP_ENV.lower() in ("production", "prod", "staging"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Untracked transaction '{payload.trans_id}': In production mode, ground-truth feedback "
+                    "requires a prior authoritative prediction from the serving pipeline."
+                )
+            )
+        predicted_prob = payload.predicted_probability
+
+    # Record trans_id in deduplication store
+    with predictions_lock:
+        processed_feedback_ids[payload.trans_id] = payload.is_fraud
+        while len(processed_feedback_ids) > MAX_CACHE_SIZE:
+            processed_feedback_ids.popitem(last=False)
 
     # Accumulate labeled sample for background shadow retraining if features exist
     if tx_features:
@@ -591,6 +698,7 @@ def log_chargeback_feedback(payload: FeedbackPayload, background_tasks: Backgrou
     retrain_dispatched = False
     if alert["any_drift"]:
         retrain_dispatched = retrainer.trigger_retrain_async(background_tasks=background_tasks)
+
 
     return FeedbackResponse(
         status="RECORDED",
@@ -682,9 +790,9 @@ def initialize_app_model():
         random_state=RANDOM_SEED
     )
     model.fit(X, y)
-    model_buffer.atomic_swap(model, dummy_features, is_dummy=True)
+    model_buffer.atomic_swap(model, dummy_features, is_dummy=True, is_ready=True)
     training_store.set_seed_data(dummy_features, X, y)
-    logger.info("initialize_app_model: Model buffer pre-seeded with synthetic warmup placeholder (is_dummy=True, is_ready=False).")
+    logger.info("initialize_app_model: Model buffer pre-seeded with demo warmup placeholder (is_dummy=True, is_ready=True).")
 
 
 # Auto-seed on module import

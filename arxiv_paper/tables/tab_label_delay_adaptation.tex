@@ -1,0 +1,17 @@
+\begin{table}[t]
+\centering
+\caption{\textbf{Adaptation Frontier Under Label Verification Latency ($S=5$ Seeds, 95\% CIs).}\\Compares Proposed Unsupervised $P(X)$ Trigger against Supervised Error-Monitoring, Cadence-Matched Periodic-1w, and Static Baseline across label delay $\delta \in \{0, 1, 2, 4, 8\}$ weeks. Parentheses report mean cumulative retrains.}
+\label{tab:label_delay_adaptation_frontier}
+\small
+\begin{tabularx}{0.48\textwidth}{l c c c c}
+\toprule
+\textbf{Latency} & \textbf{Periodic-1w} & \textbf{Unsupervised $P(X)$} & \textbf{Supervised (ADWIN/DDM)} & \textbf{Static (Frozen)} \\
+\midrule
+$\delta = 0\text{w}$ & 91.33\% [89.5, 93.2] (12) & \textbf{86.21\%} [76.9, 95.5] (\textbf{1.2}) & 81.47\% [65.6, 97.4] (7.4) & 65.99\% \\
+$\delta = 1\text{w}$ & 82.95\% [80.5, 85.4] (11) & \textbf{80.52\%} [76.1, 85.0] (\textbf{1.2}) & 75.94\% [66.4, 85.5] (7.0) & 65.99\% \\
+$\delta = 2\text{w}$ & 73.63\% [72.1, 75.1] (10) & \textbf{73.76\%} [72.4, 75.1] (\textbf{1.2}) & 70.72\% [67.1, 74.4] (6.4) & 65.99\% \\
+$\delta = 4\text{w}$ & 65.79\% [63.5, 68.1] (8) & \textbf{65.99\%} [64.1, 67.9] (\textbf{1.0}) & 65.79\% [63.5, 68.1] (5.6) & 65.99\% \\
+$\delta = 8\text{w}$ & 65.99\% [64.1, 67.9] (4) & \textbf{65.99\%} [64.1, 67.9] (\textbf{1.0}) & 65.99\% [64.1, 67.9] (2.6) & 65.99\% \\
+\bottomrule
+\end{tabularx}
+\end{table}

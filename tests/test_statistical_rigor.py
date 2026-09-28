@@ -13,6 +13,8 @@ from src.benchmark_statistical_rigor import (
     compute_sample_stats,
     compute_bootstrap_ci,
     compute_paired_tests,
+    compute_weekly_paired_tests,
+    compute_block_bootstrap_ci_delta,
     export_summary_csv,
     adjust_p_values_fdr_bh,
     adjust_p_values_bonferroni
@@ -201,5 +203,75 @@ def test_export_summary_csv_with_ieee_uid(tmp_path: Path):
     csv_out = tmp_path / "test_ieee_summary.csv"
     export_summary_csv(dummy_results, csv_out)
     assert csv_out.exists()
+
+
+def test_compute_weekly_paired_tests():
+    # 21 out-of-sample weekly values
+    a_weekly = [70.0 + i * 0.5 for i in range(21)]
+    b_weekly = [60.0 + i * 0.4 for i in range(21)]
+    res = compute_weekly_paired_tests(a_weekly, b_weekly)
+
+    assert res["n_weeks"] == 21
+    assert res["mean_delta"] > 10.0
+    assert res["se_delta"] > 0.0
+    assert res["ci_95_delta"][0] < res["mean_delta"] < res["ci_95_delta"][1]
+    assert res["t_stat"] > 0
+    assert res["p_value_t"] < 0.001
+    assert res["p_value_wilcoxon"] is not None
+    assert res["p_value_wilcoxon"] < 0.001
+    assert res["significant_001"] is True
+    assert res["cohens_d"] > 1.0
+
+
+def test_compute_block_bootstrap_ci_delta():
+    # 21 weeks of deltas strictly around +10%
+    a_weekly = [75.0, 78.0, 72.0, 80.0, 74.0, 77.0, 81.0, 73.0, 76.0, 79.0,
+                82.0, 71.0, 75.0, 78.0, 80.0, 73.0, 77.0, 81.0, 74.0, 79.0, 76.0]
+    b_weekly = [65.0, 68.0, 62.0, 70.0, 64.0, 67.0, 71.0, 63.0, 66.0, 69.0,
+                72.0, 61.0, 65.0, 68.0, 70.0, 63.0, 67.0, 71.0, 64.0, 69.0, 66.0]
+
+    low, high = compute_block_bootstrap_ci_delta(
+        a_weekly, b_weekly, block_size=2, n_bootstraps=500, alpha=0.05, random_seed=42
+    )
+    assert 9.0 <= low <= 11.0
+    assert 9.0 <= high <= 11.0
+    assert low <= high
+
+
+def test_run_ieee_longitudinal_weekly_statistical_rigor():
+    from src.benchmark_statistical_rigor import run_ieee_longitudinal_weekly_statistical_rigor
+    res = run_ieee_longitudinal_weekly_statistical_rigor(n_bootstraps=100)
+    assert res["n_out_of_sample_weeks"] == 21
+    assert "models" in res
+    assert "paired_tests" in res
+    assert "adaptive_vs_static_recall" in res["paired_tests"]
+    pt_rec = res["paired_tests"]["adaptive_vs_static_recall"]
+    assert pytest.approx(pt_rec["mean_delta"], rel=1e-2) == 10.69
+    assert pt_rec["significant_001"] is True
+    assert len(pt_rec["bootstrap_ci_delta_95"]) == 2
+
+
+def test_generate_statistical_rigor_table(tmp_path: Path):
+    import json
+    from src.generate_paper_tables import generate_statistical_rigor_table
+    from src.config import METRICS_DIR
+    out_file = tmp_path / "test_tab_statistical_rigor.tex"
+    tex = generate_statistical_rigor_table(METRICS_DIR, out_file)
+    assert out_file.exists()
+    assert "tab:statistical_rigor" in tex
+    
+    # Verify dynamically from JSON ground truth
+    json_path = METRICS_DIR / "statistical_rigor_summary.json"
+    with open(json_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    
+    c3 = data["ieee_zero_memory_uid"]["summary"]["cohort3_zero_memory"]
+    c3_stat = f"{c3['static_recall']['mean']:.2f}\\%"
+    c3_adp = f"{c3['adaptive_recall']['mean']:.2f}\\%"
+    
+    assert c3_stat in tex, f"Cohort 3 static recall {c3_stat} not found in LaTeX table"
+    assert c3_adp in tex, f"Cohort 3 adaptive recall {c3_adp} not found in LaTeX table"
+    assert "0.9958" in tex
+
 
 

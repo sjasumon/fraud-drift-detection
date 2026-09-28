@@ -4,7 +4,7 @@ Multi-Seed Statistical Rigor & Bootstrap Confidence Interval Benchmarking Suite.
 Addresses:
 1. PaySim Mobile Money Out-of-Sample Stream F1 Rigor (0.9955 -> 0.9978):
    Evaluates Static, Periodic, Sliding, and Drift-Adaptive across K random seeds.
-2. IEEE-CIS Zero-Memory UID Generalization Recall Rigor (67.82% -> 77.09%):
+2. IEEE-CIS Zero-Memory UID Generalization Recall Rigor:
    Evaluates Static vs Drift-Adaptive across K random seeds on Strict Stream-Unseen Cards (Cohort 3).
 3. IEEE-CIS 26-Week Streaming Out-of-Sample Benchmark:
    Evaluates all 4 model architectures across K random seeds.
@@ -23,7 +23,7 @@ import time
 import logging
 import argparse
 from pathlib import Path
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any, Tuple, Optional
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -164,11 +164,141 @@ def adjust_p_values_bonferroni(p_values: List[float]) -> List[float]:
     return [float(f"{min(1.0, float(p * m)):.6e}") for p in p_values]
 
 
+def compute_block_bootstrap_ci_delta(
+    a_weekly: List[float],
+    b_weekly: List[float],
+    block_size: int = 3,
+    n_bootstraps: int = 2000,
+    alpha: float = 0.05,
+    random_seed: int = RANDOM_SEED
+) -> Tuple[float, float]:
+    """
+    Computes non-parametric moving block bootstrap confidence intervals for the paired
+    difference (delta = a - b) across temporal streaming slices (weeks).
+    
+    Using a contiguous block length (default block_size = 3) accounts for week-to-week
+    serial correlation and volatility persistence in time-series streams (Künsch 1989),
+    ensuring that confidence bounds do not assume independence across consecutive weeks.
+    For independent samples (e.g., random seeds), block_size=1 recovers the standard bootstrap.
+    """
+    a = np.asarray(a_weekly, dtype=float)
+    b = np.asarray(b_weekly, dtype=float)
+    diff = a - b
+    n = len(diff)
+    if n == 0:
+        return 0.0, 0.0
+    if n == 1:
+        return round(float(diff[0]), 4), round(float(diff[0]), 4)
+
+    # Clamping block size to valid range
+    b_size = max(1, min(block_size, n))
+
+    rng = np.random.default_rng(random_seed)
+    n_blocks = int(np.ceil(n / b_size))
+    
+    # Construct contiguous overlapping blocks (Moving Block Bootstrap)
+    blocks = [diff[i : i + b_size] for i in range(0, n - b_size + 1)]
+    if not blocks:
+        blocks = [diff]
+
+    boot_means = []
+    for _ in range(n_bootstraps):
+        sampled_blocks = rng.choice(len(blocks), size=n_blocks, replace=True)
+        resampled_diff = np.concatenate([blocks[idx] for idx in sampled_blocks])[:n]
+        boot_means.append(float(np.mean(resampled_diff)))
+
+    low = float(np.percentile(boot_means, 100 * (alpha / 2)))
+    high = float(np.percentile(boot_means, 100 * (1 - alpha / 2)))
+    return round(low, 4), round(high, 4)
+
+
+def compute_weekly_paired_tests(
+    a_weekly: List[float],
+    b_weekly: List[float],
+    alpha: float = 0.05
+) -> Dict[str, Any]:
+    """
+    Runs paired Student's t-test and two-sided Wilcoxon signed-rank test on per-week
+    paired differences (delta = a - b) across N temporal streaming slices.
+    
+    Unlike seed variations on a fixed split, this measures genuine temporal generalisation
+    across non-stationary time horizons.
+    """
+    a = np.asarray(a_weekly, dtype=float)
+    b = np.asarray(b_weekly, dtype=float)
+    diff = a - b
+    n = len(diff)
+    
+    if n < 2 or np.all(diff == 0):
+        return {
+            "mean_delta": 0.0,
+            "std_delta": 0.0,
+            "se_delta": 0.0,
+            "ci_95_delta": [0.0, 0.0],
+            "t_stat": 0.0,
+            "p_value_t": 1.0,
+            "wilcoxon_stat": 0.0,
+            "p_value_wilcoxon": 1.0,
+            "cohens_d": 0.0,
+            "hedges_g": 0.0,
+            "significant_05": False,
+            "significant_01": False,
+            "significant_001": False,
+            "n_weeks": n
+        }
+
+    mean_delta = float(np.mean(diff))
+    std_delta = float(np.std(diff, ddof=1))
+    se_delta = std_delta / np.sqrt(n)
+
+    t_crit = float(stats.t.ppf(1 - alpha / 2, df=n - 1))
+    ci_low = mean_delta - t_crit * se_delta
+    ci_high = mean_delta + t_crit * se_delta
+
+    cohens_d = round(mean_delta / std_delta, 4) if std_delta > 1e-12 else 0.0
+    j_factor = 1.0 - (3.0 / (4 * n - 5)) if n > 1 else 1.0
+    hedges_g = round(cohens_d * j_factor, 4)
+
+    t_res = stats.ttest_1samp(diff, 0.0)
+    p_t = float(t_res.pvalue) if not np.isnan(t_res.pvalue) else 1.0
+    t_val = float(t_res.statistic)
+
+    try:
+        w_res = stats.wilcoxon(diff, alternative="two-sided")
+        w_stat, w_p = float(w_res.statistic), float(w_res.pvalue)
+    except Exception:
+        w_stat, w_p = float("nan"), float("nan")
+
+    return {
+        "mean_delta": round(mean_delta, 4),
+        "std_delta": round(std_delta, 4),
+        "se_delta": round(se_delta, 4),
+        "ci_95_delta": [round(ci_low, 4), round(ci_high, 4)],
+        "t_stat": round(t_val, 4) if not np.isinf(t_val) else float("inf"),
+        "p_value_t": float(f"{p_t:.6e}"),
+        "wilcoxon_stat": round(w_stat, 4) if not np.isnan(w_stat) else None,
+        "p_value_wilcoxon": float(f"{w_p:.6e}") if not np.isnan(w_p) else None,
+        "cohens_d": cohens_d,
+        "hedges_g": hedges_g,
+        "significant_05": bool(p_t < 0.05),
+        "significant_01": bool(p_t < 0.01),
+        "significant_001": bool(p_t < 0.001),
+        "n_weeks": n
+    }
+
+
 def compute_paired_tests(a_values: List[float], b_values: List[float]) -> Dict[str, Any]:
     """
-    Runs paired Student's t-test and Wilcoxon signed-rank test.
-    Computes effect size (Cohen's d_z) and small-sample bias-corrected Hedges' g.
-    Provides explicit documentation of sample size limitations (n=5 seeds).
+    Runs paired Student's t-test and two-sided Wilcoxon signed-rank test.
+    
+    IMPORTANT METHODOLOGICAL NOTE:
+    When evaluated across random seeds on a fixed dataset and temporal split, these
+    tests measure algorithmic initialization stability across random tree subsamples,
+    NOT generalisation over time. For temporal generalisation across time horizons,
+    use `compute_weekly_paired_tests`.
+    
+    Additionally note that for n=5 replicates, the two-sided Wilcoxon signed-rank test
+    has a mathematical lower bound of p = 0.0625 (2 * (1/2)^5) and cannot drop below 0.05.
     """
     a = np.array(a_values, dtype=float)
     b = np.array(b_values, dtype=float)
@@ -199,7 +329,6 @@ def compute_paired_tests(a_values: List[float], b_values: List[float]) -> Dict[s
     # Paired Cohen's d (d_z = mean_diff / std_diff)
     if std_diff > 1e-12:
         cohens_d = round(mean_diff / std_diff, 4)
-        # Hedges' g small-sample bias correction factor (n < 20)
         j_factor = 1.0 - (3.0 / (4 * n - 5)) if n > 1 else 1.0
         hedges_g = round(cohens_d * j_factor, 4)
     else:
@@ -220,7 +349,7 @@ def compute_paired_tests(a_values: List[float], b_values: List[float]) -> Dict[s
 
     t_res = stats.ttest_rel(a, b)
     try:
-        w_res = stats.wilcoxon(a, b)
+        w_res = stats.wilcoxon(a, b, alternative="two-sided")
         w_stat, w_p = float(w_res.statistic), float(w_res.pvalue)
     except Exception:
         w_stat, w_p = float("nan"), float("nan")
@@ -244,8 +373,8 @@ def compute_paired_tests(a_values: List[float], b_values: List[float]) -> Dict[s
         "significant_001": bool(p_t < 0.001),
         "n_seeds": n,
         "sample_size_note": (
-            f"n={n} seeds is an exploratory sample size for paired t-tests under central limit assumptions. "
-            "Reported effect sizes (Cohen's d, Hedges' g) and non-parametric Wilcoxon tests verify robust practical significance."
+            f"Evaluated across n={n} seeds on a fixed split (measures algorithmic initialization stability, not temporal generalisation). "
+            f"Note: for n={n}, two-sided Wilcoxon has a minimum achievable p-value of 0.0625. Use compute_weekly_paired_tests across time slices for temporal significance."
         )
     }
 
@@ -331,21 +460,10 @@ def run_paysim_statistical_rigor(seeds: List[int], n_bootstrap: int = 1000) -> D
         adaptive.fit_initial(train_transformed)
         drift_monitor = DriftMonitor()
 
-        # Warmup adaptive model across baseline window
+        # Initialize adaptive model history across baseline window without detector training-leakage
         for s in transformed_slices[:n_train_slices]:
             s_data = s["data"]
-            y_base = s_data["isFraud"].values
-            a_base_p, _ = adaptive.predict(s_data)
-            base_drift = False
-            s_step = s_data["step"].values
-            s_trans = s_data["trans_id"].values
-            for i in range(len(s_data)):
-                alert = drift_monitor.update(int(y_base[i]), int(a_base_p[i]), s["slice_index"], int(s_step[i]), str(s_trans[i]))
-                if alert["any_drift"]:
-                    base_drift = True
-            adaptive.update_with_slice(s_data, base_drift, s["slice_index"])
-            if base_drift:
-                drift_monitor.reset_detectors()
+            adaptive.update_with_slice(s_data, drift_triggered=False, slice_idx=s["slice_index"])
 
         # Sequential Evaluation across Out-of-Sample Slices
         per_preds_list, sli_preds_list, adp_preds_list = [], [], []
@@ -452,9 +570,24 @@ def run_paysim_statistical_rigor(seeds: List[int], n_bootstrap: int = 1000) -> D
         pt["p_value_t_bonferroni"] = bonf_p_list[i]
         pt["significant_fdr_05"] = bool(fdr_p_list[i] < 0.05)
 
+    # Additional baseline vs static comparisons
+    pt_per_stat = compute_paired_tests(seed_results["periodic"]["f1"], seed_results["static"]["f1"])
+    pt_per_stat["bootstrap_ci_delta_95"] = list(
+        compute_block_bootstrap_ci_delta(seed_results["periodic"]["f1"], seed_results["static"]["f1"], random_seed=RANDOM_SEED)
+    )
+    pt_sli_stat = compute_paired_tests(seed_results["sliding"]["f1"], seed_results["static"]["f1"])
+    pt_sli_stat["bootstrap_ci_delta_95"] = list(
+        compute_block_bootstrap_ci_delta(seed_results["sliding"]["f1"], seed_results["static"]["f1"], random_seed=RANDOM_SEED)
+    )
+    pt_static["bootstrap_ci_delta_95"] = list(
+        compute_block_bootstrap_ci_delta(seed_results["adaptive"]["f1"], seed_results["static"]["f1"], random_seed=RANDOM_SEED)
+    )
+
     summary["paired_tests"]["adaptive_vs_static_f1"] = pt_static
     summary["paired_tests"]["adaptive_vs_periodic_f1"] = pt_periodic
     summary["paired_tests"]["adaptive_vs_sliding_f1"] = pt_sliding
+    summary["paired_tests"]["periodic_vs_static_f1"] = pt_per_stat
+    summary["paired_tests"]["sliding_vs_static_f1"] = pt_sli_stat
     summary["multiple_testing_correction"] = {
         "method": "Benjamini-Hochberg (FDR) and Bonferroni",
         "hypotheses_tested": 3,
@@ -485,7 +618,7 @@ def run_paysim_statistical_rigor(seeds: List[int], n_bootstrap: int = 1000) -> D
 def run_ieee_uid_statistical_rigor(seeds: List[int], n_bootstrap: int = 1000) -> Dict[str, Any]:
     logger.info("=" * 80)
     logger.info(f"STARTING IEEE-CIS ZERO-MEMORY UID GENERALIZATION BENCHMARK (Seeds: {seeds})")
-    logger.info("Target: Verify 67.82% -> 77.09% Zero-Memory Recall Gain across random seeds")
+    logger.info("Target: Evaluate Zero-Memory Recall Gain across random seeds (Static ~69.41% vs Adaptive ~76.62% multi-seed)")
     logger.info("=" * 80)
 
     dataset_path = Path("data/ieee/train_transaction.csv")
@@ -599,6 +732,22 @@ def run_ieee_uid_statistical_rigor(seeds: List[int], n_bootstrap: int = 1000) ->
     pt_auc["p_value_t_bonferroni"] = uid_bonf[1]
     pt_auc["significant_fdr_05"] = bool(uid_fdr[1] < 0.05)
 
+    # Bootstrap CIs on delta for Cohort 3
+    pt_recall["bootstrap_ci_delta_95"] = list(
+        compute_block_bootstrap_ci_delta(cohort3_results["adaptive_recall"], cohort3_results["static_recall"], random_seed=RANDOM_SEED)
+    )
+
+    # Paired hypothesis tests for Cohort 1 and Cohort 2
+    pt_c1 = compute_paired_tests(cohort1_results["adaptive_recall"], cohort1_results["static_recall"])
+    pt_c1["bootstrap_ci_delta_95"] = list(
+        compute_block_bootstrap_ci_delta(cohort1_results["adaptive_recall"], cohort1_results["static_recall"], random_seed=RANDOM_SEED)
+    )
+
+    pt_c2 = compute_paired_tests(cohort2_results["adaptive_recall"], cohort2_results["static_recall"])
+    pt_c2["bootstrap_ci_delta_95"] = list(
+        compute_block_bootstrap_ci_delta(cohort2_results["adaptive_recall"], cohort2_results["static_recall"], random_seed=RANDOM_SEED)
+    )
+
     # Compute Statistical Summaries
     summary: Dict[str, Any] = {
         "cohort3_zero_memory": {
@@ -614,12 +763,14 @@ def run_ieee_uid_statistical_rigor(seeds: List[int], n_bootstrap: int = 1000) ->
         "cohort1_seen": {
             "static_recall": compute_sample_stats(cohort1_results["static_recall"]),
             "adaptive_recall": compute_sample_stats(cohort1_results["adaptive_recall"]),
-            "recall_gain": compute_sample_stats(cohort1_results["recall_gain"])
+            "recall_gain": compute_sample_stats(cohort1_results["recall_gain"]),
+            "paired_ttest_recall": pt_c1
         },
         "cohort2_unseen": {
             "static_recall": compute_sample_stats(cohort2_results["static_recall"]),
             "adaptive_recall": compute_sample_stats(cohort2_results["adaptive_recall"]),
-            "recall_gain": compute_sample_stats(cohort2_results["recall_gain"])
+            "recall_gain": compute_sample_stats(cohort2_results["recall_gain"]),
+            "paired_ttest_recall": pt_c2
         },
         "multiple_testing_correction": {
             "method": "Benjamini-Hochberg (FDR) and Bonferroni",
@@ -659,6 +810,163 @@ def run_ieee_uid_statistical_rigor(seeds: List[int], n_bootstrap: int = 1000) ->
         },
         "summary": summary
     }
+
+
+# =========================================================================
+# BENCHMARK 3: IEEE-CIS 21-WEEK LONGITUDINAL STREAMING STATISTICAL RIGOR
+# =========================================================================
+def run_ieee_longitudinal_weekly_statistical_rigor(
+    slice_csv_path: Optional[Path] = None,
+    n_bootstraps: int = 2000,
+    random_seed: int = RANDOM_SEED
+) -> Dict[str, Any]:
+    """
+    Computes per-week paired differences, hypothesis tests, and block bootstrap
+    confidence intervals across N=21 out-of-sample weekly slices (Weeks 6-26 / slices 5-25).
+    
+    Treats sequential temporal slices as the true unit of temporal variation, measuring
+    genuine concept drift adaptation across non-stationary time horizons.
+    """
+    logger.info("=" * 80)
+    logger.info("STARTING IEEE-CIS 21-WEEK LONGITUDINAL STREAMING STATISTICAL RIGOR BENCHMARK")
+    logger.info("Target: Evaluate temporal generalisation across N=21 out-of-sample streaming weeks")
+    logger.info("=" * 80)
+
+    if slice_csv_path is None:
+        slice_csv_path = METRICS_DIR / "slice_comparison_metrics.csv"
+        if not slice_csv_path.exists():
+            fallback = METRICS_DIR / "ieee_cis_slice_comparison_metrics.csv"
+            if fallback.exists():
+                slice_csv_path = fallback
+            else:
+                raise FileNotFoundError(f"Slice comparison metrics CSV not found at {slice_csv_path}")
+
+    df = pd.read_csv(slice_csv_path)
+    oos_df = df[df["slice_index"] >= 5].copy()
+
+    static_df = oos_df[oos_df["model_type"] == "static"].sort_values("slice_index")
+    periodic_df = oos_df[oos_df["model_type"] == "periodic"].sort_values("slice_index")
+    sliding_df = oos_df[oos_df["model_type"] == "sliding"].sort_values("slice_index")
+    adaptive_df = oos_df[oos_df["model_type"] == "adaptive"].sort_values("slice_index")
+
+    n_weeks = len(static_df)
+    logger.info(f"Loaded {n_weeks} out-of-sample weekly slices (slices 5-25, Weeks 6-26).")
+
+    # Metrics
+    stat_rec = (static_df["recall"] * 100.0).tolist()
+    per_rec = (periodic_df["recall"] * 100.0).tolist()
+    sli_rec = (sliding_df["recall"] * 100.0).tolist()
+    adp_rec = (adaptive_df["recall"] * 100.0).tolist()
+
+    stat_auc = static_df["auc_pr"].tolist()
+    per_auc = periodic_df["auc_pr"].tolist()
+    sli_auc = sliding_df["auc_pr"].tolist()
+    adp_auc = adaptive_df["auc_pr"].tolist()
+
+    stat_f1 = static_df["f1_score"].tolist()
+    per_f1 = periodic_df["f1_score"].tolist()
+    sli_f1 = sliding_df["f1_score"].tolist()
+    adp_f1 = adaptive_df["f1_score"].tolist()
+
+    stat_prec = (static_df["precision"] * 100.0).tolist()
+    per_prec = (periodic_df["precision"] * 100.0).tolist()
+    sli_prec = (sliding_df["precision"] * 100.0).tolist()
+    adp_prec = (adaptive_df["precision"] * 100.0).tolist()
+
+    # Paired tests with Moving Block Bootstrap (block_size=3 to account for weekly autocorrelation)
+    pt_rec = compute_weekly_paired_tests(adp_rec, stat_rec)
+    pt_rec["bootstrap_ci_delta_95"] = list(
+        compute_block_bootstrap_ci_delta(adp_rec, stat_rec, block_size=3, n_bootstraps=n_bootstraps, random_seed=random_seed)
+    )
+
+    pt_auc = compute_weekly_paired_tests(adp_auc, stat_auc)
+    pt_auc["bootstrap_ci_delta_95"] = list(
+        compute_block_bootstrap_ci_delta(adp_auc, stat_auc, block_size=3, n_bootstraps=n_bootstraps, random_seed=random_seed)
+    )
+
+    pt_f1 = compute_weekly_paired_tests(adp_f1, stat_f1)
+    pt_f1["bootstrap_ci_delta_95"] = list(
+        compute_block_bootstrap_ci_delta(adp_f1, stat_f1, block_size=3, n_bootstraps=n_bootstraps, random_seed=random_seed)
+    )
+
+    pt_per_rec = compute_weekly_paired_tests(adp_rec, per_rec)
+    pt_per_rec["bootstrap_ci_delta_95"] = list(
+        compute_block_bootstrap_ci_delta(adp_rec, per_rec, block_size=3, n_bootstraps=n_bootstraps, random_seed=random_seed)
+    )
+
+    # Apply FDR (Benjamini-Hochberg) and Bonferroni adjustments
+    raw_p_list = [pt_rec["p_value_t"], pt_auc["p_value_t"], pt_f1["p_value_t"], pt_per_rec["p_value_t"]]
+    fdr_p_list = adjust_p_values_fdr_bh(raw_p_list)
+    bonf_p_list = adjust_p_values_bonferroni(raw_p_list)
+    
+    pt_rec["p_value_fdr"] = fdr_p_list[0]
+    pt_rec["p_value_bonferroni"] = bonf_p_list[0]
+    pt_auc["p_value_fdr"] = fdr_p_list[1]
+    pt_auc["p_value_bonferroni"] = bonf_p_list[1]
+    pt_f1["p_value_fdr"] = fdr_p_list[2]
+    pt_f1["p_value_bonferroni"] = bonf_p_list[2]
+    pt_per_rec["p_value_fdr"] = fdr_p_list[3]
+    pt_per_rec["p_value_bonferroni"] = bonf_p_list[3]
+
+    res = {
+        "n_out_of_sample_weeks": n_weeks,
+        "slice_range": "Slices 5-25 (Weeks 6-26)",
+        "models": {
+            "static": {
+                "recall": compute_sample_stats(stat_rec),
+                "precision": compute_sample_stats(stat_prec),
+                "auc_pr": compute_sample_stats(stat_auc),
+                "f1": compute_sample_stats(stat_f1)
+            },
+            "periodic": {
+                "recall": compute_sample_stats(per_rec),
+                "precision": compute_sample_stats(per_prec),
+                "auc_pr": compute_sample_stats(per_auc),
+                "f1": compute_sample_stats(per_f1)
+            },
+            "sliding": {
+                "recall": compute_sample_stats(sli_rec),
+                "precision": compute_sample_stats(sli_prec),
+                "auc_pr": compute_sample_stats(sli_auc),
+                "f1": compute_sample_stats(sli_f1)
+            },
+            "adaptive": {
+                "recall": compute_sample_stats(adp_rec),
+                "precision": compute_sample_stats(adp_prec),
+                "auc_pr": compute_sample_stats(adp_auc),
+                "f1": compute_sample_stats(adp_f1)
+            }
+        },
+        "paired_tests": {
+            "adaptive_vs_static_recall": pt_rec,
+            "adaptive_vs_static_auc_pr": pt_auc,
+            "adaptive_vs_static_f1": pt_f1,
+            "adaptive_vs_periodic_recall": pt_per_rec
+        }
+    }
+
+    logger.info("IEEE-CIS Longitudinal Weekly Paired Tests:")
+    logger.info(
+        f"   Recall (Adaptive vs Static)  : Delta = +{pt_rec['mean_delta']:.2f}% ± {pt_rec['std_delta']:.2f}% | "
+        f"t = {pt_rec['t_stat']:.2f}, p = {pt_rec['p_value_t']:.6e} | "
+        f"Bootstrap 95% CI: [{pt_rec['bootstrap_ci_delta_95'][0]:.2f}%, {pt_rec['bootstrap_ci_delta_95'][1]:.2f}%]"
+    )
+    logger.info(
+        f"   AUC-PR (Adaptive vs Static)  : Delta = +{pt_auc['mean_delta']:.4f} ± {pt_auc['std_delta']:.4f} | "
+        f"t = {pt_auc['t_stat']:.2f}, p = {pt_auc['p_value_t']:.6e} | "
+        f"Bootstrap 95% CI: [{pt_auc['bootstrap_ci_delta_95'][0]:.4f}, {pt_auc['bootstrap_ci_delta_95'][1]:.4f}]"
+    )
+    logger.info(
+        f"   F1-Score (Adaptive vs Static): Delta = +{pt_f1['mean_delta']:.4f} ± {pt_f1['std_delta']:.4f} | "
+        f"t = {pt_f1['t_stat']:.2f}, p = {pt_f1['p_value_t']:.6e} | "
+        f"Bootstrap 95% CI: [{pt_f1['bootstrap_ci_delta_95'][0]:.4f}, {pt_f1['bootstrap_ci_delta_95'][1]:.4f}]"
+    )
+    logger.info(
+        f"   Recall (Adaptive vs Periodic): Delta = +{pt_per_rec['mean_delta']:.2f}% ± {pt_per_rec['std_delta']:.2f}% | "
+        f"t = {pt_per_rec['t_stat']:.2f}, p = {pt_per_rec['p_value_t']:.6e} | "
+        f"Bootstrap 95% CI: [{pt_per_rec['bootstrap_ci_delta_95'][0]:.2f}%, {pt_per_rec['bootstrap_ci_delta_95'][1]:.2f}%]"
+    )
+    return res
 
 
 # =========================================================================
@@ -829,6 +1137,38 @@ def export_summary_csv(results_all: Dict[str, Any], output_path: Path):
                 "p_value_fdr_bh": p_val_fdr
             })
 
+    # IEEE-CIS Longitudinal Weekly results (N=21 out-of-sample weeks)
+    if "ieee_longitudinal_weekly" in results_all:
+        w_data = results_all["ieee_longitudinal_weekly"]
+        w_models = w_data.get("models", {})
+        w_tests = w_data.get("paired_tests", {})
+
+        metrics_map = [
+            ("Overall Stream Recall", "recall", "adaptive_vs_static_recall", "Recall (%)"),
+            ("Overall Stream AUC-PR", "auc_pr", "adaptive_vs_static_auc_pr", "AUC-PR"),
+            ("Overall Stream F1-Score", "f1", "adaptive_vs_static_f1", "F1-Score"),
+            ("vs. Periodic (4w) Recall", "recall", "adaptive_vs_periodic_recall", "Recall (%)")
+        ]
+        for label, m_key, pt_key, metric_name in metrics_map:
+            pt = w_tests.get(pt_key, {})
+            ci_b = pt.get("bootstrap_ci_delta_95", ["-", "-"])
+            ci_str = f"[{ci_b[0]}, {ci_b[1]}]" if len(ci_b) == 2 else "-"
+
+            rows.append({
+                "benchmark": "IEEE-CIS Longitudinal Weekly (N=21)",
+                "architecture_or_cohort": f"{label} (Delta)",
+                "metric": metric_name,
+                "mean": pt.get("mean_delta", "-"),
+                "std": pt.get("std_delta", "-"),
+                "ci_95_low": pt.get("ci_95_delta", ["-", "-"])[0],
+                "ci_95_high": pt.get("ci_95_delta", ["-", "-"])[1],
+                "bootstrap_ci_95": ci_str,
+                "cohens_d": str(pt.get("cohens_d", "-")),
+                "hedges_g": str(pt.get("hedges_g", "-")),
+                "p_value_vs_static": f"{pt.get('p_value_t', '-'):.6e}" if isinstance(pt.get("p_value_t"), (int, float)) else "-",
+                "p_value_fdr_bh": f"{pt.get('p_value_wilcoxon', '-'):.6e}" if isinstance(pt.get("p_value_wilcoxon"), (int, float)) else "-"
+            })
+
     if rows:
         with open(output_path, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
@@ -839,18 +1179,31 @@ def export_summary_csv(results_all: Dict[str, Any], output_path: Path):
 # =========================================================================
 # MAIN EXECUTION ORCHESTRATOR
 # =========================================================================
+EXTENDED_SEEDS_POOL = [
+    42, 101, 202, 303, 404, 505, 606, 707, 808, 909,
+    1010, 1111, 1212, 1313, 1414, 1515, 1616, 1717, 1818, 1919,
+    2020, 2121, 2222, 2323, 2424, 2525, 2626, 2727, 2828, 2929
+]
+
+
 def run():
     parser = argparse.ArgumentParser(description="Multi-Seed Statistical Rigor & Bootstrap Benchmarking Suite")
     parser.add_argument("--seeds", nargs="+", type=int, default=DEFAULT_SEEDS, help="List of random seeds to evaluate")
-    parser.add_argument("--extended-seeds", action="store_true",
-                        help="Run expanded 10-seed evaluation ([42, 101, 202, 303, 404, 505, 606, 707, 808, 909])")
-    parser.add_argument("--benchmark", type=str, choices=["all", "paysim", "ieee_uid"], default="all",
+    parser.add_argument("--extended-seeds", nargs="?", const=10, type=int, choices=[10, 15, 30], default=None,
+                        help="Run expanded evaluation across K in {10, 15, 30} seeds (defaults to 10 if flag passed without value)")
+    parser.add_argument("--benchmark", type=str, choices=["all", "paysim", "ieee_uid", "ieee_weekly"], default="all",
                         help="Benchmark suite to execute")
+    parser.add_argument("--weekly-only", action="store_true", default=False,
+                        help="Run strictly the N=21 out-of-sample weekly longitudinal analysis from slice metrics")
     parser.add_argument("--n-bootstrap", type=int, default=1000, help="Number of bootstrap resamples for empirical CI")
     args = parser.parse_args()
 
-    if args.extended_seeds:
-        seeds = [42, 101, 202, 303, 404, 505, 606, 707, 808, 909]
+    if args.weekly_only:
+        args.benchmark = "ieee_weekly"
+
+    if args.extended_seeds is not None:
+        k = args.extended_seeds
+        seeds = EXTENDED_SEEDS_POOL[:k]
     else:
         seeds = args.seeds
     logger.info(f"Running Statistical Rigor Suite across {len(seeds)} seeds: {seeds}")
@@ -871,6 +1224,10 @@ def run():
         "n_seeds": len(seeds),
         "gpu_device": GPU_DEVICE if USE_GPU else "cpu"
     })
+
+    if args.benchmark in ("all", "ieee_weekly"):
+        weekly_res = run_ieee_longitudinal_weekly_statistical_rigor(n_bootstraps=args.n_bootstrap)
+        results_all["ieee_longitudinal_weekly"] = weekly_res
 
     if args.benchmark in ("all", "ieee_uid"):
         uid_res = run_ieee_uid_statistical_rigor(seeds, n_bootstrap=args.n_bootstrap)
@@ -903,5 +1260,8 @@ def run():
     logger.info("=" * 92)
 
 
+main = run
+
+
 if __name__ == "__main__":
-    run()
+    main()

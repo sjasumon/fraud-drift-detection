@@ -1,11 +1,15 @@
-benchmark,architecture_or_cohort,metric,mean,std,ci_95_low,ci_95_high,bootstrap_ci_95,p_value_vs_static
-PaySim Out-of-Sample Stream,Static,F1-Score,0.9958,0.0002,0.9956,0.996,"[0.9944, 0.997]",-
-PaySim Out-of-Sample Stream,Periodic,F1-Score,0.9966,0.0003,0.9962,0.997,"[0.9959, 0.9979]",-
-PaySim Out-of-Sample Stream,Sliding,F1-Score,0.9967,0.0003,0.9963,0.997,"[0.996, 0.998]",-
-PaySim Out-of-Sample Stream,Adaptive,F1-Score,0.9964,0.0009,0.9953,0.9975,"[0.9943, 0.997]",2.870623e-01
-IEEE-CIS Feature-Blind Audit,Cohort 1: Repeat/Seen Cards (Static),Recall (%),48.904,0.4788,48.3095,49.4985,-,-
-IEEE-CIS Feature-Blind Audit,Cohort 1: Repeat/Seen Cards (Adaptive),Recall (%),61.394,0.4824,60.795,61.993,-,-
-IEEE-CIS Feature-Blind Audit,Cohort 2: Baseline-Unseen Cards (Static),Recall (%),66.298,0.7887,65.3186,67.2774,-,-
-IEEE-CIS Feature-Blind Audit,Cohort 2: Baseline-Unseen Cards (Adaptive),Recall (%),73.788,0.5575,73.0958,74.4802,-,-
-IEEE-CIS Feature-Blind Audit,Cohort 3: Zero-Memory Cards (Static),Recall (%),69.41,1.0712,68.08,70.74,-,-
-IEEE-CIS Feature-Blind Audit,Cohort 3: Zero-Memory Cards (Adaptive),Recall (%),76.624,0.3471,76.193,77.055,-,2.536081e-04
+benchmark,architecture_or_cohort,metric,mean,std,ci_95_low,ci_95_high,bootstrap_ci_95,cohens_d,hedges_g,p_value_vs_static,p_value_fdr_bh
+PaySim Out-of-Sample Stream,Static,F1-Score,0.9958,0.0002,0.9956,0.996,"[0.9944, 0.997]",-,-,-,-
+PaySim Out-of-Sample Stream,Periodic,F1-Score,0.9958,0.0002,0.9956,0.996,"[0.9944, 0.997]",-,-,-,-
+PaySim Out-of-Sample Stream,Sliding,F1-Score,0.9959,0.0002,0.9957,0.9961,"[0.9946, 0.9971]",-,-,-,-
+PaySim Out-of-Sample Stream,Adaptive,F1-Score,0.9958,0.0002,0.9956,0.996,"[0.9944, 0.997]",0.4472,0.3578,3.739010e-01,3.739010e-01
+IEEE-CIS Feature-Blind Audit,Cohort 1: Repeat/Seen Cards (Static),Recall (%),48.904,0.4788,48.3095,49.4985,-,-,-,-,-
+IEEE-CIS Feature-Blind Audit,Cohort 1: Repeat/Seen Cards (Adaptive),Recall (%),62.508,0.2783,62.1624,62.8536,-,-,-,-,-
+IEEE-CIS Feature-Blind Audit,Cohort 2: Baseline-Unseen Cards (Static),Recall (%),66.298,0.7887,65.3186,67.2774,-,-,-,-,-
+IEEE-CIS Feature-Blind Audit,Cohort 2: Baseline-Unseen Cards (Adaptive),Recall (%),75.11,0.2279,74.827,75.393,-,-,-,-,-
+IEEE-CIS Feature-Blind Audit,Cohort 3: Zero-Memory Cards (Static),Recall (%),69.41,1.0712,68.08,70.74,-,-,-,-,-
+IEEE-CIS Feature-Blind Audit,Cohort 3: Zero-Memory Cards (Adaptive),Recall (%),78.012,0.2915,77.6501,78.3739,-,6.6264,5.3011,1.207889e-04,1.207889e-04
+IEEE-CIS Longitudinal Weekly (N=21),Overall Stream Recall (Delta),Recall (%),10.6876,6.2687,7.8342,13.5411,"[8.02, 14.3277]",1.7049,1.6402,1.676678e-07,1.335144e-05
+IEEE-CIS Longitudinal Weekly (N=21),Overall Stream AUC-PR (Delta),AUC-PR,0.0728,0.0311,0.0586,0.087,"[0.063, 0.0881]",2.3373,2.2485,9.850225e-10,1.907349e-06
+IEEE-CIS Longitudinal Weekly (N=21),Overall Stream F1-Score (Delta),F1-Score,0.029,0.0174,0.0211,0.037,"[0.021, 0.0408]",1.6638,1.6006,2.430158e-07,9.536743e-07
+IEEE-CIS Longitudinal Weekly (N=21),vs. Periodic (4w) Recall (Delta),Recall (%),2.1871,2.9011,0.8666,3.5077,"[1.6676, 3.5195]",0.7539,0.7253,2.503861e-03,5.385665e-03

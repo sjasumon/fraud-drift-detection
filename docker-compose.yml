@@ -6,15 +6,15 @@ services:
     container_name: fraud_mysql_db
     restart: unless-stopped
     environment:
-      # local/demo only — see config.py production guard
-      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-fraud_dev_pass_12345}
       MYSQL_DATABASE: fraud_drift_db
     ports:
-      - "3306:3306"
+      # Bound to localhost only to prevent exposure across public network interfaces
+      - "127.0.0.1:3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p${DB_PASSWORD:-fraud_dev_pass_12345} || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -31,25 +31,29 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - APP_ENV=${APP_ENV:-development}
+      - API_KEY=${API_KEY:-dev-secret-key}
       - DB_HOST=mysql
       - DB_PORT=3306
       - DB_USER=root
-      - DB_PASSWORD=  # local/demo only — see config.py production guard
+      - DB_PASSWORD=${DB_PASSWORD:-fraud_dev_pass_12345}
       - DB_NAME=fraud_drift_db
-      - USE_GPU=true
-      - GPU_DEVICE=cuda
+      - USE_GPU=${USE_GPU:-false}
+      - GPU_DEVICE=${GPU_DEVICE:-cpu}
     depends_on:
       mysql:
         condition: service_healthy
     networks:
       - fraud_net
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+    # CPU-portable by default. To enable NVIDIA GPU reservation on GPU hosts,
+    # uncomment the deploy block below or set compose environment overrides:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
 
 volumes:
   mysql_data:
@@ -58,3 +62,4 @@ volumes:
 networks:
   fraud_net:
     driver: bridge
+

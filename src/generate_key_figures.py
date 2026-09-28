@@ -102,14 +102,14 @@ def plot_stream_f1_drift_timeline(df: pd.DataFrame) -> Path:
         ax2.axvline(x=rw, color="#F39C12", linestyle=":", linewidth=1.2, alpha=0.75, zorder=2)
         first_marker = False
 
-    # Key Mechanistic Drift Annotations
+    # Key Drift Attribution Annotations
     ax1.annotate("TreeSHAP: $C_{13}$ count divergence\n(Week 6, Retrain #5)",
                  xy=(6, 0.3638), xytext=(7.5, 0.44),
                  arrowprops=dict(facecolor="#2C3E50", arrowstyle="->", lw=1.2),
                  fontsize=8.5, fontweight="bold", backgroundcolor="#FFFFFF",
                  bbox=dict(boxstyle="round,pad=0.3", edgecolor="#BDC3C7", facecolor="#FFFFF0"))
 
-    ax1.annotate("TreeSHAP: $C_{1}$ velocity drift\n(Week 13, Retrain #10)",
+    ax1.annotate("TreeSHAP: $C_{1}$ count drift\n(Week 13, Retrain #10)",
                  xy=(13, 0.3471), xytext=(14.2, 0.41),
                  arrowprops=dict(facecolor="#2C3E50", arrowstyle="->", lw=1.2),
                  fontsize=8.5, fontweight="bold", backgroundcolor="#FFFFFF",
@@ -268,7 +268,7 @@ def plot_verification_latency_degradation() -> Path:
                      fontsize=8.5, fontweight="bold", ha="center")
 
     compute_savings = int(round((1 - lognormal_retrains / retrains_fixed[1]) * 100))
-    ax2.annotate(f"LogNormal Delay: Pareto Optimal\n{lognormal_tp:,} Frauds with ONLY {lognormal_retrains} Retrains\n({compute_savings}% Compute Savings vs. Fixed 4w)",
+    ax2.annotate(f"LogNormal Delay (Single Seed)\n{lognormal_tp:,} Frauds, {lognormal_retrains} Retrains\n(12 retrains vs. 17 for Fixed 4w)",
                  xy=(lognormal_retrains, lognormal_tp), xytext=(13.5, 10750),
                  arrowprops=dict(facecolor="#9467BD", arrowstyle="->", lw=1.2),
                  fontsize=8.5, fontweight="bold",

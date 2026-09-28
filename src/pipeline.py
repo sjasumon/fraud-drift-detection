@@ -21,7 +21,8 @@ import pandas as pd
 
 from src.config import (
     RESULTS_DIR, METRICS_DIR, FIGURES_DIR, LOGS_DIR,
-    RANDOM_SEED, USE_GPU, GPU_DEVICE, TRAINING_WINDOW_RATIO
+    RANDOM_SEED, USE_GPU, GPU_DEVICE, TRAINING_WINDOW_RATIO,
+    ensure_directories_exist
 )
 from src.db import DatabaseManager
 from src.ingestion import DatasetIngestion
@@ -33,34 +34,43 @@ from src.drift_detector import DriftMonitor
 from src.adaptive_model import DriftAdaptiveModel
 from src.evaluator import SliceEvaluator
 from src.drift_explainer import DriftAttributionEngine
-
-# Configure logging
-log_file = LOGS_DIR / f"pipeline_run_{int(time.time())}.log"
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler(log_file, encoding="utf-8")
-    ]
+from src.river_models import (
+    HoeffdingAdaptiveTreeModel,
+    AdaptiveRandomForestModel,
+    StreamingRandomPatchesModel
 )
+
 logger = logging.getLogger("fraud_drift.pipeline")
+
+
+def setup_pipeline_logging(log_file: Optional[Path] = None) -> Path:
+    """Configures file logging lazily when pipeline is executed directly."""
+    ensure_directories_exist()
+    if log_file is None:
+        log_file = LOGS_DIR / f"pipeline_run_{int(time.time())}.log"
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+    logger.addHandler(file_handler)
+    return log_file
 
 
 def run_pipeline(
     dataset_path: Path = None,
     exclude_card_identifiers: bool = False,
     dataset_type: Optional[str] = None,
-    db: Optional[DatabaseManager] = None
+    db: Optional[DatabaseManager] = None,
+    include_river_baselines: bool = False,
+    retrain_budget: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Executes the end-to-end experiment pipeline according to FRD requirements.
     Artifacts are namespaced by dataset slug and run_id to avoid cross-benchmark collisions.
     """
+    ensure_directories_exist()
     run_id = f"RUN_{uuid.uuid4().hex[:10].upper()}"
     start_total_time = time.time()
 
-    # 1. Initialize Database (MySQL Server 9.7 with graceful fallback to file-only persistence)
+    # 1. Initialize Database (MySQL 8.4 LTS with graceful fallback to file-only persistence)
     if db is None:
         try:
             db = DatabaseManager()
@@ -156,7 +166,7 @@ def run_pipeline(
     )
     static_model.fit(train_df)
 
-    # 4b. Periodic Retraining Baseline (Academic Baseline 2)
+    # 4b. Periodic Retraining Baseline (Academic Baseline 2: e.g. Every 4w)
     periodic_model = PeriodicRetrainModel(
         feature_names=preprocessor.feature_names,
         retrain_interval_slices=baseline_retrain_interval,
@@ -164,7 +174,15 @@ def run_pipeline(
     )
     periodic_model.fit_initial(train_df)
 
-    # 4c. Sliding Window Retraining Baseline (Academic Baseline 3)
+    # 4c. Weekly Periodic Retraining Baseline (Academic Baseline 4: Matches maximum retrain frequency)
+    periodic_weekly_model = PeriodicRetrainModel(
+        feature_names=preprocessor.feature_names,
+        retrain_interval_slices=1,
+        scale_pos_weight=imbalance_info["scale_pos_weight"]
+    )
+    periodic_weekly_model.fit_initial(train_df)
+
+    # 4d. Sliding Window Retraining Baseline (Academic Baseline 3: e.g. Last 4w)
     sliding_model = SlidingWindowModel(
         feature_names=preprocessor.feature_names,
         window_slices=baseline_retrain_interval,
@@ -173,10 +191,24 @@ def run_pipeline(
     )
     sliding_model.fit_initial(train_df)
 
+    # 4e. River Streaming Baselines (ARF, HAT, SRP - Prof. Koh's Domain)
+    hat_model = None
+    arf_model = None
+    srp_model = None
+    if include_river_baselines:
+        logger.info("Initializing River Streaming Baselines (HAT, ARF, SRP)...")
+        hat_model = HoeffdingAdaptiveTreeModel(feature_names=preprocessor.feature_names)
+        hat_model.fit_initial(train_df)
+        arf_model = AdaptiveRandomForestModel(feature_names=preprocessor.feature_names, n_models=5)
+        arf_model.fit_initial(train_df)
+        srp_model = StreamingRandomPatchesModel(feature_names=preprocessor.feature_names, n_models=3)
+        srp_model.fit_initial(train_df)
+
     # 5. FR-5: Drift-Adaptive Model Setup with Full Retraining on GPU
     adaptive_model = DriftAdaptiveModel(
         feature_names=preprocessor.feature_names,
-        scale_pos_weight=imbalance_info["scale_pos_weight"]
+        scale_pos_weight=imbalance_info["scale_pos_weight"],
+        retrain_budget=retrain_budget
     )
     adaptive_model.fit_initial(train_df)
 
@@ -192,12 +224,16 @@ def run_pipeline(
 
     all_static_preds, all_static_probs = [], []
     all_periodic_preds, all_periodic_probs = [], []
+    all_periodic_weekly_preds, all_periodic_weekly_probs = [], []
     all_sliding_preds, all_sliding_probs = [], []
     all_adaptive_preds, all_adaptive_probs = [], []
+    all_hat_preds, all_hat_probs = [], []
+    all_arf_preds, all_arf_probs = [], []
+    all_srp_preds, all_srp_probs = [], []
     all_y_true = []
 
     logger.info("\n" + "=" * 80)
-    logger.info(f"BEGINNING SEQUENTIAL STREAMING EVALUATION ACROSS {len(time_slices)} WEEKS (4 MODELS)")
+    logger.info(f"BEGINNING SEQUENTIAL STREAMING EVALUATION ACROSS {len(time_slices)} WEEKS")
     logger.info("=" * 80)
 
     for s in time_slices:
@@ -229,6 +265,17 @@ def run_pipeline(
             model_type="periodic"
         )
 
+        # --- B2. Weekly Periodic Model Inference (Baseline 4: Every 1w) ---
+        periodic_weekly_preds, periodic_weekly_probs = periodic_weekly_model.predict(slice_data)
+        evaluator.evaluate_slice(
+            y_true=y_true,
+            y_pred=periodic_weekly_preds,
+            y_prob=periodic_weekly_probs,
+            slice_index=slice_idx,
+            slice_name=slice_name,
+            model_type="periodic_weekly"
+        )
+
         # --- C. Sliding Window Model Inference (Baseline 3: Last 4w) ---
         sliding_preds, sliding_probs = sliding_model.predict(slice_data)
         evaluator.evaluate_slice(
@@ -251,11 +298,35 @@ def run_pipeline(
             model_type="adaptive"
         )
 
+        # --- D2. River Streaming Baselines (ARF, HAT, SRP) ---
+        if hat_model is not None:
+            h_pred, h_prob = hat_model.predict(slice_data)
+            evaluator.evaluate_slice(y_true, h_pred, h_prob, slice_idx, slice_name, "hat")
+            all_hat_preds.extend(h_pred)
+            all_hat_probs.extend(h_prob)
+            hat_model.update_with_slice(slice_data, slice_idx=slice_idx)
+
+        if arf_model is not None:
+            a_pred, a_prob = arf_model.predict(slice_data)
+            evaluator.evaluate_slice(y_true, a_pred, a_prob, slice_idx, slice_name, "arf")
+            all_arf_preds.extend(a_pred)
+            all_arf_probs.extend(a_prob)
+            arf_model.update_with_slice(slice_data, slice_idx=slice_idx)
+
+        if srp_model is not None:
+            s_pred, s_prob = srp_model.predict(slice_data)
+            evaluator.evaluate_slice(y_true, s_pred, s_prob, slice_idx, slice_name, "srp")
+            all_srp_preds.extend(s_pred)
+            all_srp_probs.extend(s_prob)
+            srp_model.update_with_slice(slice_data, slice_idx=slice_idx)
+
         # Accumulate whole-dataset evaluation arrays
         all_static_preds.extend(static_preds)
         all_static_probs.extend(static_probs)
         all_periodic_preds.extend(periodic_preds)
         all_periodic_probs.extend(periodic_probs)
+        all_periodic_weekly_preds.extend(periodic_weekly_preds)
+        all_periodic_weekly_probs.extend(periodic_weekly_probs)
         all_sliding_preds.extend(sliding_preds)
         all_sliding_probs.extend(sliding_probs)
         all_adaptive_preds.extend(adaptive_preds)
@@ -263,25 +334,28 @@ def run_pipeline(
         all_y_true.extend(y_true)
 
         # --- E. Drift Monitoring over Prediction Error Stream (FR-4) ---
+        # The detector MUST NOT run on warm-up weeks 1-5 where the model predicts on its own training data.
         slice_drift_triggered = False
-        for i in range(len(slice_data)):
-            trans_id = slice_data["trans_id"].iloc[i]
-            step_num = int(slice_data["step"].iloc[i])
-            yt = int(y_true[i])
-            yp = int(adaptive_preds[i])
+        if is_oos:
+            for i in range(len(slice_data)):
+                trans_id = slice_data["trans_id"].iloc[i]
+                step_num = int(slice_data["step"].iloc[i])
+                yt = int(y_true[i])
+                yp = int(adaptive_preds[i])
 
-            alert = drift_monitor.update(
-                y_true=yt,
-                y_pred=yp,
-                slice_index=slice_idx,
-                step_number=step_num,
-                trans_id=trans_id
-            )
-            if alert["any_drift"]:
-                slice_drift_triggered = True
+                alert = drift_monitor.update(
+                    y_true=yt,
+                    y_pred=yp,
+                    slice_index=slice_idx,
+                    step_number=step_num,
+                    trans_id=trans_id
+                )
+                if alert["any_drift"]:
+                    slice_drift_triggered = True
 
         # --- F. Update Baseline and Adaptive Models ---
         periodic_model.update_with_slice(slice_data, slice_idx=slice_idx, is_out_of_sample=is_oos)
+        periodic_weekly_model.update_with_slice(slice_data, slice_idx=slice_idx, is_out_of_sample=is_oos)
         sliding_model.update_with_slice(slice_data, slice_idx=slice_idx, is_out_of_sample=is_oos)
         adaptive_model.update_with_slice(
             slice_df=slice_data,
@@ -291,7 +365,7 @@ def run_pipeline(
         if slice_drift_triggered:
             drift_monitor.reset_detectors()
 
-        # --- G. P4: Mechanistic SHAP & PSI Attribution on Drift ---
+        # --- G. P4: SHAP & PSI Drift Attribution Heuristic ---
         if slice_drift_triggered:
             slice_attrs = drift_explainer.explain_drift_slice(
                 model=adaptive_model,
@@ -315,13 +389,14 @@ def run_pipeline(
         # Per-slice progress logging
         stat_f1 = [m["f1_score"] for m in evaluator.metrics_log if m["slice_index"] == slice_idx and m["model_type"] == "static"][0]
         period_f1 = [m["f1_score"] for m in evaluator.metrics_log if m["slice_index"] == slice_idx and m["model_type"] == "periodic"][0]
+        period_w_f1 = [m["f1_score"] for m in evaluator.metrics_log if m["slice_index"] == slice_idx and m["model_type"] == "periodic_weekly"][0]
         slide_f1 = [m["f1_score"] for m in evaluator.metrics_log if m["slice_index"] == slice_idx and m["model_type"] == "sliding"][0]
         adapt_f1 = [m["f1_score"] for m in evaluator.metrics_log if m["slice_index"] == slice_idx and m["model_type"] == "adaptive"][0]
         drift_tag = " [DRIFT -> FULL GPU RETRAIN!]" if slice_drift_triggered else ""
 
         logger.info(
             f"Slice {slice_name} ({slice_idx+1:02d}/{len(time_slices)}): "
-            f"Static F1={stat_f1:.4f} | Period F1={period_f1:.4f} | Slide F1={slide_f1:.4f} | Adapt F1={adapt_f1:.4f}{drift_tag}"
+            f"Static F1={stat_f1:.4f} | Period 4w={period_f1:.4f} | Period 1w={period_w_f1:.4f} | Slide={slide_f1:.4f} | Adapt={adapt_f1:.4f}{drift_tag}"
         )
 
     # 8. FR-6.3: Whole-Dataset Summary
@@ -330,12 +405,20 @@ def run_pipeline(
     all_static_probs = np.array(all_static_probs)
     all_periodic_preds = np.array(all_periodic_preds)
     all_periodic_probs = np.array(all_periodic_probs)
+    all_periodic_weekly_preds = np.array(all_periodic_weekly_preds)
+    all_periodic_weekly_probs = np.array(all_periodic_weekly_probs)
     all_sliding_preds = np.array(all_sliding_preds)
     all_sliding_probs = np.array(all_sliding_probs)
     all_adaptive_preds = np.array(all_adaptive_preds)
     all_adaptive_probs = np.array(all_adaptive_probs)
 
     oos_mask = np.array([s["slice_index"] >= n_train_slices for s in time_slices for _ in range(len(s["data"]))])
+
+    extra_models = {}
+    if include_river_baselines and hat_model is not None:
+        extra_models["hat_model"] = (np.array(all_hat_preds), np.array(all_hat_probs))
+        extra_models["arf_model"] = (np.array(all_arf_preds), np.array(all_arf_probs))
+        extra_models["srp_model"] = (np.array(all_srp_preds), np.array(all_srp_probs))
 
     overall_summary = evaluator.compute_overall_summary(
         static_preds=all_static_preds,
@@ -347,7 +430,10 @@ def run_pipeline(
         periodic_probs=all_periodic_probs,
         sliding_preds=all_sliding_preds,
         sliding_probs=all_sliding_probs,
-        oos_mask=oos_mask
+        oos_mask=oos_mask,
+        periodic_weekly_preds=all_periodic_weekly_preds,
+        periodic_weekly_probs=all_periodic_weekly_probs,
+        extra_models=extra_models if extra_models else None
     )
 
     # Save metrics to CSV and JSON with namespacing
@@ -386,13 +472,6 @@ def run_pipeline(
         output_filename=chart_output_filename,
         n_train_slices=n_train_slices
     )
-    if dataset_slug == "ieee_cis":
-        evaluator.generate_comparison_plots(
-            metrics_df=metrics_df,
-            drift_events=drift_monitor.drift_events,
-            output_filename="ieee_cis_model_comparison_f1_aucpr.png",
-            n_train_slices=n_train_slices
-        )
 
     # 10. Persist Everything to MySQL Database if available
     if db is not None:
@@ -418,7 +497,8 @@ def run_pipeline(
             "adaptive_f1_oos": adaptive_oos_f1,
             "drift_alerts_count": len(drift_monitor.drift_events),
             "notes": (
-                f"Periodic retrains: {periodic_model.retrain_count}. "
+                f"Periodic 4w retrains: {periodic_model.retrain_count}. "
+                f"Periodic weekly retrains: {periodic_weekly_model.retrain_count}. "
                 f"Sliding retrains: {sliding_model.retrain_count}. "
                 f"Adaptive retrains: {adaptive_model.adaptation_count}. "
                 f"Total execution time: {time.time() - start_total_time:.1f}s"
@@ -444,9 +524,16 @@ def run_pipeline(
     m_names = [
         ("Static Baseline (Frozen)", "static_model", 0),
         ("Periodic Retraining (4w)", "periodic_model", periodic_model.retrain_count),
+        ("Periodic Retraining (Weekly)", "periodic_weekly_model", periodic_weekly_model.retrain_count),
         ("Sliding Window (4w)", "sliding_model", sliding_model.retrain_count),
         ("Drift-Adaptive (ADWIN/DDM)", "adaptive_model", adaptive_model.adaptation_count),
     ]
+    if include_river_baselines and hat_model is not None:
+        m_names.extend([
+            ("Hoeffding Tree (HAT)", "hat_model", 0),
+            ("Adaptive Random Forest (ARF)", "arf_model", 0),
+            ("Streaming Random Patches (SRP)", "srp_model", 0),
+        ])
 
     oos = overall_summary.get("out_of_sample_stream", {})
     for label, key, n_retrains in m_names:
@@ -466,7 +553,9 @@ def run_pipeline(
         logger.info(f"  - Root Metrics:    {metrics_csv_path}")
         logger.info(f"  - Root Summary:    {summary_json_path}")
     logger.info(f"  - Chart:           {chart_path}")
-    logger.info(f"  - Log File:        {log_file}")
+    log_file_path = next((h.baseFilename for h in logger.handlers if isinstance(h, logging.FileHandler)), None)
+    if log_file_path:
+        logger.info(f"  - Log File:        {log_file_path}")
     logger.info(f"Pipeline executed in {total_pipeline_time:.2f}s.")
     logger.info("=" * 80)
 
@@ -485,6 +574,7 @@ def run_pipeline(
 
 
 def main():
+    setup_pipeline_logging()
     parser = argparse.ArgumentParser(description="Concept-Drift Fraud Detection Pipeline")
     parser.add_argument(
         "--dataset-type",

@@ -1,7 +1,8 @@
 """
 Database management module for storing transactions metadata, drift events,
-and model performance evaluation metrics via MySQL Server 9.7 (schema: fraud_drift_db).
+and model performance evaluation metrics via MySQL 8.4 LTS (schema: fraud_drift_db).
 """
+
 
 import sys
 import logging
@@ -112,7 +113,7 @@ class DriftAttributionRecord(Base):
 
 
 class DatabaseManager:
-    """Manages database connectivity and persistence for experimental runs via MySQL Server 9.7."""
+    """Manages database connectivity and persistence for experimental runs via MySQL 8.4 LTS."""
 
     def __init__(self, engine: Optional[Engine] = None):
         self.engine: Optional[Engine] = None
@@ -148,13 +149,14 @@ class DatabaseManager:
             self.engine = create_engine(db_url, pool_pre_ping=True)
             Base.metadata.create_all(self.engine)
             self.session_factory = sessionmaker(bind=self.engine)
-            self.backend_name = f"MySQL Server 9.7 (`{DB_NAME}` on {DB_HOST}:{DB_PORT})"
+            self.backend_name = f"MySQL 8.4 LTS (`{DB_NAME}` on {DB_HOST}:{DB_PORT})"
             logger.info(f"Connected to MySQL: {self.backend_name}")
         except Exception as e:
             logger.error(f"Failed to connect to MySQL database at {DB_HOST}:{DB_PORT}: {e}")
             raise ConnectionError(
-                f"MySQL connection error ({e}). Please ensure MySQL Server 9.7 is running on {DB_HOST}:{DB_PORT}."
+                f"MySQL connection error ({e}). Please ensure MySQL 8.4 LTS is running on {DB_HOST}:{DB_PORT}."
             )
+
 
     def get_session(self):
         return self.session_factory()

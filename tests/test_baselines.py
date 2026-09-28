@@ -80,3 +80,79 @@ def test_sliding_window_depth_and_retrain(synthetic_stream_df):
     # Check that retrained sample count equals the sum of the slices currently in window
     expected_samples = sum(len(w) for w in sliding_model.window_history)
     assert sliding_model.retrain_log[0]["accumulated_samples"] == expected_samples
+
+
+def test_weekly_periodic_model_retrains_every_slice(synthetic_stream_df):
+    """
+    Asserts that PeriodicRetrainModel with interval=1 (weekly periodic baseline)
+    retrains on EVERY out-of-sample slice.
+    """
+    preprocessor = Preprocessor(hours_per_slice=24)
+    preprocessor.fit(synthetic_stream_df[synthetic_stream_df["step"] <= 24])
+    df_processed = preprocessor.transform(synthetic_stream_df)
+    slices = preprocessor.partition_time_slices(df_processed)
+
+    weekly_model = PeriodicRetrainModel(
+        feature_names=preprocessor.feature_names,
+        retrain_interval_slices=1,
+        scale_pos_weight=1.0
+    )
+    weekly_model.fit_initial(slices[0]["data"])
+
+    # Slice 0: Baseline window (not OOS)
+    weekly_model.update_with_slice(slices[0]["data"], slice_idx=0, is_out_of_sample=False)
+    assert weekly_model.retrain_count == 0
+
+    # Slice 1: 1st OOS slice -> retrains immediately
+    weekly_model.update_with_slice(slices[1]["data"], slice_idx=1, is_out_of_sample=True)
+    assert weekly_model.retrain_count == 1
+
+    # Slice 2: 2nd OOS slice -> retrains again
+    weekly_model.update_with_slice(slices[2]["data"], slice_idx=2, is_out_of_sample=True)
+    assert weekly_model.retrain_count == 2
+
+
+def test_adaptive_model_retrain_budget_limit(synthetic_stream_df):
+    """
+    Asserts that DriftAdaptiveModel strictly respects retrain_budget,
+    refusing further retraining once the budget is exhausted.
+    """
+    from src.adaptive_model import DriftAdaptiveModel
+
+    preprocessor = Preprocessor(hours_per_slice=24)
+    preprocessor.fit(synthetic_stream_df[synthetic_stream_df["step"] <= 24])
+    df_processed = preprocessor.transform(synthetic_stream_df)
+    slices = preprocessor.partition_time_slices(df_processed)
+
+    # Budget of exactly 1 retrain
+    adaptive_model = DriftAdaptiveModel(
+        feature_names=preprocessor.feature_names,
+        scale_pos_weight=1.0,
+        retrain_budget=1
+    )
+    adaptive_model.fit_initial(slices[0]["data"])
+
+    # First drift trigger -> retrain 1 consumed
+    adaptive_model.update_with_slice(slices[1]["data"], drift_triggered=True, slice_idx=1)
+    assert adaptive_model.adaptation_count == 1
+    assert len(adaptive_model.retrain_log) == 1
+
+    # Second drift trigger -> budget limit reached -> no retrain executed!
+    adaptive_model.update_with_slice(slices[2]["data"], drift_triggered=True, slice_idx=2)
+    assert adaptive_model.adaptation_count == 1
+    assert len(adaptive_model.retrain_log) == 1
+
+
+def test_identical_hyperparameters_invariant():
+    """
+    Asserts that DEFAULT_XGB_HYPERPARAMS specifies exactly identical
+    tree depth, estimator count, subsample, and colsample across all models.
+    """
+    from src.base_model import DEFAULT_XGB_HYPERPARAMS
+    assert DEFAULT_XGB_HYPERPARAMS["n_estimators"] == 100
+    assert DEFAULT_XGB_HYPERPARAMS["max_depth"] == 6
+    assert DEFAULT_XGB_HYPERPARAMS["learning_rate"] == 0.08
+    assert DEFAULT_XGB_HYPERPARAMS["subsample"] == 0.8
+    assert DEFAULT_XGB_HYPERPARAMS["colsample_bytree"] == 0.8
+    assert DEFAULT_XGB_HYPERPARAMS["eval_metric"] == "logloss"
+

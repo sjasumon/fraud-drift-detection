@@ -1,0 +1,86 @@
+{
+    "metadata": {
+        "n_banks": 3,
+        "n_samples_total": 3000,
+        "feature_cols": [
+            "TransactionAmt",
+            "velocity_count",
+            "errorBalance",
+            "hour_of_day",
+            "foreign_dest"
+        ],
+        "ks_test_a_vs_b": {
+            "stat": 0.95,
+            "p_value": 0.0
+        },
+        "threat_model": {
+            "adversary": "Semi-honest (honest-but-curious)",
+            "raw_data_transferred_bytes": 0,
+            "model_exchange_protocol": "Federated Tree Booster Aggregation"
+        }
+    },
+    "per_bank_eval": {
+        "Bank_A": {
+            "local_isolated_model": {
+                "recall": 100.0,
+                "precision": 75.0,
+                "f1": 0.8571,
+                "auc_roc": 0.9983,
+                "auc_pr": 0.9151
+            },
+            "federated_model": {
+                "recall": 100.0,
+                "precision": 75.0,
+                "f1": 0.8571,
+                "auc_roc": 0.9983,
+                "auc_pr": 0.9151
+            },
+            "net_recall_gain": 0.0
+        },
+        "Bank_B": {
+            "local_isolated_model": {
+                "recall": 100.0,
+                "precision": 83.33,
+                "f1": 0.9091,
+                "auc_roc": 0.9993,
+                "auc_pr": 0.9667
+            },
+            "federated_model": {
+                "recall": 100.0,
+                "precision": 20.83,
+                "f1": 0.3448,
+                "auc_roc": 1.0,
+                "auc_pr": 1.0
+            },
+            "net_recall_gain": 0.0
+        },
+        "Bank_C": {
+            "local_isolated_model": {
+                "recall": 100.0,
+                "precision": 85.71,
+                "f1": 0.9231,
+                "auc_roc": 0.9994,
+                "auc_pr": 0.9762
+            },
+            "federated_model": {
+                "recall": 100.0,
+                "precision": 20.0,
+                "f1": 0.3333,
+                "auc_roc": 0.9994,
+                "auc_pr": 0.9762
+            },
+            "net_recall_gain": 0.0
+        }
+    },
+    "global_eval": {
+        "federated_model": {
+            "recall": 100.0,
+            "precision": 27.42,
+            "f1": 0.4304,
+            "auc_roc": 0.9982,
+            "auc_pr": 0.9403
+        },
+        "isolated_models_mean_recall": 64.71,
+        "federated_advantage_over_isolated": 35.29
+    }
+}

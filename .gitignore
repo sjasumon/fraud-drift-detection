@@ -25,10 +25,13 @@ mysql_data/
 data/
 ieee/
 ieee-fraud-detection.zip
-*.zip
 *.tar.gz
 *.csv
-!results/metrics/*.csv
+!results/**/*.csv
+!results/*.csv
+*.zip
+!results/**/*.zip
+!results/*.zip
 
 # OS metadata
 .DS_Store
@@ -38,7 +41,6 @@ Thumbs.db
 *.log
 results/logs/
 
-# Private applicant due-diligence & supervisor notes
-Prof_Yun_Sing_Koh_profile.md
+# Local notes
 *profile*.md
 

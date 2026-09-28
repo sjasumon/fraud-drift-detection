@@ -15,6 +15,15 @@ from src.config import USE_GPU, GPU_DEVICE, RANDOM_SEED
 
 logger = logging.getLogger("fraud_drift.model")
 
+DEFAULT_XGB_HYPERPARAMS: Dict[str, Any] = {
+    "n_estimators": 100,
+    "max_depth": 6,
+    "learning_rate": 0.08,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "eval_metric": "logloss"
+}
+
 
 def fit_xgb_with_fallback(
     X: np.ndarray,

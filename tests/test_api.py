@@ -58,6 +58,26 @@ def test_single_transaction_score(client):
     assert data["inference_latency_ms"] < 50.0
 
 
+def test_score_returns_503_when_not_ready(client):
+    """Verifies that /v1/score returns 503 Service Unavailable when model_buffer.is_ready is False."""
+    model_buffer.set_ready(False)
+    try:
+        payload = {
+            "trans_id": "TX_UNREADY_001",
+            "features": {"TransactionAmt": 100.0, "card1": 1000.0}
+        }
+        response = client.post("/v1/score", json=payload)
+        assert response.status_code == 503
+        assert "not ready" in response.json()["detail"].lower()
+
+        # Batch scoring should also return 503
+        batch_resp = client.post("/v1/batch-score", json={"transactions": [payload]})
+        assert batch_resp.status_code == 503
+        assert "not ready" in batch_resp.json()["detail"].lower()
+    finally:
+        model_buffer.set_ready(True)
+
+
 def test_batch_scoring(client):
     """Verifies vectorized batch scoring with throughput calculation."""
     batch_txs = [

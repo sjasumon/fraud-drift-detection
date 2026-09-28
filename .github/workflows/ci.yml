@@ -30,7 +30,7 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           pip install -e ".[test]"
 
-      - name: Run Full Test Suite (93 Invariant & Unit Tests)
+      - name: Run Full Test Suite (104 Invariant & Unit Tests)
         env:
           USE_GPU: "false"
         run: |
@@ -41,6 +41,12 @@ jobs:
           USE_GPU: "false"
         run: |
           pytest -v tests/test_drift_explainer.py
+
+      - name: Verify Privacy-Preserving Federated Benchmark (RQ3 Prototype)
+        env:
+          USE_GPU: "false"
+        run: |
+          python -m src.federated --n-samples-per-bank 500
 
       - name: Run Bandit Non-Stationary Verification (Quick Demo)
         env:
