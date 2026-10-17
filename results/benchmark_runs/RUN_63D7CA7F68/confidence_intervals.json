@@ -1,0 +1,58 @@
+{
+  "periodic": {
+    "mean_delta": 0.007188779808197598,
+    "ci_95": [
+      0.00032587987008117085,
+      0.01500546758746657
+    ],
+    "n_bootstrap": 500,
+    "n_seeds": 1,
+    "temporal_blocks": 10,
+    "block_length_slices": 2,
+    "status": "conditional_on_observed_stream",
+    "method": "paired circular moving-block bootstrap; shared time draws across seeds",
+    "limitation": "Conditional on supplied periods; seeds do not add independent transaction populations."
+  },
+  "weekly": {
+    "mean_delta": 0.01225550519565266,
+    "ci_95": [
+      0.005227794657404071,
+      0.018828981066189677
+    ],
+    "n_bootstrap": 500,
+    "n_seeds": 1,
+    "temporal_blocks": 10,
+    "block_length_slices": 2,
+    "status": "conditional_on_observed_stream",
+    "method": "paired circular moving-block bootstrap; shared time draws across seeds",
+    "limitation": "Conditional on supplied periods; seeds do not add independent transaction populations."
+  },
+  "sliding": {
+    "mean_delta": 0.004040419700642062,
+    "ci_95": [
+      -0.0029283242781121726,
+      0.012724966477371836
+    ],
+    "n_bootstrap": 500,
+    "n_seeds": 1,
+    "temporal_blocks": 10,
+    "block_length_slices": 2,
+    "status": "conditional_on_observed_stream",
+    "method": "paired circular moving-block bootstrap; shared time draws across seeds",
+    "limitation": "Conditional on supplied periods; seeds do not add independent transaction populations."
+  },
+  "adaptive": {
+    "mean_delta": 0.01225550519565266,
+    "ci_95": [
+      0.005227794657404071,
+      0.018828981066189677
+    ],
+    "n_bootstrap": 500,
+    "n_seeds": 1,
+    "temporal_blocks": 10,
+    "block_length_slices": 2,
+    "status": "conditional_on_observed_stream",
+    "method": "paired circular moving-block bootstrap; shared time draws across seeds",
+    "limitation": "Conditional on supplied periods; seeds do not add independent transaction populations."
+  }
+}

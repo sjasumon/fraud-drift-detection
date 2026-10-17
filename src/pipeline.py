@@ -52,6 +52,8 @@ def run_pipeline(
     raw_slices=None,
     preprocessor=None,
     strategies=("static", "periodic", "weekly", "sliding", "adaptive"),
+    threshold_objective="validation_f1",
+    operational_daily_budget=None,
 ):
     started = time.perf_counter()
     if adaptive_window is not None and adaptive_window < 1:
@@ -115,7 +117,11 @@ def run_pipeline(
     prep.fit(seed_raw.iloc[: BaseFraudModel.validation_start(len(seed_raw))])
     train = prep.transform(seed_raw)
     args = dict(
-        feature_names=prep.feature_names, random_seed=seed, model_params=model_params
+        feature_names=prep.feature_names,
+        random_seed=seed,
+        model_params=model_params,
+        threshold_objective=threshold_objective,
+        operational_daily_budget=operational_daily_budget,
     )
     initial = StaticBaselineModel(**args).fit(train)
     models = {"static": initial}
@@ -286,12 +292,18 @@ def run_pipeline(
     for source in sorted(Path(__file__).parent.rglob("*.py")):
         source_digest.update(str(source.relative_to(Path(__file__).parent)).encode())
         source_digest.update(source.read_bytes())
+    prov = validation.get("provenance") if isinstance(validation, dict) else None
+    if prov is None and hasattr(ingestor, "dataset_type"):
+        from src.provenance import get_dataset_provenance
+        prov = get_dataset_provenance(ingestor.dataset_type, dataset_path, identity_path)
+
     manifest = dict(
         run_id=run_id,
-        version="0.4.1",
+        version="0.5.0",
         source_sha256=source_digest.hexdigest(),
         data_kind=data_kind,
         dataset=dataset_path.name,
+        provenance=prov,
         dataset_sha256=hashlib.sha256(
             dataset_path.read_bytes()
             if raw_dataframe is None
@@ -310,6 +322,8 @@ def run_pipeline(
         latency_mode=latency_mode,
         lognormal_mu=lognormal_mu,
         lognormal_sigma=lognormal_sigma,
+        threshold_objective=threshold_objective,
+        operational_daily_budget=operational_daily_budget,
         model_params=initial.model_params,
         strategies=list(models),
         recent_window_basis="latest verified transaction arrival slice",
@@ -366,7 +380,8 @@ def run_pipeline(
                     run_id=run_id,
                     model=name,
                     data_kind=data_kind,
-                    version="0.4.1",
+                    provenance=prov,
+                    version="0.5.0",
                     model_revision=uuid.uuid4().hex,
                 ),
             ),

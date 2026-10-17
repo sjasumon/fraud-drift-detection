@@ -1,0 +1,382 @@
+[
+  {
+    "slice_index": 8,
+    "step_number": 1345,
+    "trans_id": "3199494",
+    "detector_type": "DDM",
+    "error_rate": 0.0217,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1345 in slice 9"
+  },
+  {
+    "slice_index": 8,
+    "step_number": 1345,
+    "trans_id": "3199543",
+    "detector_type": "DDM",
+    "error_rate": 0.0211,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1345 in slice 9"
+  },
+  {
+    "slice_index": 9,
+    "step_number": 1544,
+    "trans_id": "3226211",
+    "detector_type": "DDM",
+    "error_rate": 0.0367,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1544 in slice 10"
+  },
+  {
+    "slice_index": 9,
+    "step_number": 1550,
+    "trans_id": "3226352",
+    "detector_type": "ADWIN",
+    "error_rate": 0.0422,
+    "confidence_score": 2912.0,
+    "status": "DRIFT",
+    "notes": "ADWIN flagged distribution shift at step 1550 in slice 10"
+  },
+  {
+    "slice_index": 10,
+    "step_number": 1682,
+    "trans_id": "3243621",
+    "detector_type": "DDM",
+    "error_rate": 0.036,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1682 in slice 11"
+  },
+  {
+    "slice_index": 10,
+    "step_number": 1682,
+    "trans_id": "3243669",
+    "detector_type": "DDM",
+    "error_rate": 0.036,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1682 in slice 11"
+  },
+  {
+    "slice_index": 10,
+    "step_number": 1686,
+    "trans_id": "3244065",
+    "detector_type": "DDM",
+    "error_rate": 0.0361,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1686 in slice 11"
+  },
+  {
+    "slice_index": 10,
+    "step_number": 1686,
+    "trans_id": "3244119",
+    "detector_type": "DDM",
+    "error_rate": 0.0362,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1686 in slice 11"
+  },
+  {
+    "slice_index": 10,
+    "step_number": 1687,
+    "trans_id": "3244155",
+    "detector_type": "DDM",
+    "error_rate": 0.0363,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1687 in slice 11"
+  },
+  {
+    "slice_index": 10,
+    "step_number": 1698,
+    "trans_id": "3245183",
+    "detector_type": "DDM",
+    "error_rate": 0.0361,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1698 in slice 11"
+  },
+  {
+    "slice_index": 10,
+    "step_number": 1699,
+    "trans_id": "3245375",
+    "detector_type": "DDM",
+    "error_rate": 0.0361,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1699 in slice 11"
+  },
+  {
+    "slice_index": 10,
+    "step_number": 1699,
+    "trans_id": "3245417",
+    "detector_type": "DDM",
+    "error_rate": 0.0361,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1699 in slice 11"
+  },
+  {
+    "slice_index": 10,
+    "step_number": 1700,
+    "trans_id": "3245486",
+    "detector_type": "DDM",
+    "error_rate": 0.036,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1700 in slice 11"
+  },
+  {
+    "slice_index": 10,
+    "step_number": 1700,
+    "trans_id": "3245521",
+    "detector_type": "DDM",
+    "error_rate": 0.0361,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1700 in slice 11"
+  },
+  {
+    "slice_index": 10,
+    "step_number": 1700,
+    "trans_id": "3245557",
+    "detector_type": "DDM",
+    "error_rate": 0.0361,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1700 in slice 11"
+  },
+  {
+    "slice_index": 10,
+    "step_number": 1700,
+    "trans_id": "3245592",
+    "detector_type": "DDM",
+    "error_rate": 0.0361,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1700 in slice 11"
+  },
+  {
+    "slice_index": 10,
+    "step_number": 1701,
+    "trans_id": "3245821",
+    "detector_type": "DDM",
+    "error_rate": 0.0362,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1701 in slice 11"
+  },
+  {
+    "slice_index": 10,
+    "step_number": 1831,
+    "trans_id": "3262166",
+    "detector_type": "ADWIN",
+    "error_rate": 0.0526,
+    "confidence_score": 704.0,
+    "status": "DRIFT",
+    "notes": "ADWIN flagged distribution shift at step 1831 in slice 11"
+  },
+  {
+    "slice_index": 11,
+    "step_number": 1853,
+    "trans_id": "3264933",
+    "detector_type": "DDM",
+    "error_rate": 0.0369,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1853 in slice 12"
+  },
+  {
+    "slice_index": 11,
+    "step_number": 1853,
+    "trans_id": "3265026",
+    "detector_type": "DDM",
+    "error_rate": 0.0369,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1853 in slice 12"
+  },
+  {
+    "slice_index": 11,
+    "step_number": 1854,
+    "trans_id": "3265065",
+    "detector_type": "DDM",
+    "error_rate": 0.037,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1854 in slice 12"
+  },
+  {
+    "slice_index": 11,
+    "step_number": 1854,
+    "trans_id": "3265098",
+    "detector_type": "DDM",
+    "error_rate": 0.037,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1854 in slice 12"
+  },
+  {
+    "slice_index": 11,
+    "step_number": 1855,
+    "trans_id": "3265130",
+    "detector_type": "DDM",
+    "error_rate": 0.037,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1855 in slice 12"
+  },
+  {
+    "slice_index": 11,
+    "step_number": 1871,
+    "trans_id": "3267248",
+    "detector_type": "DDM",
+    "error_rate": 0.0366,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1871 in slice 12"
+  },
+  {
+    "slice_index": 11,
+    "step_number": 1882,
+    "trans_id": "3268337",
+    "detector_type": "DDM",
+    "error_rate": 0.0367,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1882 in slice 12"
+  },
+  {
+    "slice_index": 12,
+    "step_number": 2017,
+    "trans_id": "3284593",
+    "detector_type": "DDM",
+    "error_rate": 0.0354,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 2017 in slice 13"
+  },
+  {
+    "slice_index": 12,
+    "step_number": 2017,
+    "trans_id": "3284716",
+    "detector_type": "DDM",
+    "error_rate": 0.0355,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 2017 in slice 13"
+  },
+  {
+    "slice_index": 12,
+    "step_number": 2018,
+    "trans_id": "3284878",
+    "detector_type": "DDM",
+    "error_rate": 0.0355,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 2018 in slice 13"
+  },
+  {
+    "slice_index": 12,
+    "step_number": 2025,
+    "trans_id": "3285466",
+    "detector_type": "DDM",
+    "error_rate": 0.0355,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 2025 in slice 13"
+  },
+  {
+    "slice_index": 12,
+    "step_number": 2027,
+    "trans_id": "3285510",
+    "detector_type": "DDM",
+    "error_rate": 0.0356,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 2027 in slice 13"
+  },
+  {
+    "slice_index": 12,
+    "step_number": 2029,
+    "trans_id": "3285590",
+    "detector_type": "DDM",
+    "error_rate": 0.0356,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 2029 in slice 13"
+  },
+  {
+    "slice_index": 13,
+    "step_number": 2185,
+    "trans_id": "3307124",
+    "detector_type": "DDM",
+    "error_rate": 0.0358,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 2185 in slice 14"
+  },
+  {
+    "slice_index": 13,
+    "step_number": 2208,
+    "trans_id": "3312949",
+    "detector_type": "ADWIN",
+    "error_rate": 0.0172,
+    "confidence_score": 4992.0,
+    "status": "DRIFT",
+    "notes": "ADWIN flagged distribution shift at step 2208 in slice 14"
+  },
+  {
+    "slice_index": 13,
+    "step_number": 2235,
+    "trans_id": "3318271",
+    "detector_type": "DDM",
+    "error_rate": 0.0347,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 2235 in slice 14"
+  },
+  {
+    "slice_index": 15,
+    "step_number": 2552,
+    "trans_id": "3359642",
+    "detector_type": "ADWIN",
+    "error_rate": 0.0339,
+    "confidence_score": 6848.0,
+    "status": "DRIFT",
+    "notes": "ADWIN flagged distribution shift at step 2552 in slice 16"
+  },
+  {
+    "slice_index": 15,
+    "step_number": 2564,
+    "trans_id": "3360882",
+    "detector_type": "DDM",
+    "error_rate": 0.0337,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 2564 in slice 16"
+  },
+  {
+    "slice_index": 16,
+    "step_number": 2689,
+    "trans_id": "3376570",
+    "detector_type": "DDM",
+    "error_rate": 0.0336,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 2689 in slice 17"
+  },
+  {
+    "slice_index": 17,
+    "step_number": 2931,
+    "trans_id": "3407488",
+    "detector_type": "ADWIN",
+    "error_rate": 0.0269,
+    "confidence_score": 8864.0,
+    "status": "DRIFT",
+    "notes": "ADWIN flagged distribution shift at step 2931 in slice 18"
+  }
+]

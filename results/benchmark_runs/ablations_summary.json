@@ -1,0 +1,44 @@
+[
+  {
+    "ablation": "identity_join",
+    "description": "Base Transaction + Identity Join",
+    "run_id": "RUN_A3D51E12EE",
+    "duration_sec": 975.2403160000031,
+    "static_f1": 0.49148055121851875,
+    "static_ap": 0.49382916273860755,
+    "static_recall": 0.4131948407716014,
+    "static_prec": 0.6063651591289783,
+    "adaptive_f1": 0.5042821498415268,
+    "adaptive_ap": 0.5223322673009393,
+    "adaptive_recall": 0.42677776509530874,
+    "adaptive_prec": 0.6161832564271589
+  },
+  {
+    "ablation": "history_features",
+    "description": "Base Transaction + Tied-Safe History Features",
+    "run_id": "RUN_D86B720A55",
+    "duration_sec": 131.29340560000128,
+    "static_f1": 0.4841811846689896,
+    "static_ap": 0.4886725810775669,
+    "static_recall": 0.3965300764752882,
+    "static_prec": 0.6215780998389694,
+    "adaptive_f1": 0.48800215691561066,
+    "adaptive_ap": 0.5115989077721365,
+    "adaptive_recall": 0.4131948407716014,
+    "adaptive_prec": 0.5958847736625514
+  },
+  {
+    "ablation": "operational_budget_100",
+    "description": "Base Transaction + Operational Review Budget Thresholding (100 alerts/day)",
+    "run_id": "RUN_41F8641D50",
+    "duration_sec": 130.50056509999922,
+    "static_f1": 0.47305101058710297,
+    "static_ap": 0.4908802565530253,
+    "static_recall": 0.44880721378838034,
+    "static_prec": 0.5000635889609564,
+    "adaptive_f1": 0.4949443882709808,
+    "adaptive_ap": 0.5184396869495017,
+    "adaptive_recall": 0.4469809382490583,
+    "adaptive_prec": 0.5544386238142432
+  }
+]

@@ -40,7 +40,14 @@ class ModelBundle:
 
     @property
     def ready(self):
-        return bool(self.model.trained and self.metadata.get("data_kind") == "real")
+        if not getattr(self.model, "trained", False):
+            return False
+        prov = self.metadata.get("provenance")
+        if prov:
+            from src.provenance import verify_bundle_provenance
+            is_verified, _ = verify_bundle_provenance(self.metadata)
+            return is_verified
+        return bool(self.metadata.get("data_kind") == "real")
 
 
 def save_bundle(bundle, directory):

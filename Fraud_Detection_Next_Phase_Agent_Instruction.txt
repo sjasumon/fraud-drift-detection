@@ -1,0 +1,144 @@
+NEXT-PHASE AGENT INSTRUCTION — FRAUD DRIFT DETECTION
+Prepared: 16 October 2026
+Purpose: Develop a reproducible research system and credible supporting evidence for a PhD proposal.
+
+You are responsible for carrying this project through its next development phase. Work as a research software engineer: inspect the supplied source ZIP, implement the necessary improvements, obtain appropriate genuine data where access permits, run the experiments, validate the deployed system when a target is available, and deliver an auditable release.
+
+The owner has only the project ZIP. Do not assume that raw datasets, cloud infrastructure, credentials, earlier fixes, or a completed deployment are available. This brief is the development scope; produce working software and evidence, not only recommendations. Make routine reversible decisions independently. Ask only for a missing input or authorization that genuinely blocks dependent work, and continue all independent work.
+
+1. ESTABLISH THE BASELINE AND PRESERVE IT
+
+Identify the actual archive filename, checksum, project version, dependencies, entrypoints, reports, tests, and deployment configuration. If fraud-drift-detection-v0.4.1-rechecked.zip is supplied, verify its claimed fixes. If an older ZIP is supplied, implement the applicable requirements rather than assuming those fixes exist. Earlier test counts and reports are historical evidence, not proof that the supplied version meets this brief.
+
+Inspect the entire executable path: ingestion, preprocessing, feature availability, temporal splitting, delayed feedback, drift monitoring, training, calibration, threshold selection, reporting, model export, API, persistence, restart, and deployment. Trace representative transactions end to end.
+
+Preserve the existing code in GitHub before replacing it. Inspect existing branches, tags and deployment revisions first. If the earlier V1/V2 workflow has already happened, preserve those releases and use the next available version for this phase. If it has not, retain the original code as V1 and identify the next release explicitly. Never move or overwrite existing release tags. Verify the pushed backup resolves to the intended commit. Keep credentials, private transaction records, database contents and secret-bearing configuration out of GitHub.
+
+Create a requirement-to-evidence checklist and record the baseline failures. Existing code defects must be corrected before using a strategy as a scientific comparator. Preserve legacy results with their limitations, separately from new valid results.
+
+2. ENFORCE GENUINE DATA AND TRACEABLE RESULTS
+
+All proposal-facing empirical results must come from genuine observed transactions. Do not generate transactions, inject artificial drift, fabricate labels, manufacture plots, reuse stale results under a new version, or write target metrics into reports. Do not use SMOTE or other generated records for the primary experiments. Class weighting is permissible if selected and documented using development data.
+
+Synthetic fixtures may remain in automated software tests. Exclude them from the proposal's empirical tables, figures, model demonstrations and research conclusions.
+
+Correct dataset classification:
+- IEEE-CIS/Vesta contains real e-commerce transactions and is the preferred initial public benchmark.
+- PaySim is simulator-generated and is not an acceptable real-data benchmark for this task.
+- Feedzai Bank Account Fraud is synthetic despite being derived from real source data, and is not an acceptable real-data benchmark for this task.
+
+Use original provider sources, not unverified reuploads:
+- IEEE-CIS overview: https://www.kaggle.com/competitions/ieee-fraud-detection/overview
+- IEEE-CIS data: https://www.kaggle.com/competitions/ieee-fraud-detection/data
+- PaySim provenance: https://github.com/EdgarLopezPhD/PaySim
+- BAF provenance: https://github.com/feedzai/bank-account-fraud
+
+Inspect whether suitable raw data is already present. If not, obtain the official IEEE-CIS labelled transaction and identity files through available authorized access. Record source, retrieval date, applicable access terms, original checksums, row counts, fraud prevalence, missingness and observed time range. Evaluate held-out portions of labelled data; do not invent labels for an unlabelled competition test set.
+
+If access requires the owner's account action or acceptance of terms, explain that exact blocker. Never silently substitute synthetic data. Continue implementation, tests and the experiment runner while access is blocked. Mark real-data experiments BLOCKED until actually executed.
+
+Change dataset provenance defaults to UNVERIFIED. A CLI flag saying "real", a plausible filename or a file checksum does not independently verify authenticity. Require documented source provenance and dataset classification for research exports; reject known synthetic sources. Ensure API readiness cannot treat an arbitrary metadata flag as sufficient evidence of a verified research model.
+
+3. DEFINE THE RESEARCH CONTRIBUTION BEFORE FINAL EVALUATION
+
+Prepare a focused research protocol around this candidate question:
+Can a retraining policy that accounts for available labels and their delay maintain fraud recall at a fixed review workload while reducing computational cost compared with periodic retraining?
+
+Review relevant primary literature and document the closest methods, their assumptions and the exact proposed difference. Drift adaptation and delayed-label fraud detection already have substantial prior work; do not claim novelty merely from combining standard components. A starting reference is:
+https://re.public.polimi.it/handle/11311/1044896
+
+Keep the contribution achievable and falsifiable. Prefer one well-tested adaptation policy over a collection of unrelated models. Decide the primary metric, comparison, tuning budget, evaluation periods, practical improvement or non-inferiority margin, and uncertainty method before examining the final period. Version and timestamp this protocol. Clearly distinguish a proposed contribution from an experimentally demonstrated one.
+
+Separate transaction authenticity from feedback authenticity. If actual fraud-confirmation timestamps are absent, state that observed delayed-feedback effectiveness cannot be established from that dataset. Do not describe fixed or sampled delays as observed behavior. Under this real-output requirement, exclude simulated-delay results from the primary empirical evidence. An immediate-label or assumed-availability benchmark must be explicitly qualified and cannot substantiate claims about operational feedback delay. Keep obtaining observed confirmation timestamps as a documented research dependency where necessary.
+
+4. IMPLEMENT A LEAKAGE-SAFE TEMPORAL PROTOCOL
+
+Use chronological training and development periods plus an untouched future evaluation period. Define boundaries from available data duration and fraud counts, document the rationale, and freeze them before final evaluation. Use additional future windows where the data supports them. Preserve the natural evaluation class distribution.
+
+Fit preprocessing, feature selection, hyperparameters, calibration and decision policies using permitted earlier information only. Use appropriate chronological development partitions or temporal cross-fitting; never tune on final evaluation outcomes.
+
+Require feature-availability documentation. Historical features must use prior observable transactions, never future records or unavailable fraud labels. For tied timestamps, use a justified observed sequence or score the tied group before updating shared history. Do not infer causal ordering solely from transaction IDs.
+
+Score each event before its label becomes available under the explicitly documented protocol. Store the original score, decision, event time, model revision, threshold, and subsequent feedback time if observed. Never substitute predictions recomputed after retraining. Unknown or pending outcomes are not legitimate-transaction labels. Account for incomplete follow-up when calculating metrics.
+
+Verify that warmup records are not counted as future evaluation, training rows are not duplicated, missing identities are not merged into a fictitious customer, and old model generations are handled consistently. Check recent-memory behavior when available verified transactions are older than the chosen window. Preserve the same information availability for every comparator.
+
+5. IMPROVE AND COMPARE THE METHODS FAIRLY
+
+Compare at least static, periodic, recent-window and adaptive retraining strategies using the same initial fitting policy, event stream and label availability. Include a simple competitive baseline and a relevant established adaptive comparator identified in the literature review. Give competing approaches documented, comparable tuning and compute budgets.
+
+Evaluate implemented feature groups through ablation: transaction features, identity information, missingness and strictly prior behavioral history. Measure the effect of calibration, threshold policy and recent-memory settings separately where relevant. Distinguish improvements due to extra information or tuning from improvements due to the adaptation policy.
+
+Extend the current F1-based threshold policy to an operational objective such as recall at a specified review capacity or false-positive constraint. Choose that policy using past development information. Daily top-k ranking using the complete day's scores is a batch-review evaluation, not a real-time decision policy; label and test these separately.
+
+Replace promotion based on any tiny F1 increase with a documented acceptance rule requiring sufficient evidence and acceptable quality and runtime. Avoid repeatedly treating an already inspected holdout as fresh independent evidence. Retain the active model if no candidate meets the criteria, and record rejected candidates and reasons.
+
+Do not promise a particular accuracy, recall or percentage improvement. A valid negative or mixed result must remain visible.
+
+6. PROFILE AND IMPROVE COMPUTATIONAL PERFORMANCE
+
+Measure the baseline on the actual available hardware before optimizing. Record CPU/GPU, RAM, operating system, package versions, thread counts, batch sizes, concurrency and dataset size.
+
+Profile ingestion, history computation, preprocessing, training, prediction, database writes and reporting separately. Investigate:
+- Chronological early stopping and model-size tuning; histogram-based XGBoost training may already be enabled.
+- Efficient history-state updates instead of full-table Python dictionary expansion.
+- Reusable feature representations and reduced copies, with temporal boundaries preserved.
+- An index supporting verified-record retrieval by model family and event time.
+- Efficient batch inference and durable batched persistence.
+- Bounded retraining and resource isolation if background training degrades inference.
+- Avoiding duplicate preprocessing and repeated work in experiment sweeps.
+
+Use profiling evidence to choose changes; do not introduce distributed infrastructure without a demonstrated need. Verify prediction/decision parity for intended behavior-preserving optimizations. If an optimization changes the learned model or decision policy, reevaluate quality.
+
+Measure p50, p95 and p99 end-to-end latency, successful throughput, request failure rate, training time, retraining frequency, peak memory and artifact size. Include scoring with persistence enabled, concurrent requests and background retraining. Use real held-out transaction records for workload replay and label it as replay. Repeated records used for load generation do not become additional independent observations in accuracy evaluation.
+
+Report cold and warm behavior, run duration and repeated measurements. Define acceptance targets before the optimization comparison using the available hardware and workload. Do not infer a production SLA from unit tests or local model-only timing.
+
+7. GENERATE AUDITABLE RESEARCH OUTPUTS
+
+Generate every table and figure programmatically from a uniquely identified run and saved predictions. Include:
+- Average precision, explicitly named and distinguished from other PR-area calculations.
+- Precision, recall, F1, false positives, false negatives and observed fraud counts.
+- Recall and precision under the specified alert/review policy.
+- Calibration assessment and Brier score.
+- Performance over time, retraining events and measured computational cost.
+- Relevant new/returning entity analyses, with identifier proxies and limitations disclosed.
+- Paired uncertainty estimates appropriate to temporal dependence.
+
+Use matched records and temporal block resampling where justified. Multiple seeds do not create independent transaction streams. Explain uncertainty limitations when the dataset contains too few periods or fraud cases. Extend uncertainty reporting to the prespecified primary metric rather than relying solely on an F1 interval.
+
+Preserve unsmoothed measured values, unsuccessful runs and configuration choices. Do not select only favorable seeds or periods. Explain missing or undefined statistics. Show confidence intervals and practical effect sizes; a small p-value alone is not the acceptance criterion.
+
+Do not equate a distribution-change alarm with proven harmful concept drift. Do not report drift-detection delay without defensible reference change times. Explanations such as SHAP describe model behavior and are not causal proof. Financial savings require observed or explicitly stated cost assumptions and must not be invented.
+
+Each run must record data and source checksums, Git commit, configuration, seed, temporal boundaries, feature schema, model revision, hardware, environment and commands. A second run from the frozen configuration should reproduce quality results within declared tolerances; runtime variability should be reported separately.
+
+8. VERIFY THE SOFTWARE AND DEPLOYMENT
+
+Run meaningful regression and integration tests, including provenance rejection, leakage traps, temporal boundaries, feature availability, delayed feedback, idempotency, generation pairing, threshold/calibration behavior, model serialization parity, atomic promotion and restart recovery. Test failure paths and previously identified edge cases. A large test count is not a substitute for coverage of these behaviors.
+
+Build and install the package in a clean environment with declared dependencies. Test installed entrypoints outside the source tree. Independently recompute headline metrics from the prediction ledger and reconcile them with all exported tables and plots. Test only environments you can actually access, and report other environments as NOT TESTED.
+
+If the owner's existing deployment target and authorized access are available, deploy through the established procedure after local checks pass. Record the deployed commit, artifact checksum, model revision and configuration. Test readiness, authentication, valid/invalid input, single and batch scoring, duplicates, feedback, persistence, restart, model promotion and recovery. Use isolated test state for promotion and destructive test cases. Validate latency and throughput under retraining.
+
+If deployment access or a verified model is unavailable, deliver the runnable package and exact deployment instructions, and mark the affected checks BLOCKED. Do not deploy or present a synthetic placeholder as the genuine research model. Preserve a compatible rollback path, including state/schema considerations.
+
+9. DELIVER A REVIEWABLE RELEASE
+
+Provide one final ZIP containing the exact release source, dependency locks, tests, experiment configurations, data acquisition instructions, deployment instructions, research protocol, validation evidence and regenerated reports. Include data only where redistribution is permitted and appropriate; otherwise supply provenance and reproducible acquisition steps. Exclude credentials and unnecessary private records.
+
+Also deliver:
+- CHANGELOG describing actual changes.
+- REQUIREMENTS_EVIDENCE with every requirement marked PASS, FAIL, BLOCKED or NOT APPLICABLE and an evidence path and explanation.
+- DATA_PROVENANCE and feature-availability documentation.
+- RESEARCH_PROTOCOL and an evidence-based related-work comparison.
+- TEST_REPORT with commands, environment, counts, failures and coverage limitations.
+- BENCHMARK_REPORT comparing valid baseline and revised measurements on identical conditions.
+- REPRODUCIBILITY instructions from a fresh checkout.
+- DEPLOYMENT_REPORT with deployed revision or precise blockers and rollback instructions.
+- PROPOSAL_RESULTS containing only genuine findings and an explicit separation between completed experiments and proposed future work.
+
+Push the final release commit and an immutable annotated release tag to GitHub when authorized access is available. Verify that the release ZIP, tag, tested source and deployed revision agree. Report their identifiers and checksums. Do not claim deployment occurred merely because the code was pushed.
+
+Finish with a concise completion report: what changed, what actually ran, measured results, limitations, unresolved blockers and artifact links. Clearly distinguish engineering completion, empirical validation and deployment validation. Overall completion requires all mandatory acceptance criteria to be satisfied; genuine-data experiments that could not run must remain blocked. Do not manufacture success to close the task.
+

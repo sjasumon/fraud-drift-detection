@@ -1,0 +1,38 @@
+{
+  "out_of_sample_stream": {
+    "adaptive_model": {
+      "overall_precision": 0.5544386238142432,
+      "overall_recall": 0.4469809382490583,
+      "overall_f1": 0.4949443882709808,
+      "average_precision": 0.5184396869495017,
+      "overall_auc_pr": 0.5184396869495017,
+      "brier_score": 0.025623845846141993,
+      "log_loss": 0.10438969238243247,
+      "true_positives": 3916,
+      "false_positives": 3147,
+      "false_negatives": 4845,
+      "true_negatives": 209819,
+      "total_frauds": 8761,
+      "total_transactions": 221727,
+      "evaluation_scope": "Pure Out-of-Sample",
+      "is_pure_out_of_sample": true
+    },
+    "static_model": {
+      "overall_precision": 0.5000635889609564,
+      "overall_recall": 0.44880721378838034,
+      "overall_f1": 0.47305101058710297,
+      "average_precision": 0.4908802565530253,
+      "overall_auc_pr": 0.4908802565530253,
+      "brier_score": 0.026643518866905223,
+      "log_loss": 0.11083656928731439,
+      "true_positives": 3932,
+      "false_positives": 3931,
+      "false_negatives": 4829,
+      "true_negatives": 209035,
+      "total_frauds": 8761,
+      "total_transactions": 221727,
+      "evaluation_scope": "Pure Out-of-Sample",
+      "is_pure_out_of_sample": true
+    }
+  }
+}

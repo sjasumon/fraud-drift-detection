@@ -51,6 +51,8 @@ class BaseFraudModel:
         model_params=None,
         tune_threshold=True,
         calibrate=True,
+        threshold_objective="validation_f1",
+        operational_daily_budget=None,
     ):
         self.feature_names = list(feature_names)
         self.scale_pos_weight = scale_pos_weight
@@ -58,6 +60,8 @@ class BaseFraudModel:
         self.model_params = dict(DEFAULT_MODEL_PARAMS, **(model_params or {}))
         self.tune_threshold = tune_threshold
         self.calibrate = calibrate
+        self.threshold_objective = threshold_objective
+        self.operational_daily_budget = operational_daily_budget
         self.model = None
         self.calibrator = None
         self.threshold = 0.5
@@ -112,16 +116,28 @@ class BaseFraudModel:
             probs = self.calibrator.predict_proba(self._logit(probs))[:, 1]
             calibration_status = "sigmoid_on_chronological_validation"
         if self.tune_threshold and len(np.unique(valid_y)) == 2:
-            precision, recall, thresholds = precision_recall_curve(valid_y, probs)
-            f1 = (
-                2
-                * precision[:-1]
-                * recall[:-1]
-                / np.maximum(precision[:-1] + recall[:-1], 1e-15)
-            )
-            # Prefer the highest threshold when validation F1 ties.
-            best = np.flatnonzero(np.isclose(f1, f1.max()))[-1]
-            self.threshold = float(thresholds[best])
+            if self.threshold_objective == "review_budget_recall" and self.operational_daily_budget:
+                valid_hours = len(validation)
+                if "step" in validation:
+                    valid_hours = max(1.0, float(validation["step"].max() - validation["step"].min() + 1))
+                days = max(1.0, valid_hours / 24.0)
+                max_alerts = int(self.operational_daily_budget * days)
+                if max_alerts < len(probs):
+                    sorted_probs = np.sort(probs)
+                    self.threshold = float(sorted_probs[-max_alerts])
+                else:
+                    self.threshold = float(np.min(probs))
+            else:
+                precision, recall, thresholds = precision_recall_curve(valid_y, probs)
+                f1 = (
+                    2
+                    * precision[:-1]
+                    * recall[:-1]
+                    / np.maximum(precision[:-1] + recall[:-1], 1e-15)
+                )
+                # Prefer the highest threshold when validation F1 ties.
+                best = np.flatnonzero(np.isclose(f1, f1.max()))[-1]
+                self.threshold = float(thresholds[best])
         self.train_duration_sec = time.perf_counter() - start
         self.trained = True
         self.fit_metadata = {
@@ -129,9 +145,10 @@ class BaseFraudModel:
             "validation_rows": len(validation),
             "calibration": calibration_status,
             "threshold": self.threshold,
-            "threshold_objective": "validation_f1"
+            "threshold_objective": self.threshold_objective
             if self.tune_threshold
             else "fixed_0.5",
+            "operational_daily_budget": self.operational_daily_budget,
         }
         return self
 

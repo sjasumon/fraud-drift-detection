@@ -23,7 +23,7 @@ from src.artifacts import load_bundle, save_bundle
 from src.config import API_KEY, RESULTS_DIR, settings
 from src.drift_detector import DriftMonitor
 
-app = FastAPI(title="Fraud scoring", version="0.4.1")
+app = FastAPI(title="Fraud scoring", version="0.5.0")
 header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
@@ -97,6 +97,9 @@ class PredictionStore:
         with self.connect() as c:
             c.execute(
                 "CREATE TABLE IF NOT EXISTS predictions (id TEXT PRIMARY KEY, features TEXT NOT NULL, probability REAL NOT NULL, prediction INTEGER NOT NULL, generation INTEGER NOT NULL, model_id TEXT NOT NULL, family_id TEXT NOT NULL, event_time REAL NOT NULL, label INTEGER)"
+            )
+            c.execute(
+                "CREATE INDEX IF NOT EXISTS idx_predictions_family_label_time ON predictions (family_id, label, event_time DESC)"
             )
 
     @contextmanager
@@ -189,10 +192,13 @@ initialize_app_model()
 
 
 class BackgroundRetrainer:
-    def __init__(self):
+    def __init__(self, min_improvement_margin=0.005, max_retrain_duration_sec=60.0):
         self._lock = threading.Lock()
         self.total_retrains = 0
         self.last_retrain_status = "NOT_RUN"
+        self.min_improvement_margin = min_improvement_margin
+        self.max_retrain_duration_sec = max_retrain_duration_sec
+        self.promotion_log = []
 
     @property
     def is_retraining(self):
@@ -219,24 +225,74 @@ class BackgroundRetrainer:
             # Separate promotion holdout, untouched by fitting/calibration/threshold selection.
             cut = int(len(frame) * 0.8)
             training, holdout = frame.iloc[:cut], frame.iloc[cut:]
-            if training.isFraud.nunique() < 2 or holdout.isFraud.nunique() < 2:
+            if (
+                len(holdout) < 20
+                or training.isFraud.nunique() < 2
+                or holdout.isFraud.nunique() < 2
+            ):
                 self.last_retrain_status = "SKIPPED_INSUFFICIENT_CLASSES"
                 return False
+
+            fit_start = time.perf_counter()
             candidate = copy.deepcopy(bundle)
             candidate.model.fit(training)
+            fit_duration = time.perf_counter() - fit_start
+
+            if fit_duration > self.max_retrain_duration_sec:
+                self.last_retrain_status = "REJECTED_TRAINING_TIMEOUT"
+                self.promotion_log.append(
+                    {
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "generation": generation,
+                        "status": "REJECTED_TRAINING_TIMEOUT",
+                        "duration_sec": fit_duration,
+                    }
+                )
+                return False
+
             proposed, _ = candidate.model.predict(holdout)
             current, _ = bundle.model.predict(holdout)
-            if f1_score(holdout.isFraud, proposed, zero_division=0) <= f1_score(
-                holdout.isFraud, current, zero_division=0
-            ):
+            curr_f1 = f1_score(holdout.isFraud, current, zero_division=0)
+            prop_f1 = f1_score(holdout.isFraud, proposed, zero_division=0)
+            gain = prop_f1 - curr_f1
+
+            if gain <= 0.0:
                 self.last_retrain_status = "REJECTED_NO_HOLDOUT_GAIN"
+                self.promotion_log.append(
+                    {
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "generation": generation,
+                        "status": "REJECTED_NO_HOLDOUT_GAIN",
+                        "current_f1": curr_f1,
+                        "proposed_f1": prop_f1,
+                        "gain": gain,
+                        "duration_sec": fit_duration,
+                    }
+                )
                 return False
+            if gain < self.min_improvement_margin:
+                self.last_retrain_status = "REJECTED_INSUFFICIENT_MARGIN"
+                self.promotion_log.append(
+                    {
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
+                        "generation": generation,
+                        "status": "REJECTED_INSUFFICIENT_MARGIN",
+                        "current_f1": curr_f1,
+                        "proposed_f1": prop_f1,
+                        "gain": gain,
+                        "duration_sec": fit_duration,
+                    }
+                )
+                return False
+
             candidate.metadata = dict(
                 candidate.metadata,
                 parent_generation=generation,
-                promotion="chronological holdout F1 improvement",
+                promotion="chronological holdout F1 improvement with verified margin",
                 model_revision=uuid.uuid4().hex,
                 retrained_at=datetime.now(timezone.utc).isoformat(),
+                f1_gain=gain,
+                retrain_fit_duration_sec=fit_duration,
             )
             root = Path(
                 settings.model_output_dir or str(RESULTS_DIR / "service" / "models")
@@ -247,7 +303,6 @@ class BackgroundRetrainer:
             )
             save_bundle(candidate, path)
             with feedback_lock:
-                # Persist the pointer before publishing; startup restores the accepted revision.
                 pointer = {
                     "package": path.name,
                     "generation": generation + 1,
@@ -262,6 +317,17 @@ class BackgroundRetrainer:
                 drift_monitor.reset_detectors()
             self.total_retrains += 1
             self.last_retrain_status = "SUCCESS"
+            self.promotion_log.append(
+                {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "generation": generation + 1,
+                    "status": "PROMOTED",
+                    "current_f1": curr_f1,
+                    "proposed_f1": prop_f1,
+                    "gain": gain,
+                    "duration_sec": fit_duration,
+                }
+            )
             return True
         except (ValueError, RuntimeError, OSError, sqlite3.Error) as exc:
             self.last_retrain_status = "FAILED: " + str(exc)
@@ -336,7 +402,7 @@ def score_many(transactions):
                 is_fraud=bool(pred[i]),
                 decision_threshold=bundle.model.threshold,
                 risk_tier="REVIEW" if pred[i] else "LOW",
-                model_version="0.4.1",
+                model_version="0.5.0",
                 model_generation=generation,
                 inference_latency_ms=inference_ms / len(transactions),
             )

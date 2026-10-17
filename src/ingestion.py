@@ -97,8 +97,15 @@ class DatasetIngestion:
         legit_count = total_rows - fraud_count
         fraud_ratio = fraud_count / float(total_rows)
 
+        from src.provenance import get_dataset_provenance
+
+        self.provenance = get_dataset_provenance(
+            self.dataset_type, self.file_path, self.identity_path
+        )
+
         self.validation_report = {
             "dataset_type": self.dataset_type,
+            "provenance": self.provenance,
             "file_name": self.file_path.name,
             "total_rows": total_rows,
             "columns_count": len(df.columns),

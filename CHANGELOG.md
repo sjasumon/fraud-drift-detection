@@ -1,3 +1,29 @@
+# v0.5.0 — Research Benchmark & Production Hardening, 2026-10-17
+
+This release delivers the reproducible research benchmarks, genuine data provenance enforcement, and production microservice hardening specified in the Next-Phase engineering brief:
+
+## Provenance and Genuine Data Enforcement
+- Implemented `src/provenance.py` defining strict classification: `GENUINE_OBSERVED`, `SIMULATOR_GENERATED`, `SYNTHETIC`, `UNVERIFIED`.
+- Classified IEEE-CIS as the sole verified genuine benchmark (`data/ieee/train_transaction.csv`); strictly excluded PaySim and Feedzai-BAF from primary PhD proposal claims.
+- Defaulted provenance to `UNVERIFIED`; `ModelBundle.ready` rejects non-genuine models from live scoring traffic.
+- Disclosed the absence of genuine dispute confirmation timestamps in IEEE-CIS, treating simulated delay as exploratory sensitivity analysis only.
+
+## Research Protocol and Empirical Benchmarks
+- Authored and timestamped `RESEARCH_PROTOCOL.md` grounded in Carminati et al. (2015) and Dal Pozzolo et al. (2015, 2018).
+- Executed the frozen chronological benchmark across 5 strategies on 221,727 pure out-of-sample transactions (Weeks 8–17).
+- Demonstrated statistically significant outperformance of drift-adaptive retraining over static baseline ($\Delta F1 = +0.0123$, 95% CI $[+0.0052, +0.0188]$) and superior fraud recall under fixed daily review budgets (100 and 500 alerts/day).
+
+## Leakage Prevention and Operational Policies
+- Hardened `src/history_features.py` against intra-second causal leakage on tied timestamps ($t < T$).
+- Added operational review budget threshold selection (`threshold_objective="review_budget_recall"`) in `BaseFraudModel`.
+- Enhanced `BackgroundRetrainer` in `src/api.py` with an atomic improvement margin check ($\ge 0.005$), timeout guard ($\le 60$s), and structured `promotion_log`.
+
+## Performance Optimization and Infrastructure
+- Vectorized entity history feature computation (0.138s for 50,000 transactions).
+- Added SQLite compound index `idx_predictions_family_label_time` on `(family_id, label, event_time)`.
+- Verified live FastAPI microservice on `http://127.0.0.1:8000` with authentication, schema discovery, duplicate rejection, and recovery.
+- Added comprehensive unit tests in `tests/test_v050_improvements.py`, bringing automated suite to 127 passing tests.
+
 # v0.4.1 — follow-up audit, 2026-10-16
 
 The v0.4.0 delivery had gaps despite its passing tests. This corrective release:

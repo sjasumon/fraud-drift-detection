@@ -45,12 +45,13 @@ Prof_Yun_Sing_Koh_profile.md
 
 # Mutable serving state and generated model packages
 results/service/
-!results/**/predictions.csv
-results/real_experiments/**/predictions.csv
-results/operational_model/**/predictions.csv
+results/cohort_runs/
+results/**/predictions.csv
+results/**/feedback_events.csv
 !results/**/weekly_metrics.csv
 !results/**/metrics.csv
 !results/**/alert_budgets.csv
 !results/**/compute_cost.csv
 !results/**/error_examples.csv
 !results/**/study.csv
+!results/**/ablations_summary.csv

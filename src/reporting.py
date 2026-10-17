@@ -31,11 +31,13 @@ def metrics(df):
     fp = int(((y == 0) & (pred == 1)).sum())
     fn = int(((y == 1) & (pred == 0)).sum())
     tn = int(((y == 0) & (pred == 0)).sum())
+    ap = float(average_precision_score(y, p)) if y.sum() else None
     return dict(
         overall_precision=float(precision_score(y, pred, zero_division=0)),
         overall_recall=float(recall_score(y, pred, zero_division=0)),
         overall_f1=float(f1_score(y, pred, zero_division=0)),
-        overall_auc_pr=float(average_precision_score(y, p)) if y.sum() else None,
+        average_precision=ap,
+        overall_auc_pr=ap,
         brier_score=float(brier_score_loss(y, p)),
         log_loss=float(log_loss(y, np.clip(p, 1e-7, 1 - 1e-7), labels=[0, 1])),
         true_positives=tp,
@@ -269,7 +271,8 @@ def generate_report(run_dir):
         "overall_precision",
         "overall_recall",
         "overall_f1",
-        "overall_auc_pr",
+        "average_precision",
+        "brier_score",
         "false_positives",
         "false_negatives",
     ]

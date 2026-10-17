@@ -1,0 +1,5 @@
+model,daily_budget,alerts,detected_fraud,precision,recall,interpretation
+adaptive,100,7000,3785,0.5407142857142857,0.4320283072708595,retrospective daily ranking; requires batch review
+adaptive,500,35000,6593,0.18837142857142858,0.7525396644218697,retrospective daily ranking; requires batch review
+static,100,7000,3676,0.5251428571428571,0.4195868051592284,retrospective daily ranking; requires batch review
+static,500,35000,6213,0.1775142857142857,0.7091656203629723,retrospective daily ranking; requires batch review
