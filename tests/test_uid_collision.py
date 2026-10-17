@@ -4,9 +4,7 @@ Asserts that missing-identity transactions receive collision-free unique tokens,
 and that Method A and Method B cohorts maintain strict mathematical set disjointness.
 """
 
-import numpy as np
 import pandas as pd
-import pytest
 
 
 def test_missing_identity_collision_freedom(synthetic_stream_df):
@@ -26,7 +24,9 @@ def test_missing_identity_collision_freedom(synthetic_stream_df):
         if pd.isna(row["card2"]) or pd.isna(row["addr1"]):
             tokens.append(f"MISSING_{row['trans_id']}")
         else:
-            tokens.append(f"{int(row['card1'])}_{int(row['card2'])}_{int(row['addr1'])}")
+            tokens.append(
+                f"{int(row['card1'])}_{int(row['card2'])}_{int(row['addr1'])}"
+            )
 
     df["uid_cf"] = tokens
 
@@ -82,14 +82,18 @@ def test_cohort_disjointness_and_exhaustiveness(synthetic_stream_df):
         if pd.isna(row["card2"]) or pd.isna(row["addr1"]):
             baseline_uids.add(f"MISSING_{row['trans_id']}")
         else:
-            baseline_uids.add(f"{int(row['card1'])}_{int(row['card2'])}_{int(row['addr1'])}")
+            baseline_uids.add(
+                f"{int(row['card1'])}_{int(row['card2'])}_{int(row['addr1'])}"
+            )
 
     stream_tokens = []
     for _, row in stream_df.iterrows():
         if pd.isna(row["card2"]) or pd.isna(row["addr1"]):
             stream_tokens.append(f"MISSING_{row['trans_id']}")
         else:
-            stream_tokens.append(f"{int(row['card1'])}_{int(row['card2'])}_{int(row['addr1'])}")
+            stream_tokens.append(
+                f"{int(row['card1'])}_{int(row['card2'])}_{int(row['addr1'])}"
+            )
 
     stream_df = stream_df.assign(uid=stream_tokens)
 
@@ -145,10 +149,10 @@ def test_compute_cohort_metrics_zero_fraud_and_empty_resilience():
         "stat_p": [0, 0, 1, 0, 0],
         "adapt_p": [0, 0, 0, 0, 0],
         "stat_prob": [0.1, 0.2, 0.7, 0.05, 0.15],
-        "adapt_prob": [0.05, 0.1, 0.3, 0.02, 0.08]
+        "adapt_prob": [0.05, 0.1, 0.3, 0.02, 0.08],
     }
     res_zero = compute_metrics(zero_fraud_d)
-    assert res_zero == {}, "Expected empty dict when fraud count is zero"
+    assert res_zero["total_tx"] == 5 and res_zero["fraud_tx"] == 0
 
 
 def test_print_audit_report_zero_fraud_resilience(capsys):
@@ -158,11 +162,27 @@ def test_print_audit_report_zero_fraud_resilience(capsys):
     """
     from src.evaluate_uid_split import compute_metrics, print_audit_report
 
-    empty_metrics = compute_metrics({"y": [0, 0], "stat_p": [0, 0], "adapt_p": [0, 0], "stat_prob": [0.1, 0.2], "adapt_prob": [0.1, 0.2]})
+    empty_metrics = compute_metrics(
+        {
+            "y": [0, 0],
+            "stat_p": [0, 0],
+            "adapt_p": [0, 0],
+            "stat_prob": [0.1, 0.2],
+            "adapt_prob": [0.1, 0.2],
+        }
+    )
     results = {
         "global_oos": empty_metrics,
-        "clean": {"seen": empty_metrics, "unseen": empty_metrics, "strict": empty_metrics},
-        "collision_free": {"seen": empty_metrics, "unseen": empty_metrics, "strict": empty_metrics}
+        "clean": {
+            "seen": empty_metrics,
+            "unseen": empty_metrics,
+            "strict": empty_metrics,
+        },
+        "collision_free": {
+            "seen": empty_metrics,
+            "unseen": empty_metrics,
+            "strict": empty_metrics,
+        },
     }
     # Should not throw ZeroDivisionError or KeyError
     print_audit_report(results, "ZERO FRAUD TEST AUDIT")

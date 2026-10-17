@@ -1,0 +1,12 @@
+[
+  {
+    "slice_index": 2,
+    "step_number": 1441,
+    "trans_id": "BAF_260241",
+    "detector_type": "DDM",
+    "error_rate": 0.0165,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 1441 in slice 3"
+  }
+]

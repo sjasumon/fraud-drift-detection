@@ -67,10 +67,9 @@ def test_adwin_delta_bounds():
 def test_drift_monitor_wires_ddm_config():
     """Asserts that DriftMonitor wires DDM hyperparameters into river DDM instance."""
     from src.drift_detector import DriftMonitor
+
     monitor = DriftMonitor(
-        ddm_min_instances=50,
-        ddm_warning_level=2.2,
-        ddm_drift_level=3.3
+        ddm_min_instances=50, ddm_warning_level=2.2, ddm_drift_level=3.3
     )
     assert monitor.ddm.warm_start == 50
     assert monitor.ddm.warning_threshold == 2.2
@@ -85,11 +84,14 @@ def test_drift_monitor_wires_ddm_config():
 def test_drift_monitor_reset_behavior():
     """Asserts that reset_detectors() clears accumulated drift statistics after adaptation."""
     from src.drift_detector import DriftMonitor
+
     monitor = DriftMonitor()
 
     # Feed errors to accumulate detector window state
     for i in range(100):
-        monitor.update(y_true=1, y_pred=0, slice_index=0, step_number=i, trans_id=f"tx_{i}")
+        monitor.update(
+            y_true=1, y_pred=0, slice_index=0, step_number=i, trans_id=f"tx_{i}"
+        )
 
     assert monitor.adwin.width > 0
 
@@ -107,28 +109,43 @@ def test_production_security_validation():
     """Asserts that production mode blocks insecure defaults (dev key or empty DB password)."""
     # 1. Insecure default dev key in production
     with pytest.raises(ValidationError, match="Insecure API key"):
-        Settings(app_env="production", api_key="dev-secret-key", db_password="strong-password-1234")
+        Settings(
+            app_env="production",
+            api_key="dev-secret-key",
+            db_password="strong-password-1234",
+        )
 
     # 2. Short key in production
     with pytest.raises(ValidationError, match="Insecure API key"):
-        Settings(app_env="production", api_key="short-key", db_password="strong-password-1234")
+        Settings(
+            app_env="production",
+            api_key="short-key",
+            db_password="strong-password-1234",
+        )
 
     # 3. Empty DB password in production
     with pytest.raises(ValidationError, match="Empty database password"):
-        Settings(app_env="production", api_key="a-very-strong-production-api-key-1234", db_password="")
+        Settings(
+            app_env="production",
+            api_key="a-very-strong-production-api-key-1234",
+            db_password="",
+            enable_mysql=True,
+        )
 
     # 4. Valid production credentials succeed
     prod_settings = Settings(
         app_env="production",
         api_key="a-very-strong-production-api-key-1234",
-        db_password="strong-password-1234"
+        db_password="strong-password-1234",
     )
     assert prod_settings.app_env == "production"
     assert prod_settings.api_key == "a-very-strong-production-api-key-1234"
     assert prod_settings.db_password == "strong-password-1234"
 
     # 5. Development mode permits default dev credentials
-    dev_settings = Settings(app_env="development", api_key="dev-secret-key", db_password="")
+    dev_settings = Settings(
+        app_env="development", api_key="dev-secret-key", db_password=""
+    )
     assert dev_settings.app_env == "development"
     assert dev_settings.api_key == "dev-secret-key"
 
@@ -136,19 +153,22 @@ def test_production_security_validation():
 def test_db_name_identifier_sanitization():
     """Asserts that malicious or invalid SQL identifiers in db_name are rejected."""
     # 1. Reject SQL injection attempt
-    with pytest.raises(ValidationError, match="Insecure or invalid database name identifier"):
+    with pytest.raises(
+        ValidationError, match="Insecure or invalid database name identifier"
+    ):
         Settings(db_name="fraud_db; DROP TABLE users;--")
 
     # 2. Reject spaces and special characters
-    with pytest.raises(ValidationError, match="Insecure or invalid database name identifier"):
+    with pytest.raises(
+        ValidationError, match="Insecure or invalid database name identifier"
+    ):
         Settings(db_name="fraud db")
 
-    with pytest.raises(ValidationError, match="Insecure or invalid database name identifier"):
+    with pytest.raises(
+        ValidationError, match="Insecure or invalid database name identifier"
+    ):
         Settings(db_name="fraud`db")
 
     # 3. Valid database names succeed
     valid = Settings(db_name="valid_db_123")
     assert valid.db_name == "valid_db_123"
-
-
-

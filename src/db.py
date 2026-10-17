@@ -1,24 +1,28 @@
 """
 Database management module for storing transactions metadata, drift events,
-and model performance evaluation metrics via MySQL 8.4 LTS (schema: fraud_drift_db).
+and model performance evaluation metrics via MySQL Server 9.7 (schema: fraud_drift_db).
 """
 
-
-import sys
 import logging
 from urllib.parse import quote_plus
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
 from sqlalchemy import (
-    create_engine, Column, Integer, Float, String, DateTime, Text, ForeignKey, text
+    create_engine,
+    Column,
+    Integer,
+    Float,
+    String,
+    DateTime,
+    Text,
+    ForeignKey,
+    text,
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy.engine import Engine
 
-from src.config import (
-    DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
-)
+from src.config import DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
 
 logger = logging.getLogger("fraud_drift.db")
 Base = declarative_base()
@@ -41,10 +45,20 @@ class ExperimentRun(Base):
     db_backend = Column(String(64))
     notes = Column(Text, nullable=True)
 
-    slices = relationship("TimeSliceRecord", back_populates="experiment", cascade="all, delete-orphan")
-    drift_events = relationship("DriftEventRecord", back_populates="experiment", cascade="all, delete-orphan")
-    metrics = relationship("SliceMetricRecord", back_populates="experiment", cascade="all, delete-orphan")
-    attributions = relationship("DriftAttributionRecord", back_populates="experiment", cascade="all, delete-orphan")
+    slices = relationship(
+        "TimeSliceRecord", back_populates="experiment", cascade="all, delete-orphan"
+    )
+    drift_events = relationship(
+        "DriftEventRecord", back_populates="experiment", cascade="all, delete-orphan"
+    )
+    metrics = relationship(
+        "SliceMetricRecord", back_populates="experiment", cascade="all, delete-orphan"
+    )
+    attributions = relationship(
+        "DriftAttributionRecord",
+        back_populates="experiment",
+        cascade="all, delete-orphan",
+    )
 
 
 class TimeSliceRecord(Base):
@@ -113,7 +127,7 @@ class DriftAttributionRecord(Base):
 
 
 class DatabaseManager:
-    """Manages database connectivity and persistence for experimental runs via MySQL 8.4 LTS."""
+    """Manages database connectivity and persistence for experimental runs via MySQL Server 9.7."""
 
     def __init__(self, engine: Optional[Engine] = None):
         self.engine: Optional[Engine] = None
@@ -134,11 +148,16 @@ class DatabaseManager:
 
             # Strictly validate DB_NAME identifier against SQL injection before DDL execution
             import re
+
             if not re.match(r"^[a-zA-Z0-9_]+$", DB_NAME):
-                raise ValueError(f"Insecure or invalid database name identifier: {DB_NAME!r}")
+                raise ValueError(
+                    f"Insecure or invalid database name identifier: {DB_NAME!r}"
+                )
 
             # Connect to MySQL Server and create database if not exists
-            server_url = f"mysql+pymysql://{encoded_user}:{encoded_pw}@{DB_HOST}:{DB_PORT}"
+            server_url = (
+                f"mysql+pymysql://{encoded_user}:{encoded_pw}@{DB_HOST}:{DB_PORT}"
+            )
             temp_engine = create_engine(server_url, connect_args={"connect_timeout": 5})
             with temp_engine.connect() as conn:
                 conn.execute(text(f"CREATE DATABASE IF NOT EXISTS `{DB_NAME}`"))
@@ -149,19 +168,22 @@ class DatabaseManager:
             self.engine = create_engine(db_url, pool_pre_ping=True)
             Base.metadata.create_all(self.engine)
             self.session_factory = sessionmaker(bind=self.engine)
-            self.backend_name = f"MySQL 8.4 LTS (`{DB_NAME}` on {DB_HOST}:{DB_PORT})"
+            self.backend_name = f"MySQL Server 9.7 (`{DB_NAME}` on {DB_HOST}:{DB_PORT})"
             logger.info(f"Connected to MySQL: {self.backend_name}")
         except Exception as e:
-            logger.error(f"Failed to connect to MySQL database at {DB_HOST}:{DB_PORT}: {e}")
-            raise ConnectionError(
-                f"MySQL connection error ({e}). Please ensure MySQL 8.4 LTS is running on {DB_HOST}:{DB_PORT}."
+            logger.error(
+                f"Failed to connect to MySQL database at {DB_HOST}:{DB_PORT}: {e}"
             )
-
+            raise ConnectionError(
+                f"MySQL connection error ({e}). Please ensure MySQL Server 9.7 is running on {DB_HOST}:{DB_PORT}."
+            )
 
     def get_session(self):
         return self.session_factory()
 
-    def ensure_run_exists(self, run_id: str, dataset_name: str = "IEEE-CIS", total_rows: int = 0):
+    def ensure_run_exists(
+        self, run_id: str, dataset_name: str = "IEEE-CIS", total_rows: int = 0
+    ):
         with self.get_session() as session:
             existing = session.query(ExperimentRun).filter_by(run_id=run_id).first()
             if not existing:
@@ -170,7 +192,7 @@ class DatabaseManager:
                     dataset_name=dataset_name,
                     total_rows=total_rows,
                     db_backend=self.backend_name,
-                    notes="Initialized run"
+                    notes="Initialized run",
                 )
                 session.add(run)
                 session.commit()
@@ -189,7 +211,7 @@ class DatabaseManager:
                 adaptive_f1_oos=run_data.get("adaptive_f1_oos"),
                 drift_alerts_count=run_data.get("drift_alerts_count", 0),
                 db_backend=self.backend_name,
-                notes=run_data.get("notes", "")
+                notes=run_data.get("notes", ""),
             )
             session.merge(run)
             session.commit()
@@ -201,7 +223,7 @@ class DatabaseManager:
                 rec = TimeSliceRecord(
                     run_id=run_id,
                     slice_index=s["slice_index"],
-                    slice_name=s.get("slice_name", f"Week_{s['slice_index']+1}"),
+                    slice_name=s.get("slice_name", f"Week_{s['slice_index'] + 1}"),
                     start_step=s.get("start_step", 0),
                     end_step=s.get("end_step", 0),
                     total_transactions=s.get("total_transactions", 0),
@@ -223,7 +245,7 @@ class DatabaseManager:
                     error_rate=ev.get("error_rate"),
                     confidence_score=ev.get("confidence_score"),
                     status=ev.get("status", "DRIFT"),
-                    notes=ev.get("notes", "")
+                    notes=ev.get("notes", ""),
                 )
                 session.add(rec)
             session.commit()
@@ -235,12 +257,12 @@ class DatabaseManager:
                 rec = SliceMetricRecord(
                     run_id=run_id,
                     slice_index=m["slice_index"],
-                    slice_name=m.get("slice_name", f"Slice_{m['slice_index']+1}"),
+                    slice_name=m.get("slice_name", f"Slice_{m['slice_index'] + 1}"),
                     model_type=m["model_type"],
                     precision=m.get("precision", 0.0),
                     recall=m.get("recall", 0.0),
                     f1_score=m.get("f1_score", 0.0),
-                    auc_pr=m.get("auc_pr", 0.0)
+                    auc_pr=m.get("auc_pr", 0.0),
                 )
                 session.add(rec)
             session.commit()

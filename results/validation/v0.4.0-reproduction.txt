@@ -1,0 +1,6 @@
+Study comparison fields: see source: only F1, recall, and delta
+Exported training-history rows: 606
+Before-null prediction: [0]
+Conflicting labels accepted by bootstrap: {'mean_delta': 0.0, 'ci_95': [0.0, 0.0], 'n_bootstrap': 10, 'n_seeds': 1, 'temporal_blocks': 3, 'method': 'paired seed-and-time-block bootstrap; exploratory on short streams'}
+Recent models retraining with 3-slice delay and 2-slice window: []
+Known queue rows: 310

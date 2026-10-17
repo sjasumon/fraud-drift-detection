@@ -6,8 +6,6 @@ are fit strictly on the initial training window and never leak future streaming 
 
 import copy
 import numpy as np
-import pandas as pd
-import pytest
 
 from src.preprocessing import Preprocessor
 
@@ -29,7 +27,11 @@ def test_preprocessor_temporal_isolation(synthetic_stream_df):
     # 1. Check numeric medians match train_df medians exactly
     engineered_train = preprocessor.extract_engineered_features(train_df)
     for col in preprocessor.numeric_cols:
-        expected_median = float(engineered_train[col].median(skipna=True))
+        expected_median = (
+            float(engineered_train[col[:-9]].isna().astype(float).median())
+            if col.endswith("__missing")
+            else float(engineered_train[col].median(skipna=True))
+        )
         if np.isnan(expected_median):
             expected_median = 0.0
         assert np.isclose(preprocessor.imputation_values[col], expected_median), (
@@ -40,7 +42,9 @@ def test_preprocessor_temporal_isolation(synthetic_stream_df):
     pos_train = int(train_df["isFraud"].sum())
     neg_train = len(train_df) - pos_train
     expected_scale_pos_weight = round(float(neg_train) / max(1.0, float(pos_train)), 2)
-    assert preprocessor.imbalance_weights["scale_pos_weight"] == expected_scale_pos_weight
+    assert (
+        preprocessor.imbalance_weights["scale_pos_weight"] == expected_scale_pos_weight
+    )
     assert preprocessor.imbalance_weights["positive_samples"] == pos_train
 
 
@@ -90,7 +94,9 @@ def test_unseen_categorical_handling(synthetic_stream_df):
 
     # Feature columns must match preprocessor.feature_names exactly
     for feat in preprocessor.feature_names:
-        assert feat in transformed_df.columns, f"Feature {feat} missing from transformed slice."
+        assert feat in transformed_df.columns, (
+            f"Feature {feat} missing from transformed slice."
+        )
 
     # None of the generated columns should have NaN values
     assert not transformed_df[preprocessor.feature_names].isna().any().any(), (
@@ -115,14 +121,14 @@ def test_batch_vs_slice_transform_invariance(synthetic_stream_df):
 
     # Batch transform then subset
     full_transformed = preprocessor.transform(df)
-    trans_batch = full_transformed[(full_transformed["step"] > 24) & (full_transformed["step"] <= 48)][
-        preprocessor.feature_names
-    ].values
+    trans_batch = full_transformed[
+        (full_transformed["step"] > 24) & (full_transformed["step"] <= 48)
+    ][preprocessor.feature_names].values
 
     np.testing.assert_allclose(
         trans_indep,
         trans_batch,
         rtol=1e-5,
         atol=1e-5,
-        err_msg="Independent slice transformation differs from batch transformation."
+        err_msg="Independent slice transformation differs from batch transformation.",
     )

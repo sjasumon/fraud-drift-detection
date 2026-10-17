@@ -1,0 +1,9 @@
+Processing ./.
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Building wheels for collected packages: fraud-drift-detection
+  Building wheel for fraud-drift-detection (pyproject.toml): started
+  Building wheel for fraud-drift-detection (pyproject.toml): finished with status 'done'
+  Created wheel for fraud-drift-detection: filename=fraud_drift_detection-0.4.1-py3-none-any.whl size=84238 sha256=23fe29626e4019156f5e3749a5f59c7e60bc1ad06e841ff4134eb717471305b8
+  Stored in directory: /tmp/pip-ephem-wheel-cache-ej7iipjb/wheels/60/8d/3d/8b9623e98830f4e79a2cf25c0b0fb4b15ae8445e33ceb5242e
+Successfully built fraud-drift-detection

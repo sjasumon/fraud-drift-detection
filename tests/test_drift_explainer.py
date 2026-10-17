@@ -7,10 +7,9 @@ Asserts that:
 """
 
 import numpy as np
-import pandas as pd
 import pytest
 
-from src.drift_explainer import calculate_psi, DriftAttributionEngine, validate_attribution_on_injected_drift
+from src.drift_explainer import calculate_psi, DriftAttributionEngine
 from src.adaptive_model import DriftAdaptiveModel
 from src.preprocessing import Preprocessor
 
@@ -29,10 +28,14 @@ def test_psi_identical_vs_shifted_distributions():
     psi_shift = calculate_psi(baseline, shifted)
 
     # Identical distributions should have minimal PSI (< 0.05)
-    assert psi_ident < 0.05, f"PSI for identical distributions unexpectedly high: {psi_ident}"
+    assert psi_ident < 0.05, (
+        f"PSI for identical distributions unexpectedly high: {psi_ident}"
+    )
 
     # Shifted distributions should trigger strong drift threshold (>= 0.25)
-    assert psi_shift >= 0.25, f"PSI for shifted distributions failed to exceed 0.25: {psi_shift}"
+    assert psi_shift >= 0.25, (
+        f"PSI for shifted distributions failed to exceed 0.25: {psi_shift}"
+    )
 
 
 def test_psi_edge_cases():
@@ -60,12 +63,13 @@ def test_drift_attribution_ranking_and_schema(synthetic_stream_df, tmp_path):
     slices = preprocessor.partition_time_slices(df_processed)
 
     model = DriftAdaptiveModel(
-        feature_names=preprocessor.feature_names,
-        scale_pos_weight=1.0
+        feature_names=preprocessor.feature_names, scale_pos_weight=1.0
     )
     model.fit_initial(slices[0]["data"])
 
-    explainer = DriftAttributionEngine(feature_names=preprocessor.feature_names, max_shap_samples=100)
+    explainer = DriftAttributionEngine(
+        feature_names=preprocessor.feature_names, max_shap_samples=100
+    )
 
     top_k = 4
     attributions = explainer.explain_drift_slice(
@@ -75,7 +79,7 @@ def test_drift_attribution_ranking_and_schema(synthetic_stream_df, tmp_path):
         slice_index=1,
         slice_name="Slice_02",
         detector_type="ADWIN",
-        top_k=top_k
+        top_k=top_k,
     )
 
     # Check length
@@ -96,9 +100,7 @@ def test_drift_attribution_ranking_and_schema(synthetic_stream_df, tmp_path):
     # Test plot generation
     plot_file = tmp_path / "test_attribution_plot.png"
     out_path = explainer.render_attribution_plot(
-        attributions=attributions,
-        slice_name="Slice_02",
-        output_filename=str(plot_file)
+        attributions=attributions, slice_name="Slice_02", output_filename=str(plot_file)
     )
     assert out_path.exists()
     assert out_path.stat().st_size > 0
@@ -114,14 +116,32 @@ def test_drift_attribution_reproducibility(synthetic_stream_df):
     df_processed = preprocessor.transform(synthetic_stream_df)
     slices = preprocessor.partition_time_slices(df_processed)
 
-    model = DriftAdaptiveModel(feature_names=preprocessor.feature_names, scale_pos_weight=1.0)
+    model = DriftAdaptiveModel(
+        feature_names=preprocessor.feature_names, scale_pos_weight=1.0
+    )
     model.fit_initial(slices[0]["data"])
 
-    explainer1 = DriftAttributionEngine(feature_names=preprocessor.feature_names, max_shap_samples=100, random_state=42)
-    explainer2 = DriftAttributionEngine(feature_names=preprocessor.feature_names, max_shap_samples=100, random_state=42)
+    explainer1 = DriftAttributionEngine(
+        feature_names=preprocessor.feature_names, max_shap_samples=100, random_state=42
+    )
+    explainer2 = DriftAttributionEngine(
+        feature_names=preprocessor.feature_names, max_shap_samples=100, random_state=42
+    )
 
-    res1 = explainer1.explain_drift_slice(model, slices[0]["data"], slices[1]["data"], slice_index=1, slice_name="Slice_02")
-    res2 = explainer2.explain_drift_slice(model, slices[0]["data"], slices[1]["data"], slice_index=1, slice_name="Slice_02")
+    res1 = explainer1.explain_drift_slice(
+        model,
+        slices[0]["data"],
+        slices[1]["data"],
+        slice_index=1,
+        slice_name="Slice_02",
+    )
+    res2 = explainer2.explain_drift_slice(
+        model,
+        slices[0]["data"],
+        slices[1]["data"],
+        slice_index=1,
+        slice_name="Slice_02",
+    )
 
     assert len(res1) == len(res2)
     for a1, a2 in zip(res1, res2):
@@ -130,29 +150,42 @@ def test_drift_attribution_reproducibility(synthetic_stream_df):
         assert np.isclose(a1["shap_importance"], a2["shap_importance"])
 
 
-def test_drift_attribution_multidimensional_shap_shapes(synthetic_stream_df, monkeypatch):
+def test_drift_attribution_multidimensional_shap_shapes(
+    synthetic_stream_df, monkeypatch
+):
     """
     Asserts that DriftAttributionEngine correctly parses both 3D ndarrays
     and list-of-arrays returned by different SHAP/XGBoost version conventions.
     """
     import shap
+
     preprocessor = Preprocessor(hours_per_slice=24)
     preprocessor.fit(synthetic_stream_df[synthetic_stream_df["step"] <= 24])
     df_processed = preprocessor.transform(synthetic_stream_df)
     slices = preprocessor.partition_time_slices(df_processed)
 
-    model = DriftAdaptiveModel(feature_names=preprocessor.feature_names, scale_pos_weight=1.0)
+    model = DriftAdaptiveModel(
+        feature_names=preprocessor.feature_names, scale_pos_weight=1.0
+    )
     model.fit_initial(slices[0]["data"])
 
     n_feats = len(preprocessor.feature_names)
-    explainer = DriftAttributionEngine(feature_names=preprocessor.feature_names, max_shap_samples=50, random_state=42)
+    explainer = DriftAttributionEngine(
+        feature_names=preprocessor.feature_names, max_shap_samples=50, random_state=42
+    )
 
     # 1. Simulate 3D array: (n_samples, n_features, 2)
     def mock_shap_values_3d(self, X):
         return np.ones((len(X), n_feats, 2)) * 0.42
 
     monkeypatch.setattr(shap.TreeExplainer, "shap_values", mock_shap_values_3d)
-    res_3d = explainer.explain_drift_slice(model, slices[0]["data"], slices[1]["data"], slice_index=1, slice_name="Slice_02")
+    res_3d = explainer.explain_drift_slice(
+        model,
+        slices[0]["data"],
+        slices[1]["data"],
+        slice_index=1,
+        slice_name="Slice_02",
+    )
     assert len(res_3d) > 0
     assert all(r["shap_importance"] == pytest.approx(0.42) for r in res_3d)
 
@@ -161,30 +194,13 @@ def test_drift_attribution_multidimensional_shap_shapes(synthetic_stream_df, mon
         return [np.ones((len(X), n_feats)) * 0.1, np.ones((len(X), n_feats)) * 0.75]
 
     monkeypatch.setattr(shap.TreeExplainer, "shap_values", mock_shap_values_list)
-    res_list = explainer.explain_drift_slice(model, slices[0]["data"], slices[1]["data"], slice_index=1, slice_name="Slice_02")
+    res_list = explainer.explain_drift_slice(
+        model,
+        slices[0]["data"],
+        slices[1]["data"],
+        slice_index=1,
+        slice_name="Slice_02",
+    )
     assert len(res_list) > 0
     # Positive fraud class (index 1) should be selected
     assert all(r["shap_importance"] == pytest.approx(0.75) for r in res_list)
-
-
-def test_validate_attribution_on_injected_drift():
-    """
-    Asserts that TreeSHAP x (1 + PSI) correctly attributes drift to predictive features
-    and suppresses pure noise features undergoing benign covariate shift across multiple seeds.
-    """
-    summary = validate_attribution_on_injected_drift(
-        n_samples=500,
-        n_features=8,
-        drifted_predictive_indices=[0, 1],
-        drifted_noise_index=7,
-        seeds=[101, 102, 103],
-        save_results=False
-    )
-
-    assert summary["predictive_detected_rate"] == 1.0
-    assert summary["noise_suppressed_rate"] == 1.0
-    assert summary["mean_noise_psi"] >= 0.25
-    assert summary["mean_noise_shap"] < 0.20
-
-
-

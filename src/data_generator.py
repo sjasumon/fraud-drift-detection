@@ -9,15 +9,16 @@ Satisfies:
 - FRD Risk Mitigation: Controlled concept drifts (Sudden, Gradual, Evolutionary).
 """
 
-import math
 import logging
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from typing import Tuple
 
 from src.config import (
-    RAW_DATA_DIR, RANDOM_SEED, TOTAL_SIMULATION_WEEKS, DEFAULT_HOURS_PER_WEEK
+    RAW_DATA_DIR,
+    RANDOM_SEED,
+    TOTAL_SIMULATION_WEEKS,
+    DEFAULT_HOURS_PER_WEEK,
 )
 
 logger = logging.getLogger("fraud_drift.data_generator")
@@ -107,7 +108,9 @@ def generate_paysim_stream(
                     amount = float(np.random.lognormal(mean=7.8, sigma=0.9))
                     oldbalanceOrg = float(np.random.exponential(scale=10000.0))
                     newbalanceOrig = oldbalanceOrg + amount
-                    oldbalanceDest = float(max(0.0, np.random.exponential(scale=15000.0) - amount))
+                    oldbalanceDest = float(
+                        max(0.0, np.random.exponential(scale=15000.0) - amount)
+                    )
                     newbalanceDest = max(0.0, oldbalanceDest - amount)
                     dest_prefix = "C"
                 elif tx_type == "TRANSFER":
@@ -137,7 +140,11 @@ def generate_paysim_stream(
                     amount = float(np.random.uniform(80000.0, 450000.0))
                     oldbalanceOrg = amount
                     newbalanceOrig = 0.0  # Perfect drainage signature
-                    oldbalanceDest = float(np.random.choice([0.0, np.random.uniform(100.0, 5000.0)], p=[0.7, 0.3]))
+                    oldbalanceDest = float(
+                        np.random.choice(
+                            [0.0, np.random.uniform(100.0, 5000.0)], p=[0.7, 0.3]
+                        )
+                    )
                     newbalanceDest = oldbalanceDest + amount
                     dest_prefix = "C"
 
@@ -160,7 +167,9 @@ def generate_paysim_stream(
                 elif drift_phase == "Phase_2_Gradual_MerchantCamouflage":
                     # Gradual drift: Blending into PAYMENT and DEBIT channels with merchant destinations
                     # Amount shifts to medium ($1,500 - $9,500)
-                    tx_type = np.random.choice(["PAYMENT", "TRANSFER", "DEBIT"], p=[0.60, 0.25, 0.15])
+                    tx_type = np.random.choice(
+                        ["PAYMENT", "TRANSFER", "DEBIT"], p=[0.60, 0.25, 0.15]
+                    )
                     amount = float(np.random.uniform(1500.0, 9500.0))
                     oldbalanceOrg = float(amount + np.random.uniform(500.0, 5000.0))
                     newbalanceOrig = oldbalanceOrg - amount
@@ -170,9 +179,13 @@ def generate_paysim_stream(
 
                 else:  # Phase_3_Mule_Network
                     # Mule networks: Instant turnarounds, newly generated accounts with zero balance
-                    tx_type = np.random.choice(["TRANSFER", "CASH_OUT", "CASH_IN"], p=[0.50, 0.35, 0.15])
+                    tx_type = np.random.choice(
+                        ["TRANSFER", "CASH_OUT", "CASH_IN"], p=[0.50, 0.35, 0.15]
+                    )
                     amount = float(np.random.uniform(12000.0, 85000.0))
-                    oldbalanceOrg = float(amount + np.random.choice([0.0, 500.0], p=[0.8, 0.2]))
+                    oldbalanceOrg = float(
+                        amount + np.random.choice([0.0, 500.0], p=[0.8, 0.2])
+                    )
                     newbalanceOrig = max(0.0, oldbalanceOrg - amount)
                     oldbalanceDest = 0.0
                     newbalanceDest = amount
@@ -185,22 +198,24 @@ def generate_paysim_stream(
             dest_id = f"{dest_prefix}{cust_counter + np.random.randint(5000, 15000)}"
             tx_id = f"TX_{tx_counter:08d}"
 
-            records.append({
-                "trans_id": tx_id,
-                "step": step,
-                "type": tx_type,
-                "amount": round(amount, 2),
-                "nameOrig": orig_id,
-                "oldbalanceOrg": round(oldbalanceOrg, 2),
-                "newbalanceOrig": round(newbalanceOrig, 2),
-                "nameDest": dest_id,
-                "oldbalanceDest": round(oldbalanceDest, 2),
-                "newbalanceDest": round(newbalanceDest, 2),
-                "isFraud": is_fraud,
-                "isFlaggedFraud": is_flagged,
-                "drift_phase": drift_phase,
-                "week": week + 1
-            })
+            records.append(
+                {
+                    "trans_id": tx_id,
+                    "step": step,
+                    "type": tx_type,
+                    "amount": round(amount, 2),
+                    "nameOrig": orig_id,
+                    "oldbalanceOrg": round(oldbalanceOrg, 2),
+                    "newbalanceOrig": round(newbalanceOrig, 2),
+                    "nameDest": dest_id,
+                    "oldbalanceDest": round(oldbalanceDest, 2),
+                    "newbalanceDest": round(newbalanceDest, 2),
+                    "isFraud": is_fraud,
+                    "isFlaggedFraud": is_flagged,
+                    "drift_phase": drift_phase,
+                    "week": week + 1,
+                }
+            )
             tx_counter += 1
 
     df = pd.DataFrame(records)
@@ -216,9 +231,15 @@ def generate_paysim_stream(
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    )
     out_file = RAW_DATA_DIR / "paysim_synthetic_24w.csv"
     logger.info(f"Generating synthetic financial transaction stream to {out_file}...")
     df = generate_paysim_stream(output_path=out_file)
-    logger.info(f"Generated {len(df):,} transactions across {TOTAL_SIMULATION_WEEKS} weeks.")
-    logger.info(f"Class Balance: {df['isFraud'].value_counts(normalize=True).to_dict()}")
+    logger.info(
+        f"Generated {len(df):,} transactions across {TOTAL_SIMULATION_WEEKS} weeks."
+    )
+    logger.info(
+        f"Class Balance: {df['isFraud'].value_counts(normalize=True).to_dict()}"
+    )

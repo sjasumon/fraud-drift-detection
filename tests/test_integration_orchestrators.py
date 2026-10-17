@@ -23,11 +23,7 @@ def synthetic_paysim_csv(tmp_path: Path) -> Path:
     """Creates a fast, self-contained 4-week synthetic PaySim transaction stream."""
     csv_file = tmp_path / "paysim_stream_4w.csv"
     generate_paysim_stream(
-        total_weeks=4,
-        tx_per_week=40,
-        fraud_rate=0.08,
-        seed=42,
-        output_path=csv_file
+        total_weeks=4, tx_per_week=40, fraud_rate=0.08, seed=42, output_path=csv_file
     )
     return csv_file
 
@@ -43,15 +39,13 @@ def synthetic_ieee_csv(tmp_path: Path, synthetic_stream_df: pd.DataFrame) -> Pat
     return csv_file
 
 
-def test_pipeline_synthetic_execution(synthetic_paysim_csv: Path, tmp_path: Path, monkeypatch):
+def test_pipeline_synthetic_execution(
+    synthetic_paysim_csv: Path, tmp_path: Path, monkeypatch
+):
     """
     Executes full pipeline on synthetic PaySim stream with an in-memory SQLite DatabaseManager.
     Validates end-to-end model training, drift detection, evaluation metrics, and DB logging.
     """
-    monkeypatch.setattr("src.pipeline.METRICS_DIR", tmp_path)
-    monkeypatch.setattr("src.pipeline.FIGURES_DIR", tmp_path)
-    monkeypatch.setattr("src.evaluator.FIGURES_DIR", tmp_path)
-
     # In-memory SQLite DB
     db_engine = create_engine("sqlite:///:memory:")
     db_mgr = DatabaseManager(engine=db_engine)
@@ -59,7 +53,9 @@ def test_pipeline_synthetic_execution(synthetic_paysim_csv: Path, tmp_path: Path
     result = run_pipeline(
         dataset_path=synthetic_paysim_csv,
         dataset_type="paysim",
-        db=db_mgr
+        db=db_mgr,
+        output_dir=tmp_path / "runs",
+        data_kind="synthetic",
     )
 
     assert result is not None
@@ -74,13 +70,17 @@ def test_pipeline_synthetic_execution(synthetic_paysim_csv: Path, tmp_path: Path
 
     # Verify database persistence
     with db_mgr.get_session() as session:
-        run_record = session.query(ExperimentRun).filter_by(run_id=result["run_id"]).first()
+        run_record = (
+            session.query(ExperimentRun).filter_by(run_id=result["run_id"]).first()
+        )
         assert run_record is not None
         assert run_record.dataset_name == synthetic_paysim_csv.name
         assert run_record.time_slices_count == 4
 
 
-def test_delayed_audit_synthetic_execution(synthetic_paysim_csv: Path, tmp_path: Path, monkeypatch):
+def test_delayed_audit_synthetic_execution(
+    synthetic_paysim_csv: Path, tmp_path: Path, monkeypatch
+):
     """
     Executes delayed audit workflow on synthetic data under controlled latency regimes.
     Verifies metric calculation, maturity queues, and 4-panel figure rendering.
@@ -89,22 +89,11 @@ def test_delayed_audit_synthetic_execution(synthetic_paysim_csv: Path, tmp_path:
     monkeypatch.setattr("src.delayed_audit.FIGURES_DIR", tmp_path)
 
     fast_regimes = [
-        {
-            "name": "Immediate Feedback (0w)",
-            "delay_slices": 0,
-            "mode": "fixed"
-        },
-        {
-            "name": "Standard Delay (1w)",
-            "delay_slices": 1,
-            "mode": "fixed"
-        }
+        {"name": "Immediate Feedback (0w)", "delay_slices": 0, "mode": "fixed"},
+        {"name": "Standard Delay (1w)", "delay_slices": 1, "mode": "fixed"},
     ]
 
-    delayed_audit_main(
-        data_file_path=str(synthetic_paysim_csv),
-        regimes=fast_regimes
-    )
+    delayed_audit_main(data_file_path=str(synthetic_paysim_csv), regimes=fast_regimes)
 
     summary_file = tmp_path / "delayed_feedback_benchmark.json"
     plot_file = tmp_path / "delayed_feedback_impact.png"
@@ -118,18 +107,25 @@ def test_evaluate_uid_split_synthetic_execution(synthetic_stream_df: pd.DataFram
     Tests Method A (clean cases) and Method B (collision-free) cohorts with both standard and feature-blind modes.
     """
     df = synthetic_stream_df.copy()
+    # Exercise a genuine 3-week stream; the old 72-hour fixture had no OOS slice.
+    df["step"] = df["step"] * 7
+    df["TransactionDT"] = (df["step"] - 1) * 3600
 
     # Precompute UID annotations
     valid_mask = df["card2"].notna() & df["addr1"].notna()
     uid_clean = pd.Series(index=df.index, dtype=object)
     uid_clean[valid_mask] = (
-        df.loc[valid_mask, "card1"].astype(int).astype(str) + "_" +
-        df.loc[valid_mask, "card2"].astype(int).astype(str) + "_" +
-        df.loc[valid_mask, "addr1"].astype(int).astype(str)
+        df.loc[valid_mask, "card1"].astype(int).astype(str)
+        + "_"
+        + df.loc[valid_mask, "card2"].astype(int).astype(str)
+        + "_"
+        + df.loc[valid_mask, "addr1"].astype(int).astype(str)
     )
     uid_cf = uid_clean.copy()
     missing_mask = ~valid_mask
-    uid_cf[missing_mask] = "MISSING_" + df.loc[missing_mask, "TransactionID"].astype(str)
+    uid_cf[missing_mask] = "MISSING_" + df.loc[missing_mask, "TransactionID"].astype(
+        str
+    )
 
     df["uid_clean"] = uid_clean.values
     df["uid_cf"] = uid_cf.values
@@ -140,9 +136,10 @@ def test_evaluate_uid_split_synthetic_execution(synthetic_stream_df: pd.DataFram
         df_raw=df,
         exclude_card_identifiers=False,
         title="TEST STANDARD FEATURES",
-        random_seed=42
+        random_seed=42,
     )
     assert "global_oos" in res_std
+    assert res_std["global_oos"]["total_tx"] > 0
     assert "clean" in res_std
     assert "collision_free" in res_std
     assert "seen" in res_std["collision_free"]
@@ -154,7 +151,7 @@ def test_evaluate_uid_split_synthetic_execution(synthetic_stream_df: pd.DataFram
         df_raw=df,
         exclude_card_identifiers=True,
         title="TEST FEATURE BLIND",
-        random_seed=42
+        random_seed=42,
     )
     assert "global_oos" in res_blind
     assert "clean" in res_blind
@@ -162,4 +159,6 @@ def test_evaluate_uid_split_synthetic_execution(synthetic_stream_df: pd.DataFram
 
 def test_evaluate_uid_split_cli_run(synthetic_ieee_csv: Path):
     """Executes evaluate_uid_split.run CLI entrypoint on synthetic dataset."""
-    evaluate_uid_split_run(["--dataset", str(synthetic_ieee_csv), "--mode", "feature-blind"])
+    evaluate_uid_split_run(
+        ["--dataset", str(synthetic_ieee_csv), "--mode", "feature-blind"]
+    )

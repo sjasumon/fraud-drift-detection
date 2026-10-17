@@ -1,618 +1,471 @@
-"""
-End-to-End Orchestrator Pipeline for Concept-Drift-Aware Fraud Detection.
-Configured for:
-- IEEE-CIS Fraud Detection dataset (590,540 transactions spanning 26 weeks)
-- Strict MySQL Database persistence (fraud_drift_db)
-- GPU Hardware Acceleration (CUDA)
-- Full Retrain Strategy upon ADWIN/DDM Concept Drift alerts
-- Publication-quality metrics (Precision, Recall, F1, AUC-PR) and charts
-"""
+"""Chronological test-before-learn benchmark; all outputs belong to one immutable run."""
 
-import sys
-import uuid
-import json
-import time
-import logging
 import argparse
+import copy
+import hashlib
+import importlib.metadata
+import json
+import platform
+import time
+import uuid
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-import numpy as np
 import pandas as pd
-
-from src.config import (
-    RESULTS_DIR, METRICS_DIR, FIGURES_DIR, LOGS_DIR,
-    RANDOM_SEED, USE_GPU, GPU_DEVICE, TRAINING_WINDOW_RATIO,
-    ensure_directories_exist
-)
-from src.db import DatabaseManager
+from src.config import RESULTS_DIR, RANDOM_SEED, TRAINING_WINDOW_RATIO
 from src.ingestion import DatasetIngestion
 from src.preprocessing import Preprocessor
-from src.base_model import is_cuda_available
+from src.base_model import BaseFraudModel
 from src.static_model import StaticBaselineModel
+from src.adaptive_model import DriftAdaptiveModel
 from src.periodic_model import PeriodicRetrainModel
 from src.sliding_model import SlidingWindowModel
 from src.drift_detector import DriftMonitor
-from src.adaptive_model import DriftAdaptiveModel
-from src.evaluator import SliceEvaluator
-from src.drift_explainer import DriftAttributionEngine
-from src.river_models import (
-    HoeffdingAdaptiveTreeModel,
-    AdaptiveRandomForestModel,
-    StreamingRandomPatchesModel
-)
-
-logger = logging.getLogger("fraud_drift.pipeline")
-
-
-def setup_pipeline_logging(log_file: Optional[Path] = None) -> Path:
-    """Configures file and console logging lazily when pipeline is executed directly."""
-    ensure_directories_exist()
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-    )
-    logger.setLevel(logging.INFO)
-    if log_file is None:
-        log_file = LOGS_DIR / f"pipeline_run_{int(time.time())}.log"
-    file_handler = logging.FileHandler(log_file, encoding="utf-8")
-    file_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
-    logger.addHandler(file_handler)
-    return log_file
+from src.delayed_feedback import DelayedFeedbackQueue
+from src.history_features import add_history_features
+from src.artifacts import ModelBundle, save_bundle
+from src.reporting import generate_report
 
 
 def run_pipeline(
-    dataset_path: Path = None,
-    exclude_card_identifiers: bool = False,
-    dataset_type: Optional[str] = None,
-    db: Optional[DatabaseManager] = None,
-    include_river_baselines: bool = False,
-    retrain_budget: Optional[int] = None
-) -> Dict[str, Any]:
-    """
-    Executes the end-to-end experiment pipeline according to FRD requirements.
-    Artifacts are namespaced by dataset slug and run_id to avoid cross-benchmark collisions.
-    """
-    ensure_directories_exist()
-    run_id = f"RUN_{uuid.uuid4().hex[:10].upper()}"
-    start_total_time = time.time()
-
-    # 1. Initialize Database (MySQL 8.4 LTS with graceful fallback to file-only persistence)
-    if db is None:
-        try:
-            db = DatabaseManager()
-            db_backend_name = db.backend_name
-        except Exception as e:
-            logger.warning(f"Database connection unavailable ({e}). Continuing with filesystem metrics logging.")
-            db = None
-            db_backend_name = "Filesystem Only (MySQL unavailable)"
+    dataset_path=None,
+    exclude_card_identifiers=False,
+    dataset_type=None,
+    db=None,
+    output_dir=None,
+    seed=RANDOM_SEED,
+    n_train_slices=None,
+    evaluation_slices=None,
+    adaptive_window=None,
+    half_life_slices=None,
+    max_retrains=None,
+    delay_slices=0,
+    latency_mode="fixed",
+    identity_path=None,
+    all_features=False,
+    history_features=False,
+    pre_transaction_only=False,
+    data_kind="real",
+    model_params=None,
+    explain=False,
+    lognormal_mu=1.38,
+    lognormal_sigma=0.45,
+    raw_dataframe=None,
+    raw_slices=None,
+    preprocessor=None,
+    strategies=("static", "periodic", "weekly", "sliding", "adaptive"),
+):
+    started = time.perf_counter()
+    if adaptive_window is not None and adaptive_window < 1:
+        raise ValueError("adaptive_window must be positive")
+    if half_life_slices is not None and half_life_slices <= 0:
+        raise ValueError("half_life_slices must be positive")
+    if max_retrains is not None and max_retrains < 0:
+        raise ValueError("max_retrains must be nonnegative")
+    if evaluation_slices is not None and evaluation_slices < 1:
+        raise ValueError("evaluation_slices must be positive")
+    if n_train_slices is not None and n_train_slices < 1:
+        raise ValueError("n_train_slices must be positive")
+    if data_kind not in {"real", "synthetic", "unverified"}:
+        raise ValueError("data_kind must be real or synthetic")
+    dataset_path = Path(dataset_path or "data/ieee/train_transaction.csv")
+    ingestor = DatasetIngestion(
+        dataset_path, identity_path=identity_path, all_features=all_features
+    )
+    if raw_dataframe is None:
+        raw, validation = ingestor.load_and_validate()
     else:
-        db_backend_name = db.backend_name
-
-    cuda_active = USE_GPU and is_cuda_available()
-    hw_str = f"NVIDIA GPU ({GPU_DEVICE})" if cuda_active else "CPU Multi-Core (eGPU disconnected)"
-    adapt_str = "FULL RETRAINING ON GPU" if cuda_active else "FULL RETRAINING ON CPU"
-
-    logger.info("=" * 80)
-    logger.info(f"STARTING CONCEPT-DRIFT-AWARE FRAUD DETECTION PIPELINE [{run_id}]")
-    logger.info(f"Hardware Acceleration: {hw_str}")
-    logger.info(f"Database Backend: {db_backend_name}")
-    logger.info(f"Adaptation Strategy: {adapt_str}")
-    logger.info(f"Reproducibility Seed: {RANDOM_SEED}")
-    logger.info("=" * 80)
-
-    # 2. FR-1: Dataset Ingestion & Validation
-    if dataset_path is None:
-        candidate_paths = [
-            Path("data/ieee/train_transaction.csv"),
-            Path("ieee/train_transaction.csv"),
-        ]
-        for p in candidate_paths:
-            if p.exists():
-                dataset_path = p
-                break
-        if dataset_path is None:
-            raise FileNotFoundError(
-                f"IEEE-CIS dataset not found at {candidate_paths[0]} or {candidate_paths[1]}"
-            )
-
-    ingestor = DatasetIngestion(dataset_path)
-    df_raw, validation_report = ingestor.load_and_validate()
-
-    # Determine dataset slug for artifact namespacing
-    ds_str = str(dataset_path).lower() if dataset_path else ""
-    if dataset_type:
-        dataset_slug = "ieee_cis" if dataset_type.lower() == "ieee" else dataset_type.lower()
-    elif "ieee" in ds_str or "train_transaction" in ds_str:
-        dataset_slug = "ieee_cis"
-    elif "feedzai" in ds_str or "base.csv" in ds_str:
-        dataset_slug = "feedzai_baf"
-    elif "paysim" in ds_str:
-        dataset_slug = "paysim"
-    else:
-        dataset_slug = dataset_path.stem.lower().replace("-", "_").replace(" ", "_") if dataset_path else "dataset"
-
-    # 3. FR-2: Time-Slice Partitioning on RAW data (Zero Lookahead Leakage)
-    preprocessor = Preprocessor(exclude_card_identifiers=exclude_card_identifiers)
-    raw_slices = preprocessor.partition_time_slices(df_raw)
-
-    # Support dynamic baseline window and retrain intervals across multi-dataset benchmarks
-    if len(raw_slices) <= 8:
-        n_train_slices = 2
-        baseline_retrain_interval = 2
-    else:
-        n_train_slices = max(1, int(len(raw_slices) * TRAINING_WINDOW_RATIO))
-        baseline_retrain_interval = 4
-
-    train_raw_df = pd.concat([s["data"] for s in raw_slices[:n_train_slices]], ignore_index=True)
-
-    # Fit preprocessor strictly on baseline training partition
-    preprocessor.fit(train_raw_df)
-    imbalance_info = preprocessor.imbalance_weights
-
-    # Transform slices chronologically using baseline-fitted feature extractor
-    time_slices = []
-    for s in raw_slices:
-        s_transformed = s.copy()
-        s_transformed["data"] = preprocessor.transform(s["data"])
-        time_slices.append(s_transformed)
-
-    # Persist slice metadata strictly to MySQL if available
-    if db is not None:
-        db.log_slices(run_id, time_slices)
-
-    # 4. FR-3: Static Baseline Model Setup
-    train_slices = time_slices[:n_train_slices]
-    train_df = pd.concat([s["data"] for s in train_slices], ignore_index=True)
-
-    logger.info(
-        f"FR-3.1: Assembling baseline training window from first {n_train_slices} slices "
-        f"({len(train_df):,} transactions, {int(train_df['isFraud'].sum())} fraud instances, "
-        f"scale_pos_weight={imbalance_info['scale_pos_weight']:.2f})."
-    )
-
-    static_model = StaticBaselineModel(
-        feature_names=preprocessor.feature_names,
-        scale_pos_weight=imbalance_info["scale_pos_weight"]
-    )
-    static_model.fit(train_df)
-
-    # 4b. Periodic Retraining Baseline (Academic Baseline 2: e.g. Every 4w)
-    periodic_model = PeriodicRetrainModel(
-        feature_names=preprocessor.feature_names,
-        retrain_interval_slices=baseline_retrain_interval,
-        scale_pos_weight=imbalance_info["scale_pos_weight"]
-    )
-    periodic_model.fit_initial(train_df)
-
-    # 4c. Weekly Periodic Retraining Baseline (Academic Baseline 4: Matches maximum retrain frequency)
-    periodic_weekly_model = PeriodicRetrainModel(
-        feature_names=preprocessor.feature_names,
-        retrain_interval_slices=1,
-        scale_pos_weight=imbalance_info["scale_pos_weight"]
-    )
-    periodic_weekly_model.fit_initial(train_df)
-
-    # 4d. Sliding Window Retraining Baseline (Academic Baseline 3: e.g. Last 4w)
-    sliding_model = SlidingWindowModel(
-        feature_names=preprocessor.feature_names,
-        window_slices=baseline_retrain_interval,
-        retrain_interval_slices=baseline_retrain_interval,
-        scale_pos_weight=imbalance_info["scale_pos_weight"]
-    )
-    sliding_model.fit_initial(train_df)
-
-    # 4e. River Streaming Baselines (ARF, HAT, SRP - Prof. Koh's Domain)
-    hat_model = None
-    arf_model = None
-    srp_model = None
-    if include_river_baselines:
-        logger.info("Initializing River Streaming Baselines (HAT, ARF, SRP)...")
-        hat_model = HoeffdingAdaptiveTreeModel(feature_names=preprocessor.feature_names)
-        hat_model.fit_initial(train_df)
-        arf_model = AdaptiveRandomForestModel(feature_names=preprocessor.feature_names, n_models=5)
-        arf_model.fit_initial(train_df)
-        srp_model = StreamingRandomPatchesModel(feature_names=preprocessor.feature_names, n_models=3)
-        srp_model.fit_initial(train_df)
-
-    # 5. FR-5: Drift-Adaptive Model Setup with Full Retraining on GPU
-    adaptive_model = DriftAdaptiveModel(
-        feature_names=preprocessor.feature_names,
-        scale_pos_weight=imbalance_info["scale_pos_weight"],
-        retrain_budget=retrain_budget
-    )
-    adaptive_model.fit_initial(train_df)
-
-    # 6. FR-4: Drift Detector Setup (ADWIN and DDM)
-    drift_monitor = DriftMonitor()
-
-    # 6b. P4: SHAP Drift Attribution Engine Setup
-    drift_explainer = DriftAttributionEngine(feature_names=preprocessor.feature_names)
-    all_attributions: List[Dict[str, Any]] = []
-
-    # 7. FR-6: Sequential Time-Series Streaming Evaluation Loop
-    evaluator = SliceEvaluator()
-
-    all_static_preds, all_static_probs = [], []
-    all_periodic_preds, all_periodic_probs = [], []
-    all_periodic_weekly_preds, all_periodic_weekly_probs = [], []
-    all_sliding_preds, all_sliding_probs = [], []
-    all_adaptive_preds, all_adaptive_probs = [], []
-    all_hat_preds, all_hat_probs = [], []
-    all_arf_preds, all_arf_probs = [], []
-    all_srp_preds, all_srp_probs = [], []
-    all_y_true = []
-
-    logger.info("\n" + "=" * 80)
-    logger.info(f"BEGINNING SEQUENTIAL STREAMING EVALUATION ACROSS {len(time_slices)} WEEKS")
-    logger.info("=" * 80)
-
-    for s in time_slices:
-        slice_idx = s["slice_index"]
-        slice_name = s["slice_name"]
-        slice_data = s["data"]
-        y_true = slice_data["isFraud"].values
-        is_oos = (slice_idx >= n_train_slices)
-
-        # --- A. Static Model Inference (FR-3.3: Frozen model) ---
-        static_preds, static_probs = static_model.predict(slice_data)
-        evaluator.evaluate_slice(
-            y_true=y_true,
-            y_pred=static_preds,
-            y_prob=static_probs,
-            slice_index=slice_idx,
-            slice_name=slice_name,
-            model_type="static"
+        raw = raw_dataframe.copy()
+        required = {"trans_id", "step", "isFraud"}
+        if not required.issubset(raw):
+            raise ValueError("Provided frame requires trans_id, step and isFraud")
+        if raw.trans_id.isna().any() or raw.trans_id.duplicated().any():
+            raise ValueError("Transaction IDs must be non-null and unique")
+        if raw.isFraud.isna().any() or not set(raw.isFraud.unique()).issubset({0, 1}):
+            raise ValueError("Labels must be binary")
+        ingestor.dataset_type = (
+            "IEEE-CIS"
+            if "TransactionDT" in raw
+            else ("Feedzai-BAF" if "month" in raw else "PaySim")
         )
-
-        # --- B. Periodic Model Inference (Baseline 2: Every 4w) ---
-        periodic_preds, periodic_probs = periodic_model.predict(slice_data)
-        evaluator.evaluate_slice(
-            y_true=y_true,
-            y_pred=periodic_preds,
-            y_prob=periodic_probs,
-            slice_index=slice_idx,
-            slice_name=slice_name,
-            model_type="periodic"
-        )
-
-        # --- B2. Weekly Periodic Model Inference (Baseline 4: Every 1w) ---
-        periodic_weekly_preds, periodic_weekly_probs = periodic_weekly_model.predict(slice_data)
-        evaluator.evaluate_slice(
-            y_true=y_true,
-            y_pred=periodic_weekly_preds,
-            y_prob=periodic_weekly_probs,
-            slice_index=slice_idx,
-            slice_name=slice_name,
-            model_type="periodic_weekly"
-        )
-
-        # --- C. Sliding Window Model Inference (Baseline 3: Last 4w) ---
-        sliding_preds, sliding_probs = sliding_model.predict(slice_data)
-        evaluator.evaluate_slice(
-            y_true=y_true,
-            y_pred=sliding_preds,
-            y_prob=sliding_probs,
-            slice_index=slice_idx,
-            slice_name=slice_name,
-            model_type="sliding"
-        )
-
-        # --- D. Adaptive Model Inference (FR-5.3: Test-Before-Learn) ---
-        adaptive_preds, adaptive_probs = adaptive_model.predict(slice_data)
-        evaluator.evaluate_slice(
-            y_true=y_true,
-            y_pred=adaptive_preds,
-            y_prob=adaptive_probs,
-            slice_index=slice_idx,
-            slice_name=slice_name,
-            model_type="adaptive"
-        )
-
-        # --- D2. River Streaming Baselines (ARF, HAT, SRP) ---
-        if hat_model is not None:
-            h_pred, h_prob = hat_model.predict(slice_data)
-            evaluator.evaluate_slice(y_true, h_pred, h_prob, slice_idx, slice_name, "hat")
-            all_hat_preds.extend(h_pred)
-            all_hat_probs.extend(h_prob)
-            hat_model.update_with_slice(slice_data, slice_idx=slice_idx)
-
-        if arf_model is not None:
-            a_pred, a_prob = arf_model.predict(slice_data)
-            evaluator.evaluate_slice(y_true, a_pred, a_prob, slice_idx, slice_name, "arf")
-            all_arf_preds.extend(a_pred)
-            all_arf_probs.extend(a_prob)
-            arf_model.update_with_slice(slice_data, slice_idx=slice_idx)
-
-        if srp_model is not None:
-            s_pred, s_prob = srp_model.predict(slice_data)
-            evaluator.evaluate_slice(y_true, s_pred, s_prob, slice_idx, slice_name, "srp")
-            all_srp_preds.extend(s_pred)
-            all_srp_probs.extend(s_prob)
-            srp_model.update_with_slice(slice_data, slice_idx=slice_idx)
-
-        # Accumulate whole-dataset evaluation arrays
-        all_static_preds.extend(static_preds)
-        all_static_probs.extend(static_probs)
-        all_periodic_preds.extend(periodic_preds)
-        all_periodic_probs.extend(periodic_probs)
-        all_periodic_weekly_preds.extend(periodic_weekly_preds)
-        all_periodic_weekly_probs.extend(periodic_weekly_probs)
-        all_sliding_preds.extend(sliding_preds)
-        all_sliding_probs.extend(sliding_probs)
-        all_adaptive_preds.extend(adaptive_preds)
-        all_adaptive_probs.extend(adaptive_probs)
-        all_y_true.extend(y_true)
-
-        # --- E. Drift Monitoring over Prediction Error Stream (FR-4) ---
-        # The detector MUST NOT run on warm-up weeks 1-5 where the model predicts on its own training data.
-        slice_drift_triggered = False
-        if is_oos:
-            for i in range(len(slice_data)):
-                trans_id = slice_data["trans_id"].iloc[i]
-                step_num = int(slice_data["step"].iloc[i])
-                yt = int(y_true[i])
-                yp = int(adaptive_preds[i])
-
-                alert = drift_monitor.update(
-                    y_true=yt,
-                    y_pred=yp,
-                    slice_index=slice_idx,
-                    step_number=step_num,
-                    trans_id=trans_id
-                )
-                if alert["any_drift"]:
-                    slice_drift_triggered = True
-
-        # --- F. Update Baseline and Adaptive Models ---
-        periodic_model.update_with_slice(slice_data, slice_idx=slice_idx, is_out_of_sample=is_oos)
-        periodic_weekly_model.update_with_slice(slice_data, slice_idx=slice_idx, is_out_of_sample=is_oos)
-        sliding_model.update_with_slice(slice_data, slice_idx=slice_idx, is_out_of_sample=is_oos)
-        adaptive_model.update_with_slice(
-            slice_df=slice_data,
-            drift_triggered=slice_drift_triggered,
-            slice_idx=slice_idx
-        )
-        if slice_drift_triggered:
-            drift_monitor.reset_detectors()
-
-        # --- G. P4: SHAP & PSI Drift Attribution Heuristic ---
-        if slice_drift_triggered:
-            slice_attrs = drift_explainer.explain_drift_slice(
-                model=adaptive_model,
-                baseline_df=train_df,
-                current_df=slice_data,
-                slice_index=slice_idx,
-                slice_name=slice_name,
-                detector_type="ADWIN",
-                top_k=5
-            )
-            all_attributions.extend(slice_attrs)
-
-            # Generate visualization for key transitional slices (e.g. W06, W12, W21)
-            if slice_idx in (5, 11, 20):
-                drift_explainer.render_attribution_plot(
-                    attributions=slice_attrs,
-                    slice_name=slice_name,
-                    output_filename=f"drift_attribution_{slice_name.lower()}.png"
-                )
-
-        # Per-slice progress logging
-        stat_f1 = [m["f1_score"] for m in evaluator.metrics_log if m["slice_index"] == slice_idx and m["model_type"] == "static"][0]
-        period_f1 = [m["f1_score"] for m in evaluator.metrics_log if m["slice_index"] == slice_idx and m["model_type"] == "periodic"][0]
-        period_w_f1 = [m["f1_score"] for m in evaluator.metrics_log if m["slice_index"] == slice_idx and m["model_type"] == "periodic_weekly"][0]
-        slide_f1 = [m["f1_score"] for m in evaluator.metrics_log if m["slice_index"] == slice_idx and m["model_type"] == "sliding"][0]
-        adapt_f1 = [m["f1_score"] for m in evaluator.metrics_log if m["slice_index"] == slice_idx and m["model_type"] == "adaptive"][0]
-        drift_tag = " [DRIFT -> FULL GPU RETRAIN!]" if slice_drift_triggered else ""
-
-        logger.info(
-            f"Slice {slice_name} ({slice_idx+1:02d}/{len(time_slices)}): "
-            f"Static F1={stat_f1:.4f} | Period 4w={period_f1:.4f} | Period 1w={period_w_f1:.4f} | Slide={slide_f1:.4f} | Adapt={adapt_f1:.4f}{drift_tag}"
-        )
-
-    # 8. FR-6.3: Whole-Dataset Summary
-    all_y_true = np.array(all_y_true)
-    all_static_preds = np.array(all_static_preds)
-    all_static_probs = np.array(all_static_probs)
-    all_periodic_preds = np.array(all_periodic_preds)
-    all_periodic_probs = np.array(all_periodic_probs)
-    all_periodic_weekly_preds = np.array(all_periodic_weekly_preds)
-    all_periodic_weekly_probs = np.array(all_periodic_weekly_probs)
-    all_sliding_preds = np.array(all_sliding_preds)
-    all_sliding_probs = np.array(all_sliding_probs)
-    all_adaptive_preds = np.array(all_adaptive_preds)
-    all_adaptive_probs = np.array(all_adaptive_probs)
-
-    oos_mask = np.array([s["slice_index"] >= n_train_slices for s in time_slices for _ in range(len(s["data"]))])
-
-    extra_models = {}
-    if include_river_baselines and hat_model is not None:
-        extra_models["hat_model"] = (np.array(all_hat_preds), np.array(all_hat_probs))
-        extra_models["arf_model"] = (np.array(all_arf_preds), np.array(all_arf_probs))
-        extra_models["srp_model"] = (np.array(all_srp_preds), np.array(all_srp_probs))
-
-    overall_summary = evaluator.compute_overall_summary(
-        static_preds=all_static_preds,
-        static_probs=all_static_probs,
-        adaptive_preds=all_adaptive_preds,
-        adaptive_probs=all_adaptive_probs,
-        y_all=all_y_true,
-        periodic_preds=all_periodic_preds,
-        periodic_probs=all_periodic_probs,
-        sliding_preds=all_sliding_preds,
-        sliding_probs=all_sliding_probs,
-        oos_mask=oos_mask,
-        periodic_weekly_preds=all_periodic_weekly_preds,
-        periodic_weekly_probs=all_periodic_weekly_probs,
-        extra_models=extra_models if extra_models else None
-    )
-
-    # Save metrics to CSV and JSON with namespacing
-    metrics_df = pd.DataFrame(evaluator.metrics_log)
-
-    # 1. Namespaced by run_id
-    run_metrics_csv = METRICS_DIR / f"{dataset_slug}_{run_id}_slice_comparison_metrics.csv"
-    metrics_df.to_csv(run_metrics_csv, index=False)
-
-    run_summary_json = METRICS_DIR / f"{dataset_slug}_{run_id}_summary.json"
-    with open(run_summary_json, "w", encoding="utf-8") as f:
-        json.dump(overall_summary, f, indent=4)
-
-    # 2. Namespaced by dataset slug
-    dataset_metrics_csv = METRICS_DIR / f"{dataset_slug}_slice_comparison_metrics.csv"
-    metrics_df.to_csv(dataset_metrics_csv, index=False)
-
-    dataset_summary_json = METRICS_DIR / f"{dataset_slug}_summary_metrics.json"
-    with open(dataset_summary_json, "w", encoding="utf-8") as f:
-        json.dump(overall_summary, f, indent=4)
-
-    # 3. Maintain root headline artifacts for IEEE-CIS (primary benchmark)
-    metrics_csv_path = METRICS_DIR / "slice_comparison_metrics.csv"
-    summary_json_path = METRICS_DIR / "summary_metrics.json"
-    chart_output_filename = "model_comparison_f1_aucpr.png" if dataset_slug == "ieee_cis" else f"{dataset_slug}_model_comparison_f1_aucpr.png"
-
-    if dataset_slug == "ieee_cis":
-        metrics_df.to_csv(metrics_csv_path, index=False)
-        with open(summary_json_path, "w", encoding="utf-8") as f:
-            json.dump(overall_summary, f, indent=4)
-
-    # 9. FR-6.2: Generate High-Resolution Visual Comparison Charts
-    chart_path = evaluator.generate_comparison_plots(
-        metrics_df=metrics_df,
-        drift_events=drift_monitor.drift_events,
-        output_filename=chart_output_filename,
-        n_train_slices=n_train_slices
-    )
-
-    # 10. Persist Everything to MySQL Database if available
-    if db is not None:
-        db.log_metrics(run_id, evaluator.metrics_log)
-        db.log_drift_events(run_id, drift_monitor.drift_events)
-        if all_attributions:
-            db.log_attributions(run_id, all_attributions)
-            logger.info(f"P4: Persisted {len(all_attributions)} drift attribution records to MySQL `drift_attributions`.")
-
-        oos_stream = overall_summary.get("out_of_sample_stream", {})
-        static_oos_f1 = oos_stream.get("static_model", {}).get("overall_f1")
-        adaptive_oos_f1 = oos_stream.get("adaptive_model", {}).get("overall_f1")
-
-        run_record = {
-            "run_id": run_id,
-            "dataset_name": dataset_path.name,
-            "total_rows": len(df_raw),
-            "time_slices_count": len(time_slices),
-            "gpu_accelerated": f"{static_model.device_used}",
-            "static_f1_overall": overall_summary["static_model"]["overall_f1"],
-            "adaptive_f1_overall": overall_summary["adaptive_model"]["overall_f1"],
-            "static_f1_oos": static_oos_f1,
-            "adaptive_f1_oos": adaptive_oos_f1,
-            "drift_alerts_count": len(drift_monitor.drift_events),
-            "notes": (
-                f"Periodic 4w retrains: {periodic_model.retrain_count}. "
-                f"Periodic weekly retrains: {periodic_weekly_model.retrain_count}. "
-                f"Sliding retrains: {sliding_model.retrain_count}. "
-                f"Adaptive retrains: {adaptive_model.adaptation_count}. "
-                f"Total execution time: {time.time() - start_total_time:.1f}s"
-            )
-        }
-        db.log_run(run_record)
-
-    total_pipeline_time = time.time() - start_total_time
-
-    # 11. Final Console Summary Report
-    logger.info("\n" + "=" * 96)
-    logger.info("MULTI-MODEL STREAMING BENCHMARK COMPLETE — SUMMARY OF RESULTS")
-    logger.info("=" * 96)
-    logger.info(f"Dataset: {dataset_path.name} ({len(df_raw):,} transactions across {len(time_slices)} weeks)")
-    logger.info(f"Dataset Slug: {dataset_slug}")
-    logger.info(f"Hardware Acceleration: {static_model.device_used}")
-    logger.info(f"Database Logged: {db_backend_name}")
-    logger.info(f"Total Drift Alerts: {len(drift_monitor.drift_events)}")
-    logger.info("-" * 108)
-    logger.info(f"{'Model Architecture':<28} | {'Retrains':<8} | {'In+OOS F1*':<11} | {'OOS F1':<10} | {'OOS Recall':<11} | {'OOS AUC-PR':<11}")
-    logger.info("-" * 108)
-
-    m_names = [
-        ("Static Baseline (Frozen)", "static_model", 0),
-        ("Periodic Retraining (4w)", "periodic_model", periodic_model.retrain_count),
-        ("Periodic Retraining (Weekly)", "periodic_weekly_model", periodic_weekly_model.retrain_count),
-        ("Sliding Window (4w)", "sliding_model", sliding_model.retrain_count),
-        ("Drift-Adaptive (ADWIN/DDM)", "adaptive_model", adaptive_model.adaptation_count),
+        validation = {"source": "provided_dataframe", "total_rows": len(raw)}
+    if history_features:
+        raw = add_history_features(raw)
+    slug = {"IEEE-CIS": "ieee_cis", "Feedzai-BAF": "feedzai_baf", "PaySim": "paysim"}[
+        ingestor.dataset_type
     ]
-    if include_river_baselines and hat_model is not None:
-        m_names.extend([
-            ("Hoeffding Tree (HAT)", "hat_model", 0),
-            ("Adaptive Random Forest (ARF)", "arf_model", 0),
-            ("Streaming Random Patches (SRP)", "srp_model", 0),
-        ])
+    prep = preprocessor or Preprocessor(
+        exclude_card_identifiers=exclude_card_identifiers,
+        pre_transaction_only=pre_transaction_only,
+    )
+    slices = raw_slices if raw_slices is not None else prep.partition_time_slices(raw)
+    if not {"static", "adaptive"}.issubset(strategies):
+        raise ValueError("Strategies must include static and adaptive")
+    n_train_slices = n_train_slices or (
+        2 if len(slices) <= 8 else max(1, int(len(slices) * TRAINING_WINDOW_RATIO))
+    )
+    if not 1 <= n_train_slices < len(slices):
+        raise ValueError("Need both initial training and out-of-sample slices")
+    if evaluation_slices is not None and n_train_slices + evaluation_slices > len(
+        slices
+    ):
+        raise ValueError("Requested evaluation period exceeds available slices")
+    seed_raw = pd.concat(
+        [s["data"] for s in slices[:n_train_slices]], ignore_index=True
+    )
+    # Unsupervised fitted statistics also exclude the threshold/calibration holdout.
+    prep.fit(seed_raw.iloc[: BaseFraudModel.validation_start(len(seed_raw))])
+    train = prep.transform(seed_raw)
+    args = dict(
+        feature_names=prep.feature_names, random_seed=seed, model_params=model_params
+    )
+    initial = StaticBaselineModel(**args).fit(train)
+    models = {"static": initial}
+    interval = 2 if len(slices) <= 8 else 4
+    for name, cls, extra in [
+        ("periodic", PeriodicRetrainModel, dict(retrain_interval_slices=interval)),
+        ("weekly", PeriodicRetrainModel, dict(retrain_interval_slices=1)),
+        (
+            "sliding",
+            SlidingWindowModel,
+            dict(window_slices=interval, retrain_interval_slices=interval),
+        ),
+        (
+            "adaptive",
+            DriftAdaptiveModel,
+            dict(window_slices=adaptive_window, half_life_slices=half_life_slices),
+        ),
+    ]:
+        if name not in strategies:
+            continue
+        model = cls(**args, max_retrains=max_retrains, **extra)
+        for field in [
+            "model",
+            "calibrator",
+            "threshold",
+            "fit_metadata",
+            "trained",
+            "device_used",
+            "train_duration_sec",
+        ]:
+            setattr(model, field, copy.deepcopy(getattr(initial, field)))
+        model.last_training_id_digest = hashlib.sha256(
+            "\n".join(sorted(train.trans_id.astype(str))).encode()
+        ).hexdigest()
+        model.cumulative_history = [
+            prep.transform(s["data"]).assign(_history_slice=s["slice_index"])
+            for s in slices[:n_train_slices]
+        ]
+        models[name] = model
+    monitor = DriftMonitor()
+    queue = DelayedFeedbackQueue(
+        delay_slices=delay_slices,
+        latency_mode=latency_mode,
+        random_seed=seed,
+        lognormal_mu=lognormal_mu,
+        lognormal_sigma=lognormal_sigma,
+    )
+    records = []
+    attributions = []
+    events = []
+    feedback_events = []
+    selected = slices[
+        n_train_slices : n_train_slices + evaluation_slices
+        if evaluation_slices
+        else None
+    ]
+    initial_train = pd.concat(models["adaptive"].cumulative_history, ignore_index=True)
+    for s in selected:
+        idx = s["slice_index"]
+        frame = prep.transform(s["data"])
+        tag = frame.assign(_history_slice=idx)
+        for name, model in models.items():
+            pred, prob = model.predict(frame)
+            tag["_pred_" + name] = pred
+            tag["_generation_" + name] = getattr(model, "retrain_count", 0)
+            records.append(
+                pd.DataFrame(
+                    dict(
+                        seed=seed,
+                        window=n_train_slices,
+                        slice_index=idx,
+                        day=((frame.step.to_numpy() - 1) // 24).astype(int),
+                        trans_id=frame.trans_id.astype(str).to_numpy(),
+                        model=name,
+                        y_true=frame.isFraud.to_numpy(dtype=int),
+                        prediction=pred,
+                        probability=prob,
+                        threshold=model.threshold,
+                        amount=frame.get(
+                            "amount",
+                            frame.get(
+                                "TransactionAmt", pd.Series(0, index=frame.index)
+                            ),
+                        ).to_numpy(),
+                        model_generation=getattr(model, "retrain_count", 0),
+                    )
+                )
+            )
+        queue.enqueue(tag, idx)
+        matured = queue.dequeue_matured(idx)
+        drift = False
+        for tx in matured.to_dict("records"):
+            current_generation = models["adaptive"].retrain_count
+            monitored = int(tx["_generation_adaptive"]) == current_generation
+            feedback_events.append(
+                dict(
+                    trans_id=str(tx["trans_id"]),
+                    label_slice=idx,
+                    prediction_generation=int(tx["_generation_adaptive"]),
+                    active_generation=current_generation,
+                    monitored=monitored,
+                    original_prediction=int(tx["_pred_adaptive"]),
+                )
+            )
+            if not monitored:
+                continue
+            alert = monitor.update(
+                int(tx["isFraud"]),
+                int(tx["_pred_adaptive"]),
+                idx,
+                int(tx["step"]),
+                str(tx["trans_id"]),
+            )
+            drift = drift or alert["any_drift"]
+        # Attribute the triggering model before changing it; preserve real detector names.
+        if (
+            drift
+            and explain
+            and models["adaptive"].max_retrains != models["adaptive"].retrain_count
+        ):
+            from src.drift_explainer import DriftAttributionEngine
 
-    oos = overall_summary.get("out_of_sample_stream", {})
-    for label, key, n_retrains in m_names:
-        w_f1 = overall_summary[key]["overall_f1"]
-        oos_f1 = oos.get(key, {}).get("overall_f1", 0.0)
-        oos_rec = oos.get(key, {}).get("overall_recall", 0.0)
-        oos_auc = oos.get(key, {}).get("overall_auc_pr", 0.0)
-        logger.info(f"{label:<28} | {n_retrains:<8} | {w_f1:<11.4f} | {oos_f1:<10.4f} | {oos_rec*100:<10.2f}% | {oos_auc:<11.4f}")
+            engine = DriftAttributionEngine(prep.feature_names)
+            attributions.extend(
+                engine.explain_drift_slice(
+                    models["adaptive"],
+                    train,
+                    frame,
+                    idx,
+                    s["slice_name"],
+                    detector_type=",".join(
+                        sorted(
+                            {
+                                e["detector_type"]
+                                for e in monitor.drift_events
+                                if e["slice_index"] == idx
+                            }
+                        )
+                    )
+                    or "TEST_MONITOR",
+                )
+            )
+        known = queue.get_all_matured_training_data(initial_train)
+        known = known.sort_values(["_history_slice", "step", "trans_id"], kind="stable")
+        for name, model in models.items():
+            if name == "static":
+                continue
+            if name == "adaptive":
+                trigger = drift
+            else:
+                model.out_of_sample_slices_seen += 1
+                trigger = (
+                    model.out_of_sample_slices_seen % model.retrain_interval_slices == 0
+                )
+            if trigger:
+                if model._retrain(idx, training_df_override=known):
+                    event = dict(model.retrain_log[-1], model=name)
+                    events.append(event)
+                    if name == "adaptive":
+                        monitor.reset_detectors()
+    run_id = "RUN_" + uuid.uuid4().hex[:10].upper()
+    run_dir = Path(output_dir or RESULTS_DIR / "runs") / run_id
+    run_dir.mkdir(parents=True, exist_ok=False)
+    packages = {}
+    for name in ["numpy", "pandas", "scipy", "scikit-learn", "xgboost", "river"]:
+        packages[name] = importlib.metadata.version(name)
+    source_digest = hashlib.sha256()
+    for source in sorted(Path(__file__).parent.rglob("*.py")):
+        source_digest.update(str(source.relative_to(Path(__file__).parent)).encode())
+        source_digest.update(source.read_bytes())
+    manifest = dict(
+        run_id=run_id,
+        version="0.4.1",
+        source_sha256=source_digest.hexdigest(),
+        data_kind=data_kind,
+        dataset=dataset_path.name,
+        dataset_sha256=hashlib.sha256(
+            dataset_path.read_bytes()
+            if raw_dataframe is None
+            else raw.to_csv(index=False).encode()
+        ).hexdigest(),
+        identity_sha256=hashlib.sha256(Path(identity_path).read_bytes()).hexdigest()
+        if identity_path
+        else None,
+        seed=seed,
+        n_train_slices=n_train_slices,
+        evaluation_slice_indices=[s["slice_index"] for s in selected],
+        adaptive_window=adaptive_window,
+        half_life_slices=half_life_slices,
+        max_retrains=max_retrains,
+        delay_slices=delay_slices,
+        latency_mode=latency_mode,
+        lognormal_mu=lognormal_mu,
+        lognormal_sigma=lognormal_sigma,
+        model_params=initial.model_params,
+        strategies=list(models),
+        recent_window_basis="latest verified transaction arrival slice",
+        initial_training_seconds=initial.train_duration_sec,
+        calibration_policy="chronological final 20%, sigmoid if >=5 examples per class",
+        initial_fit=initial.fit_metadata,
+        device=initial.device_used,
+        python=platform.python_version(),
+        packages=packages,
+        history_features=history_features,
+        pre_transaction_only=pre_transaction_only,
+        all_features=all_features,
+        label_queue=queue.get_status_summary(selected[-1]["slice_index"]),
+        time_basis="simulated intramonth hours"
+        if slug == "feedzai_baf"
+        else "dataset-relative hours",
+        exclude_card_identifiers=exclude_card_identifiers,
+        elapsed_seconds=time.perf_counter() - started,
+        validation=validation,
+    )
+    try:
+        import psutil
 
-    logger.info("-" * 108)
-    logger.info("* Note: 'In+OOS F1*' includes initial training warmup slices (Slices 1-5). Pure out-of-sample generalization is reported under 'OOS F1', 'OOS Recall', and 'OOS AUC-PR'.")
-    logger.info(f"Outputs generated:")
-    logger.info(f"  - Dataset Metrics: {dataset_metrics_csv}")
-    logger.info(f"  - Dataset Summary: {dataset_summary_json}")
-    logger.info(f"  - Run Summary:     {run_summary_json}")
-    if dataset_slug == "ieee_cis":
-        logger.info(f"  - Root Metrics:    {metrics_csv_path}")
-        logger.info(f"  - Root Summary:    {summary_json_path}")
-    logger.info(f"  - Chart:           {chart_path}")
-    log_file_path = next((h.baseFilename for h in logger.handlers if isinstance(h, logging.FileHandler)), None)
-    if log_file_path:
-        logger.info(f"  - Log File:        {log_file_path}")
-    logger.info(f"Pipeline executed in {total_pipeline_time:.2f}s.")
-    logger.info("=" * 80)
-
-    return {
-        "run_id": run_id,
-        "dataset_slug": dataset_slug,
-        "overall_summary": overall_summary,
-        "chart_path": chart_path,
-        "metrics_csv_path": metrics_csv_path if dataset_slug == "ieee_cis" else dataset_metrics_csv,
-        "summary_json_path": summary_json_path if dataset_slug == "ieee_cis" else dataset_summary_json,
-        "run_summary_json": run_summary_json,
-        "drift_events_count": len(drift_monitor.drift_events),
-        "db_backend": db_backend_name,
-        "retrains_count": adaptive_model.adaptation_count
-    }
+        manifest["process_rss_mb"] = psutil.Process().memory_info().rss / 1024**2
+    except Exception:
+        manifest["process_rss_mb"] = None
+    (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
+    pd.concat(records, ignore_index=True).to_csv(
+        run_dir / "predictions.csv", index=False
+    )
+    (run_dir / "retrain_events.json").write_text(json.dumps(events, indent=2))
+    (run_dir / "drift_events.json").write_text(
+        json.dumps(monitor.drift_events, indent=2)
+    )
+    (run_dir / "attributions.json").write_text(json.dumps(attributions, indent=2))
+    pd.DataFrame(
+        feedback_events,
+        columns=[
+            "trans_id",
+            "label_slice",
+            "prediction_generation",
+            "active_generation",
+            "monitored",
+            "original_prediction",
+        ],
+    ).to_csv(run_dir / "feedback_events.csv", index=False)
+    summary = generate_report(run_dir)
+    for name, model in models.items():
+        save_bundle(
+            ModelBundle(
+                model,
+                prep,
+                dict(
+                    run_id=run_id,
+                    model=name,
+                    data_kind=data_kind,
+                    version="0.4.1",
+                    model_revision=uuid.uuid4().hex,
+                ),
+            ),
+            run_dir / "models" / name,
+        )
+    if db is not None:
+        weekly = pd.read_csv(run_dir / "weekly_metrics.csv")
+        db.log_metrics(
+            run_id,
+            [
+                dict(
+                    slice_index=int(r.slice_index),
+                    model_type=r.model,
+                    precision=r.overall_precision,
+                    recall=r.overall_recall,
+                    f1_score=r.overall_f1,
+                    auc_pr=r.overall_auc_pr,
+                )
+                for r in weekly.itertuples()
+            ],
+        )
+        db.log_drift_events(run_id, monitor.drift_events)
+        if attributions:
+            db.log_attributions(run_id, attributions)
+        db.log_slices(run_id, slices)
+        db.log_run(
+            dict(
+                run_id=run_id,
+                dataset_name=dataset_path.name,
+                total_rows=len(raw),
+                time_slices_count=len(slices),
+                gpu_accelerated=initial.device_used,
+                static_f1_overall=summary["static_model"]["overall_f1"],
+                adaptive_f1_overall=summary["adaptive_model"]["overall_f1"],
+                static_f1_oos=summary["static_model"]["overall_f1"],
+                adaptive_f1_oos=summary["adaptive_model"]["overall_f1"],
+                drift_alerts_count=len(monitor.drift_events),
+                notes="OOS-only v0.4.0",
+            )
+        )
+    return dict(
+        run_id=run_id,
+        dataset_slug=slug,
+        run_dir=run_dir,
+        overall_summary={"out_of_sample_stream": summary, **summary},
+        chart_path=run_dir / "overview.png",
+        metrics_csv_path=run_dir / "weekly_metrics.csv",
+        summary_json_path=run_dir / "summary.json",
+        run_summary_json=run_dir / "summary.json",
+        drift_events_count=len(monitor.drift_events),
+        retrains_count=models["adaptive"].retrain_count,
+        db_backend=db.backend_name if db else "filesystem",
+    )
 
 
 def main():
-    setup_pipeline_logging()
-    parser = argparse.ArgumentParser(description="Concept-Drift Fraud Detection Pipeline")
-    parser.add_argument(
-        "--dataset-type",
-        type=str,
-        default="ieee",
-        choices=["ieee", "feedzai", "paysim"],
-        help="Dataset archetype: ieee, feedzai (NeurIPS 2022), or paysim (mobile money)"
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--dataset", required=True)
+    p.add_argument("--identity")
+    p.add_argument("--output-dir")
+    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--train-slices", type=int)
+    p.add_argument("--evaluation-slices", type=int)
+    p.add_argument("--adaptive-window", type=int)
+    p.add_argument("--half-life-slices", type=float)
+    p.add_argument("--max-retrains", type=int)
+    p.add_argument("--delay-slices", type=int, default=0)
+    p.add_argument("--latency-mode", choices=["fixed", "lognormal"], default="fixed")
+    p.add_argument("--lognormal-mu", type=float, default=1.38)
+    p.add_argument("--lognormal-sigma", type=float, default=0.45)
+    p.add_argument("--all-features", action="store_true")
+    p.add_argument("--history-features", action="store_true")
+    p.add_argument("--pre-transaction-only", action="store_true")
+    p.add_argument("--exclude-identifiers", action="store_true")
+    p.add_argument("--synthetic", action="store_true")
+    p.add_argument("--explain", action="store_true")
+    a = p.parse_args()
+    r = run_pipeline(
+        a.dataset,
+        exclude_card_identifiers=a.exclude_identifiers,
+        output_dir=a.output_dir,
+        seed=a.seed,
+        n_train_slices=a.train_slices,
+        evaluation_slices=a.evaluation_slices,
+        adaptive_window=a.adaptive_window,
+        half_life_slices=a.half_life_slices,
+        max_retrains=a.max_retrains,
+        delay_slices=a.delay_slices,
+        latency_mode=a.latency_mode,
+        identity_path=a.identity,
+        all_features=a.all_features,
+        history_features=a.history_features,
+        pre_transaction_only=a.pre_transaction_only,
+        data_kind="synthetic" if a.synthetic else "real",
+        explain=a.explain,
+        lognormal_mu=a.lognormal_mu,
+        lognormal_sigma=a.lognormal_sigma,
     )
-    parser.add_argument("--dataset", type=str, default=None, help="Explicit path to raw CSV dataset")
-    parser.add_argument("--exclude-identifiers", action="store_true", help="Exclude raw card/address identifiers")
-    args = parser.parse_args()
-
-    if args.dataset:
-        data_file = Path(args.dataset)
-    else:
-        if args.dataset_type == "feedzai":
-            data_file = Path("data/feedzai/Base.csv")
-        elif args.dataset_type == "paysim":
-            data_file = Path("data/paysim/paysim_full.csv")
-        else:
-            default_path = "data/ieee/train_transaction.csv" if Path("data/ieee/train_transaction.csv").exists() else "ieee/train_transaction.csv"
-            data_file = Path(default_path)
-
-    run_pipeline(
-        dataset_path=data_file,
-        exclude_card_identifiers=args.exclude_identifiers,
-        dataset_type=args.dataset_type if not args.dataset else None
-    )
+    print(r["run_dir"] / "report.html")
 
 
 if __name__ == "__main__":

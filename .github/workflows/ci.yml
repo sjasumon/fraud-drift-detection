@@ -1,63 +1,24 @@
-name: CI Test Suite & Invariant Verification
-
-on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
-
+name: Tests and synthetic smoke experiment
+on: [push, pull_request]
 jobs:
   test:
-    name: Run Pytest & Mathematical Invariants (${{ matrix.python-version }})
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.11", "3.12"]
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-          cache: "pip"
-
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          pip install -e ".[test]"
-
-      - name: Run Full Test Suite (104 Invariant & Unit Tests)
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -e ".[test]"
+      - run: python -m pytest -q --cov=src --cov-report=xml
         env:
           USE_GPU: "false"
-        run: |
-          pytest -v --cov=src --cov-report=term --cov-report=xml
-
-      - name: Verify SHAP Drift Attribution Invariants (P4 Explainability)
+      - run: python -m src.demo --output-dir results/ci_demo
         env:
           USE_GPU: "false"
-        run: |
-          pytest -v tests/test_drift_explainer.py
-
-      - name: Verify Privacy-Preserving Federated Benchmark (RQ3 Prototype)
-        env:
-          USE_GPU: "false"
-        run: |
-          python -m src.federated --n-samples-per-bank 500
-
-      - name: Run Bandit Non-Stationary Verification (Quick Demo)
-        env:
-          USE_GPU: "false"
-        run: |
-          python -m src.bandit.benchmark --seeds 42 --steps 1000 --arms 3
-
-      - name: Upload Test Coverage
-        uses: actions/upload-artifact@v4
-        if: matrix.python-version == '3.12'
+      - uses: actions/upload-artifact@v4
         with:
-          name: coverage-report
-          path: coverage.xml
-          retention-days: 7
+          name: validation-artifacts
+          path: |
+            coverage.xml
+            results/ci_demo/

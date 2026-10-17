@@ -1,0 +1,22 @@
+[
+  {
+    "slice_index": 2,
+    "step_number": 461,
+    "trans_id": "TX_00000225",
+    "detector_type": "DDM",
+    "error_rate": 0.0149,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 461 in slice 3"
+  },
+  {
+    "slice_index": 5,
+    "step_number": 916,
+    "trans_id": "TX_00000536",
+    "detector_type": "DDM",
+    "error_rate": 0.006,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 916 in slice 6"
+  }
+]

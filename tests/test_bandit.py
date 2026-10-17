@@ -3,7 +3,6 @@ Unit tests for Non-Stationary Multi-Armed Bandit Environment and Adaptive Agents
 Tests environment transitions, agent selection rules, and ADWIN drift adaptation resets.
 """
 
-import numpy as np
 import pytest
 
 from src.bandit.environment import NonStationaryBanditEnv
@@ -11,14 +10,14 @@ from src.bandit.agents import (
     StandardUCBAgent,
     SlidingWindowUCBAgent,
     DiscountedUCBAgent,
-    AdwinUCBAgent
+    AdwinUCBAgent,
 )
 
 
 def test_env_phase_progression():
     schedule = [
         {"end_step": 10, "means": [0.9, 0.1], "name": "P1"},
-        {"end_step": 20, "means": [0.1, 0.9], "name": "P2"}
+        {"end_step": 20, "means": [0.1, 0.9], "name": "P2"},
     ]
     env = NonStationaryBanditEnv(n_arms=2, drift_schedule=schedule, random_seed=42)
     assert env.optimal_arm == 0

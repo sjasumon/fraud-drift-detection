@@ -5,7 +5,6 @@ attribution logging, and SQL identifier safety using an in-memory SQLite engine.
 """
 
 import pytest
-from datetime import datetime, timezone
 from sqlalchemy import create_engine
 
 from src.db import (
@@ -14,7 +13,7 @@ from src.db import (
     TimeSliceRecord,
     DriftEventRecord,
     SliceMetricRecord,
-    DriftAttributionRecord
+    DriftAttributionRecord,
 )
 
 
@@ -36,19 +35,21 @@ def test_db_ensure_run_and_log_run(in_memory_db):
         assert rec.total_rows == 500
 
     # Test updating run via log_run
-    in_memory_db.log_run({
-        "run_id": run_id,
-        "dataset_name": "TestSet_Updated",
-        "total_rows": 600,
-        "time_slices_count": 4,
-        "gpu_accelerated": "cpu",
-        "static_f1_overall": 0.75,
-        "adaptive_f1_overall": 0.88,
-        "static_f1_oos": 0.71,
-        "adaptive_f1_oos": 0.86,
-        "drift_alerts_count": 2,
-        "notes": "Fast test execution"
-    })
+    in_memory_db.log_run(
+        {
+            "run_id": run_id,
+            "dataset_name": "TestSet_Updated",
+            "total_rows": 600,
+            "time_slices_count": 4,
+            "gpu_accelerated": "cpu",
+            "static_f1_overall": 0.75,
+            "adaptive_f1_overall": 0.88,
+            "static_f1_oos": 0.71,
+            "adaptive_f1_oos": 0.86,
+            "drift_alerts_count": 2,
+            "notes": "Fast test execution",
+        }
+    )
 
     with in_memory_db.get_session() as session:
         rec = session.query(ExperimentRun).filter_by(run_id=run_id).first()
@@ -72,7 +73,7 @@ def test_db_log_slices(in_memory_db):
             "end_step": 168,
             "total_transactions": 1000,
             "fraud_transactions": 20,
-            "fraud_ratio": 0.02
+            "fraud_ratio": 0.02,
         },
         {
             "slice_index": 1,
@@ -81,13 +82,18 @@ def test_db_log_slices(in_memory_db):
             "end_step": 336,
             "total_transactions": 1100,
             "fraud_transactions": 25,
-            "fraud_ratio": 0.0227
-        }
+            "fraud_ratio": 0.0227,
+        },
     ]
     in_memory_db.log_slices(run_id, slices)
 
     with in_memory_db.get_session() as session:
-        recs = session.query(TimeSliceRecord).filter_by(run_id=run_id).order_by(TimeSliceRecord.slice_index).all()
+        recs = (
+            session.query(TimeSliceRecord)
+            .filter_by(run_id=run_id)
+            .order_by(TimeSliceRecord.slice_index)
+            .all()
+        )
         assert len(recs) == 2
         assert recs[0].slice_name == "Week_1"
         assert recs[1].slice_name == "Week_2"
@@ -105,7 +111,7 @@ def test_db_log_drift_events(in_memory_db):
             "error_rate": 0.08,
             "confidence_score": 0.95,
             "status": "DRIFT",
-            "notes": "Sudden mean error increase"
+            "notes": "Sudden mean error increase",
         }
     ]
     in_memory_db.log_drift_events(run_id, events)
@@ -129,7 +135,7 @@ def test_db_log_metrics(in_memory_db):
             "precision": 0.85,
             "recall": 0.70,
             "f1_score": 0.77,
-            "auc_pr": 0.82
+            "auc_pr": 0.82,
         },
         {
             "slice_index": 0,
@@ -138,8 +144,8 @@ def test_db_log_metrics(in_memory_db):
             "precision": 0.90,
             "recall": 0.78,
             "f1_score": 0.84,
-            "auc_pr": 0.88
-        }
+            "auc_pr": 0.88,
+        },
     ]
     in_memory_db.log_metrics(run_id, metrics)
 
@@ -161,7 +167,7 @@ def test_db_log_attributions(in_memory_db):
             "psi_score": 0.35,
             "shap_importance": 0.42,
             "attribution_score": 0.147,
-            "rank_order": 1
+            "rank_order": 1,
         }
     ]
     in_memory_db.log_attributions(run_id, attributions)
@@ -177,7 +183,9 @@ def test_db_log_attributions(in_memory_db):
 def test_db_invalid_name_raises_value_error(monkeypatch):
     """Verifies that an invalid DB_NAME fails regex validation against SQL injection."""
     monkeypatch.setattr("src.db.DB_NAME", "fraud_db; DROP TABLE users;")
-    with pytest.raises(ConnectionError, match="Insecure or invalid database name identifier"):
+    with pytest.raises(
+        ConnectionError, match="Insecure or invalid database name identifier"
+    ):
         DatabaseManager()
 
 

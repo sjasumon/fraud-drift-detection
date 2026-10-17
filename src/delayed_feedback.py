@@ -13,7 +13,7 @@ This module simulates realistic label latency dynamics:
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple, Union, Any
+from typing import Dict, List, Optional, Union, Any
 import numpy as np
 import pandas as pd
 
@@ -23,7 +23,7 @@ logger = logging.getLogger("fraud_drift.delayed_feedback")
 class DelayedFeedbackQueue:
     """
     Manages an asynchronous label maturity queue for streaming transactions.
-    
+
     Transactions enter the queue upon inference at slice `t`.
     Their ground-truth labels remain sealed/unverified until slice `t + delay`.
     Only matured transactions are released for model retraining or supervised drift detection.
@@ -35,7 +35,7 @@ class DelayedFeedbackQueue:
         latency_mode: str = "fixed",
         lognormal_mu: float = 1.38,  # ~4 weeks median if exp(1.38) ~= 3.97
         lognormal_sigma: float = 0.45,
-        random_seed: int = 42
+        random_seed: int = 42,
     ):
         """
         Args:
@@ -48,8 +48,20 @@ class DelayedFeedbackQueue:
         if delay_slices < 0:
             raise ValueError(f"delay_slices must be >= 0, got {delay_slices}")
         if latency_mode not in ("fixed", "lognormal"):
-            raise ValueError(f"latency_mode must be 'fixed' or 'lognormal', got {latency_mode}")
+            raise ValueError(
+                f"latency_mode must be 'fixed' or 'lognormal', got {latency_mode}"
+            )
 
+        if not isinstance(delay_slices, (int, np.integer)):
+            raise ValueError("delay_slices must be an integer")
+        if (
+            not np.isfinite(lognormal_mu)
+            or not np.isfinite(lognormal_sigma)
+            or lognormal_sigma < 0
+        ):
+            raise ValueError(
+                "Lognormal parameters must be finite and sigma nonnegative"
+            )
         self.delay_slices = delay_slices
         self.latency_mode = latency_mode
         self.lognormal_mu = lognormal_mu
@@ -65,11 +77,11 @@ class DelayedFeedbackQueue:
     def enqueue(self, slice_df: pd.DataFrame, current_slice: int) -> np.ndarray:
         """
         Enqueues incoming transactions from current_slice, assigning each a maturity slice.
-        
+
         Args:
             slice_df: DataFrame of transactions arriving in current_slice.
             current_slice: Integer index of the current time slice (e.g. week index).
-            
+
         Returns:
             np.ndarray of assigned maturity slice indices.
         """
@@ -81,20 +93,19 @@ class DelayedFeedbackQueue:
             maturity_slices = np.full(n, current_slice + self.delay_slices, dtype=int)
         elif self.latency_mode == "lognormal":
             # Sample continuous delays and round to discrete slice offsets (min 1 slice if delay > 0)
-            sampled_delays = self.rng.lognormal(mean=self.lognormal_mu, sigma=self.lognormal_sigma, size=n)
+            sampled_delays = self.rng.lognormal(
+                mean=self.lognormal_mu, sigma=self.lognormal_sigma, size=n
+            )
             discrete_delays = np.maximum(1, np.round(sampled_delays)).astype(int)
             maturity_slices = current_slice + discrete_delays
         else:
             maturity_slices = np.full(n, current_slice + self.delay_slices, dtype=int)
 
-        tagged_df = slice_df.copy(deep=False)
+        tagged_df = slice_df.copy(deep=True)
         tagged_df["_maturity_slice"] = maturity_slices
         tagged_df["_arrival_slice"] = current_slice
 
-        self._queue.append({
-            "arrival_slice": current_slice,
-            "data": tagged_df
-        })
+        self._queue.append({"arrival_slice": current_slice, "data": tagged_df})
         self._total_enqueued += n
         return maturity_slices
 
@@ -102,10 +113,10 @@ class DelayedFeedbackQueue:
         """
         Extracts and returns all transactions whose labels have matured at or before current_slice.
         These transactions are moved from the pending queue into the matured buffer.
-        
+
         Args:
             current_slice: Current time slice index.
-            
+
         Returns:
             DataFrame of transactions whose ground-truth labels just matured.
         """
@@ -124,10 +135,9 @@ class DelayedFeedbackQueue:
 
             if unmatured_mask.any():
                 remaining_df = df[unmatured_mask].copy()
-                remaining_queue.append({
-                    "arrival_slice": entry["arrival_slice"],
-                    "data": remaining_df
-                })
+                remaining_queue.append(
+                    {"arrival_slice": entry["arrival_slice"], "data": remaining_df}
+                )
 
         self._queue = remaining_queue
 
@@ -139,11 +149,13 @@ class DelayedFeedbackQueue:
         else:
             return pd.DataFrame()
 
-    def get_all_matured_training_data(self, initial_train_df: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+    def get_all_matured_training_data(
+        self, initial_train_df: Optional[pd.DataFrame] = None
+    ) -> pd.DataFrame:
         """
         Returns the complete accumulated training dataset composed strictly of
         initial seed transactions plus all transactions whose labels have matured to date.
-        
+
         Guarantees ZERO lookahead bias: transactions whose chargeback window is still open
         are strictly excluded from training.
         """
@@ -156,8 +168,20 @@ class DelayedFeedbackQueue:
 
         if chunks:
             full_df = pd.concat(chunks, ignore_index=True)
+            if "trans_id" in full_df:
+                full_df = full_df.drop_duplicates("trans_id", keep="first")
             # Clean temporary tracking columns if present
-            cols_to_drop = [c for c in ["_maturity_slice", "_arrival_slice"] if c in full_df.columns]
+            cols_to_drop = [
+                c
+                for c in [
+                    "_maturity_slice",
+                    "_arrival_slice",
+                    "_prediction",
+                    "_probability",
+                    "_model_version",
+                ]
+                if c in full_df.columns
+            ]
             if cols_to_drop:
                 return full_df.drop(columns=cols_to_drop)
             return full_df
@@ -181,5 +205,7 @@ class DelayedFeedbackQueue:
             "total_enqueued": self._total_enqueued,
             "total_matured": self._total_matured,
             "total_pending": pending,
-            "maturity_rate": (self._total_matured / self._total_enqueued) if self._total_enqueued > 0 else 0.0
+            "maturity_rate": (self._total_matured / self._total_enqueued)
+            if self._total_enqueued > 0
+            else 0.0,
         }

@@ -6,7 +6,7 @@ Validates schemas, temporal dimensions, row counts, and class balance.
 
 import logging
 from pathlib import Path
-from typing import Dict, Any, Tuple, Optional
+from typing import Dict, Any, Tuple
 import numpy as np
 import pandas as pd
 
@@ -17,14 +17,17 @@ logger = logging.getLogger("fraud_drift.ingestion")
 
 class IngestionError(Exception):
     """Raised when dataset fails FR-1 validation checks."""
+
     pass
 
 
 class DatasetIngestion:
     """Ingests and validates transaction streams according to FR-1 requirements."""
 
-    def __init__(self, file_path: Path):
+    def __init__(self, file_path: Path, identity_path=None, all_features=False):
         self.file_path = Path(file_path)
+        self.identity_path = identity_path
+        self.all_features = all_features
         self.validation_report: Dict[str, Any] = {}
         self.dataset_type = "unknown"
 
@@ -40,7 +43,10 @@ class DatasetIngestion:
         # Detect dataset schema by reading header
         sample_df = pd.read_csv(self.file_path, nrows=5)
 
-        if "TransactionID" in sample_df.columns and "TransactionDT" in sample_df.columns:
+        if (
+            "TransactionID" in sample_df.columns
+            and "TransactionDT" in sample_df.columns
+        ):
             self.dataset_type = "IEEE-CIS"
             df = self._load_ieee_cis()
         elif "fraud_bool" in sample_df.columns and "month" in sample_df.columns:
@@ -56,6 +62,14 @@ class DatasetIngestion:
                 f"Feedzai-BAF: fraud_bool, month; or PaySim: step, amount, isFraud)."
             )
 
+        if df.empty:
+            raise IngestionError("Dataset must not be empty")
+        if df["step"].isna().any() or not np.isfinite(df["step"]).all():
+            raise IngestionError("Invalid event time")
+        if df["trans_id"].isna().any() or df["trans_id"].duplicated().any():
+            raise IngestionError("Transaction IDs must be unique")
+        if df["isFraud"].isna().any():
+            raise IngestionError("Offline benchmark labels must not be missing")
         # Validate label column is binary (0 or 1)
         unique_labels = set(df["isFraud"].dropna().unique())
         if not unique_labels.issubset({0, 1}):
@@ -96,12 +110,12 @@ class DatasetIngestion:
             "total_hours": total_hours,
             "total_days": round(total_days, 1),
             "total_weeks": round(total_weeks, 1),
-            "validation_status": "PASSED"
+            "validation_status": "PASSED",
         }
 
         logger.info(
             f"Validation PASSED for {self.dataset_type}: {total_rows:,} records, "
-            f"{fraud_ratio*100:.2f}% fraud, spanning {total_weeks:.1f} weeks ({total_days:.1f} days)."
+            f"{fraud_ratio * 100:.2f}% fraud, spanning {total_weeks:.1f} weeks ({total_days:.1f} days)."
         )
 
         return df, self.validation_report
@@ -110,22 +124,78 @@ class DatasetIngestion:
         """Loads and selects high-signal features from IEEE-CIS train_transaction.csv."""
         # Key high-signal columns from IEEE-CIS
         selected_cols = [
-            "TransactionID", "isFraud", "TransactionDT", "TransactionAmt",
-            "ProductCD", "card1", "card2", "card3", "card4", "card5", "card6",
-            "addr1", "addr2", "dist1", "P_emaildomain",
-            "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9", "C10", "C11", "C12", "C13", "C14",
-            "D1", "D2", "D3", "D4",
-            "V12", "V13", "V29", "V30", "V53", "V54", "V75", "V76", "V90", "V91",
-            "V107", "V127", "V130", "V283", "V307", "V310", "V312"
+            "TransactionID",
+            "isFraud",
+            "TransactionDT",
+            "TransactionAmt",
+            "ProductCD",
+            "card1",
+            "card2",
+            "card3",
+            "card4",
+            "card5",
+            "card6",
+            "addr1",
+            "addr2",
+            "dist1",
+            "P_emaildomain",
+            "C1",
+            "C2",
+            "C3",
+            "C4",
+            "C5",
+            "C6",
+            "C7",
+            "C8",
+            "C9",
+            "C10",
+            "C11",
+            "C12",
+            "C13",
+            "C14",
+            "D1",
+            "D2",
+            "D3",
+            "D4",
+            "V12",
+            "V13",
+            "V29",
+            "V30",
+            "V53",
+            "V54",
+            "V75",
+            "V76",
+            "V90",
+            "V91",
+            "V107",
+            "V127",
+            "V130",
+            "V283",
+            "V307",
+            "V310",
+            "V312",
         ]
 
         # Read only required columns for high efficiency
         available_cols = set(pd.read_csv(self.file_path, nrows=1).columns)
-        load_cols = [c for c in selected_cols if c in available_cols]
+        load_cols = (
+            list(available_cols)
+            if self.all_features
+            else [c for c in selected_cols if c in available_cols]
+        )
 
         logger.info(f"Loading {len(load_cols)} high-signal features from IEEE-CIS...")
         df = pd.read_csv(self.file_path, usecols=load_cols)
 
+        if self.identity_path is not None:
+            identity = pd.read_csv(self.identity_path)
+            if identity.TransactionID.duplicated().any():
+                raise IngestionError("Identity TransactionID must be unique")
+            df = df.merge(
+                identity, on="TransactionID", how="left", validate="one_to_one"
+            )
+        if df["TransactionID"].isna().any():
+            raise IngestionError("Transaction IDs must not be missing")
         # Standardize transaction ID
         df["trans_id"] = df["TransactionID"].astype(str)
 
@@ -135,7 +205,9 @@ class DatasetIngestion:
         df["amount"] = df["TransactionAmt"]
 
         # Sort strictly by time step
-        df = df.sort_values(by=["step", "trans_id"]).reset_index(drop=True)
+        df = df.sort_values(
+            by=["TransactionDT", "TransactionID"], kind="stable"
+        ).reset_index(drop=True)
         return df
 
     def _load_feedzai_baf(self) -> pd.DataFrame:
@@ -144,7 +216,7 @@ class DatasetIngestion:
         df = pd.read_csv(self.file_path)
 
         # Standardize target label
-        df["isFraud"] = df["fraud_bool"].astype(int)
+        df["isFraud"] = df["fraud_bool"]
 
         # Standardize unique transaction tracking identifier
         df["trans_id"] = "BAF_" + pd.RangeIndex(len(df)).astype(str)
@@ -175,9 +247,13 @@ class DatasetIngestion:
 
         # Engineer accounting balance delta features
         if "oldbalanceOrg" in df.columns and "newbalanceOrig" in df.columns:
-            df["errorBalanceOrig"] = df["newbalanceOrig"] + df["amount"] - df["oldbalanceOrg"]
+            df["errorBalanceOrig"] = (
+                df["newbalanceOrig"] + df["amount"] - df["oldbalanceOrg"]
+            )
         if "oldbalanceDest" in df.columns and "newbalanceDest" in df.columns:
-            df["errorBalanceDest"] = df["oldbalanceDest"] + df["amount"] - df["newbalanceDest"]
+            df["errorBalanceDest"] = (
+                df["oldbalanceDest"] + df["amount"] - df["newbalanceDest"]
+            )
 
         df = df.sort_values(by=["step", "trans_id"]).reset_index(drop=True)
         return df

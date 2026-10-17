@@ -19,36 +19,80 @@ logger = logging.getLogger("fraud_drift.preprocessing")
 DATASET_SCHEMA_CONFIG: Dict[str, Dict[str, Any]] = {
     "default": {
         "categorical_columns": [
-            "ProductCD", "card4", "card6", "type",
-            "payment_type", "employment_status", "housing_status", "source", "device_os"
+            "ProductCD",
+            "card4",
+            "card6",
+            "type",
+            "payment_type",
+            "employment_status",
+            "housing_status",
+            "source",
+            "device_os",
         ],
         "excluded_columns": {
-            "TransactionID", "trans_id", "isFraud", "isFlaggedFraud", "TransactionDT",
-            "step", "month", "fraud_bool", "nameOrig", "nameDest", "drift_phase", "week",
-            "P_emaildomain", "R_emaildomain", "uid", "uid_clean", "uid_cf", "is_clean"
+            "TransactionID",
+            "trans_id",
+            "isFraud",
+            "isFlaggedFraud",
+            "TransactionDT",
+            "step",
+            "month",
+            "fraud_bool",
+            "nameOrig",
+            "nameDest",
+            "drift_phase",
+            "week",
+            "P_emaildomain",
+            "R_emaildomain",
+            "uid",
+            "uid_clean",
+            "uid_cf",
+            "is_clean",
         },
-        "identifier_columns": {
-            "card1", "card2", "card3", "card5", "addr1", "addr2"
-        }
+        "identifier_columns": {"card1", "card2", "card3", "card5", "addr1", "addr2"},
     },
     "ieee_cis": {
         "categorical_columns": ["ProductCD", "card4", "card6"],
         "excluded_columns": {
-            "TransactionID", "trans_id", "isFraud", "TransactionDT", "step",
-            "P_emaildomain", "R_emaildomain", "uid", "uid_clean", "uid_cf", "is_clean"
+            "TransactionID",
+            "trans_id",
+            "isFraud",
+            "TransactionDT",
+            "step",
+            "P_emaildomain",
+            "R_emaildomain",
+            "uid",
+            "uid_clean",
+            "uid_cf",
+            "is_clean",
         },
-        "identifier_columns": {"card1", "card2", "card3", "card5", "addr1", "addr2"}
+        "identifier_columns": {"card1", "card2", "card3", "card5", "addr1", "addr2"},
     },
     "feedzai_baf": {
-        "categorical_columns": ["payment_type", "employment_status", "housing_status", "source", "device_os"],
+        "categorical_columns": [
+            "payment_type",
+            "employment_status",
+            "housing_status",
+            "source",
+            "device_os",
+        ],
         "excluded_columns": {"month", "fraud_bool", "isFraud", "step", "trans_id"},
-        "identifier_columns": set()
+        "identifier_columns": set(),
     },
     "paysim": {
         "categorical_columns": ["type"],
-        "excluded_columns": {"trans_id", "step", "nameOrig", "nameDest", "isFraud", "isFlaggedFraud", "drift_phase", "week"},
-        "identifier_columns": set()
-    }
+        "excluded_columns": {
+            "trans_id",
+            "step",
+            "nameOrig",
+            "nameDest",
+            "isFraud",
+            "isFlaggedFraud",
+            "drift_phase",
+            "week",
+        },
+        "identifier_columns": set(),
+    },
 }
 
 
@@ -61,9 +105,12 @@ class Preprocessor:
         exclude_card_identifiers: bool = False,
         dataset_name: Optional[str] = None,
         custom_categorical_cols: Optional[List[str]] = None,
-        custom_exclude_cols: Optional[Set[str]] = None
+        custom_exclude_cols: Optional[Set[str]] = None,
+        pre_transaction_only: bool = False,
     ):
         self.hours_per_slice = hours_per_slice
+        self.pre_transaction_only = pre_transaction_only
+        self.required_input_columns = []
         self.exclude_card_identifiers = exclude_card_identifiers
         self.dataset_name = dataset_name
         self.custom_categorical_cols = custom_categorical_cols
@@ -79,7 +126,23 @@ class Preprocessor:
     def extract_engineered_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """Derives temporal and accounting features."""
         df = df.copy()
-
+        if self.pre_transaction_only:
+            post_cols = [
+                c
+                for c in df
+                if c.startswith(
+                    (
+                        "newbalance",
+                        "errorBalance",
+                        "orig_reconcile",
+                        "dest_reconcile",
+                        "orig_balance_delta",
+                        "dest_balance_delta",
+                        "orig_emptied",
+                    )
+                )
+            ]
+            df = df.drop(columns=post_cols)
         # Temporal features
         df["hour_of_day"] = (df["step"] - 1) % 24
         df["day_of_week"] = ((df["step"] - 1) // 24) % 7
@@ -96,18 +159,26 @@ class Preprocessor:
             df["log_amount"] = np.log1p(np.maximum(df[amt_col], 0.0))
             df["amt_decimal"] = df[amt_col] - np.floor(df[amt_col])
 
+        if amt_col is not None and "oldbalanceOrg" in df:
+            df["amount_to_orig_ratio"] = df[amt_col] / (df["oldbalanceOrg"] + 1.0)
+
         # PaySim specific features if present
         if "oldbalanceOrg" in df.columns and "newbalanceOrig" in df.columns:
             df["orig_balance_delta"] = df["oldbalanceOrg"] - df["newbalanceOrig"]
             if amt_col is not None:
-                df["orig_reconcile_err"] = (df["newbalanceOrig"] + df[amt_col]) - df["oldbalanceOrg"]
-                df["amount_to_orig_ratio"] = df[amt_col] / (df["oldbalanceOrg"] + 1.0)
-            df["orig_emptied"] = ((df["oldbalanceOrg"] > 0) & (df["newbalanceOrig"] == 0)).astype(int)
+                df["orig_reconcile_err"] = (df["newbalanceOrig"] + df[amt_col]) - df[
+                    "oldbalanceOrg"
+                ]
+            df["orig_emptied"] = (
+                (df["oldbalanceOrg"] > 0) & (df["newbalanceOrig"] == 0)
+            ).astype(int)
 
         if "oldbalanceDest" in df.columns and "newbalanceDest" in df.columns:
             df["dest_balance_delta"] = df["newbalanceDest"] - df["oldbalanceDest"]
             if amt_col is not None:
-                df["dest_reconcile_err"] = (df["oldbalanceDest"] + df[amt_col]) - df["newbalanceDest"]
+                df["dest_reconcile_err"] = (df["oldbalanceDest"] + df[amt_col]) - df[
+                    "newbalanceDest"
+                ]
             df["dest_was_zero"] = (df["oldbalanceDest"] == 0).astype(int)
 
         return df
@@ -118,10 +189,13 @@ class Preprocessor:
         weights strictly from the training partition (e.g. Weeks 1-5).
         Ensures zero temporal leakage from future streaming slices.
         """
+        raw_columns = list(df.columns)
         df = self.extract_engineered_features(df)
 
         # Resolve dataset schema configuration
-        schema_cfg = DATASET_SCHEMA_CONFIG.get(self.dataset_name, DATASET_SCHEMA_CONFIG["default"])
+        schema_cfg = DATASET_SCHEMA_CONFIG.get(
+            self.dataset_name, DATASET_SCHEMA_CONFIG["default"]
+        )
 
         # Identify candidate categorical columns
         if self.custom_categorical_cols is not None:
@@ -129,6 +203,10 @@ class Preprocessor:
         else:
             possible_cats = schema_cfg.get("categorical_columns", [])
         self.categorical_cols = [c for c in possible_cats if c in df.columns]
+        # Include actual categorical columns, including identity and email domains.
+        for c in df.select_dtypes(include=["object", "string", "category"]).columns:
+            if c not in self.categorical_cols:
+                self.categorical_cols.append(c)
 
         # Base exclusion set
         if self.custom_exclude_cols is not None:
@@ -138,16 +216,50 @@ class Preprocessor:
 
         # Optionally exclude raw card and address identifier codes
         if self.exclude_card_identifiers:
-            id_cols = schema_cfg.get("identifier_columns", {"card1", "card2", "card3", "card5", "addr1", "addr2"})
+            id_cols = schema_cfg.get(
+                "identifier_columns",
+                {"card1", "card2", "card3", "card5", "addr1", "addr2"},
+            )
             exclude_cols.update(id_cols)
 
+        exclude_cols.update(
+            {
+                "isFraud",
+                "fraud_bool",
+                "isFlaggedFraud",
+                "trans_id",
+                "TransactionID",
+                "uid",
+                "uid_clean",
+                "uid_cf",
+                "is_clean",
+            }
+        )
+        exclude_cols.update(c for c in df if c.startswith("_"))
+        exclude_cols.difference_update({"P_emaildomain", "R_emaildomain"})
+        self.categorical_cols = [
+            c for c in self.categorical_cols if c not in exclude_cols
+        ]
+        self.required_input_columns = [
+            c for c in raw_columns if c not in exclude_cols and c in df.columns
+        ]
+        if "step" not in self.required_input_columns:
+            self.required_input_columns.append("step")
         self.numeric_cols = [
-            c for c in df.columns
+            c
+            for c in df.columns
             if c not in exclude_cols and c not in self.categorical_cols
         ]
 
+        # Missingness is itself a useful signal; use stable columns for all numerical inputs.
+        self.missing_indicator_cols = list(self.numeric_cols)
+        for c in self.missing_indicator_cols:
+            df[c + "__missing"] = df[c].isna().astype(float)
+        self.numeric_cols += [c + "__missing" for c in self.missing_indicator_cols]
         # Compute median imputation values strictly on the training partition
-        logger.info(f"FR-2.1: Computing median imputation for {len(self.numeric_cols)} numerical features on training partition...")
+        logger.info(
+            f"FR-2.1: Computing median imputation for {len(self.numeric_cols)} numerical features on training partition..."
+        )
         for col in self.numeric_cols:
             median_val = float(df[col].median(skipna=True))
             if np.isnan(median_val):
@@ -160,7 +272,9 @@ class Preprocessor:
             # Fit on non-null string representation
             train_cats = df[self.categorical_cols].fillna("UNKNOWN").astype(str)
             self.encoder.fit(train_cats)
-            cat_feature_names = list(self.encoder.get_feature_names_out(self.categorical_cols))
+            cat_feature_names = list(
+                self.encoder.get_feature_names_out(self.categorical_cols)
+            )
         else:
             cat_feature_names = []
 
@@ -176,7 +290,7 @@ class Preprocessor:
             "negative_samples": neg_samples,
             "positive_samples": pos_samples,
             "scale_pos_weight": round(scale_pos_weight, 2),
-            "fraud_prevalence_pct": round((pos_samples / total_samples) * 100, 3)
+            "fraud_prevalence_pct": round((pos_samples / total_samples) * 100, 3),
         }
         self.fitted = True
 
@@ -194,10 +308,14 @@ class Preprocessor:
         Zero future statistics leak into this transformation.
         """
         if not self.fitted:
-            raise RuntimeError("Preprocessor must be fitted on training data before calling transform().")
+            raise RuntimeError(
+                "Preprocessor must be fitted on training data before calling transform()."
+            )
 
         df = self.extract_engineered_features(df)
 
+        for c in getattr(self, "missing_indicator_cols", []):
+            df[c + "__missing"] = df[c].isna().astype(float) if c in df else 1.0
         # Impute numerical features using baseline-fitted medians
         for col in self.numeric_cols:
             if col in df.columns:
@@ -209,8 +327,12 @@ class Preprocessor:
         if self.categorical_cols and self.encoder is not None:
             slice_cats = df[self.categorical_cols].fillna("UNKNOWN").astype(str)
             encoded_cats = self.encoder.transform(slice_cats)
-            cat_feature_names = list(self.encoder.get_feature_names_out(self.categorical_cols))
-            encoded_df = pd.DataFrame(encoded_cats, columns=cat_feature_names, index=df.index)
+            cat_feature_names = list(
+                self.encoder.get_feature_names_out(self.categorical_cols)
+            )
+            encoded_df = pd.DataFrame(
+                encoded_cats, columns=cat_feature_names, index=df.index
+            )
             df = pd.concat([df, encoded_df], axis=1)
 
         return df
@@ -231,32 +353,57 @@ class Preprocessor:
         if "month" in df.columns and df["month"].nunique() <= 12:
             slices = []
             for m_idx, (m_val, m_group) in enumerate(df.groupby("month", sort=True)):
-                sort_candidates = [c for c in ["step", "trans_id", "TransactionID"] if c in m_group.columns]
+                sort_candidates = [
+                    c
+                    for c in ["step", "trans_id", "TransactionID"]
+                    if c in m_group.columns
+                ]
                 if sort_candidates:
-                    slice_df = m_group.sort_values(by=sort_candidates).reset_index(drop=True)
+                    slice_df = m_group.sort_values(by=sort_candidates).reset_index(
+                        drop=True
+                    )
                 else:
                     slice_df = m_group.copy().reset_index(drop=True)
                 fraud_count = int(slice_df["isFraud"].sum())
                 total_count = len(slice_df)
-                min_step = int(slice_df["step"].min()) if "step" in slice_df.columns else int(m_val * 720 + 1)
-                max_step = int(slice_df["step"].max()) if "step" in slice_df.columns else int((m_val + 1) * 720)
+                min_step = (
+                    int(slice_df["step"].min())
+                    if "step" in slice_df.columns
+                    else int(m_val * 720 + 1)
+                )
+                max_step = (
+                    int(slice_df["step"].max())
+                    if "step" in slice_df.columns
+                    else int((m_val + 1) * 720)
+                )
                 if min_step == max_step:
                     min_step = int(m_val * 720 + 1)
                     max_step = int((m_val + 1) * 720)
-                slices.append({
-                    "slice_index": m_idx,
-                    "slice_name": f"Month_{m_idx + 1:02d}",
-                    "start_step": min_step,
-                    "end_step": max_step,
-                    "total_transactions": total_count,
-                    "fraud_transactions": fraud_count,
-                    "fraud_ratio": round(fraud_count / float(total_count), 4),
-                    "data": slice_df
-                })
-            logger.info(f"FR-2.4: Dataset partitioned by month into {len(slices)} non-overlapping sequential monthly slices.")
+                slices.append(
+                    {
+                        "slice_index": m_idx,
+                        "slice_name": f"Month_{m_idx + 1:02d}",
+                        "start_step": min_step,
+                        "end_step": max_step,
+                        "total_transactions": total_count,
+                        "fraud_transactions": fraud_count,
+                        "fraud_ratio": round(fraud_count / float(total_count), 4),
+                        "data": slice_df,
+                    }
+                )
+            logger.info(
+                f"FR-2.4: Dataset partitioned by month into {len(slices)} non-overlapping sequential monthly slices."
+            )
             return slices
 
-        df = df.sort_values(by=["step", "trans_id"]).reset_index(drop=True)
+        df = df.sort_values(
+            by=(
+                ["TransactionDT", "TransactionID"]
+                if "TransactionDT" in df and "TransactionID" in df
+                else ["step", "trans_id"]
+            ),
+            kind="stable",
+        ).reset_index(drop=True)
 
         min_step = int(df["step"].min())
         max_step = int(df["step"].max())
@@ -273,19 +420,23 @@ class Preprocessor:
             if len(slice_df) > 0:
                 fraud_count = int(slice_df["isFraud"].sum())
                 total_count = len(slice_df)
-                slices.append({
-                    "slice_index": slice_idx,
-                    "slice_name": f"Week_{slice_idx + 1:02d}",
-                    "start_step": current_start,
-                    "end_step": current_end,
-                    "total_transactions": total_count,
-                    "fraud_transactions": fraud_count,
-                    "fraud_ratio": round(fraud_count / float(total_count), 4),
-                    "data": slice_df
-                })
+                slices.append(
+                    {
+                        "slice_index": slice_idx,
+                        "slice_name": f"Week_{slice_idx + 1:02d}",
+                        "start_step": current_start,
+                        "end_step": current_end,
+                        "total_transactions": total_count,
+                        "fraud_transactions": fraud_count,
+                        "fraud_ratio": round(fraud_count / float(total_count), 4),
+                        "data": slice_df,
+                    }
+                )
                 slice_idx += 1
 
             current_start = current_end + 1
 
-        logger.info(f"FR-2.4: Dataset partitioned into {len(slices)} non-overlapping sequential time slices.")
+        logger.info(
+            f"FR-2.4: Dataset partitioned into {len(slices)} non-overlapping sequential time slices."
+        )
         return slices

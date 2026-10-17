@@ -1,0 +1,49 @@
+{
+  "run_id": "RUN_A9D3C4A286",
+  "model": "adaptive",
+  "data_kind": "real",
+  "version": "0.4.1",
+  "model_revision": "ec83feb884c54a858bf144b46b3d595a",
+  "format_version": 2,
+  "sha256": "28f3e756d82fd755af18a4740c7cada80ad502afbe3e07797fcbad386501fac8",
+  "input_features": [
+    "type",
+    "amount",
+    "oldbalanceOrg",
+    "oldbalanceDest",
+    "step"
+  ],
+  "transformed_features": [
+    "amount",
+    "oldbalanceOrg",
+    "oldbalanceDest",
+    "hour_of_day",
+    "day_of_week",
+    "is_overnight",
+    "log_amount",
+    "amt_decimal",
+    "amount_to_orig_ratio",
+    "amount__missing",
+    "oldbalanceOrg__missing",
+    "oldbalanceDest__missing",
+    "hour_of_day__missing",
+    "day_of_week__missing",
+    "is_overnight__missing",
+    "log_amount__missing",
+    "amt_decimal__missing",
+    "amount_to_orig_ratio__missing",
+    "type_CASH_IN",
+    "type_CASH_OUT",
+    "type_DEBIT",
+    "type_PAYMENT",
+    "type_TRANSFER"
+  ],
+  "threshold": 0.5599237084388733,
+  "fit_metadata": {
+    "fit_rows": 5036936,
+    "validation_rows": 1259235,
+    "calibration": "sigmoid_on_chronological_validation",
+    "threshold": 0.5599237084388733,
+    "threshold_objective": "validation_f1"
+  }
+}

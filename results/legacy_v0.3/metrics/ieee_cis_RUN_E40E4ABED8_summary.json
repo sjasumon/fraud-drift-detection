@@ -1,0 +1,92 @@
+{
+    "static_model": {
+        "overall_precision": 0.2241,
+        "overall_recall": 0.6776,
+        "overall_f1": 0.3368,
+        "overall_auc_pr": 0.4997,
+        "true_positives": 14001,
+        "false_positives": 48475,
+        "false_negatives": 6662,
+        "true_negatives": 521402,
+        "total_frauds": 20663
+    },
+    "adaptive_model": {
+        "overall_precision": 0.2335,
+        "overall_recall": 0.7291,
+        "overall_f1": 0.3538,
+        "overall_auc_pr": 0.5263,
+        "true_positives": 15065,
+        "false_positives": 49444,
+        "false_negatives": 5598,
+        "true_negatives": 520433,
+        "total_frauds": 20663
+    },
+    "periodic_model": {
+        "overall_precision": 0.2328,
+        "overall_recall": 0.7457,
+        "overall_f1": 0.3548,
+        "overall_auc_pr": 0.5431,
+        "true_positives": 15409,
+        "false_positives": 50793,
+        "false_negatives": 5254,
+        "true_negatives": 519084,
+        "total_frauds": 20663
+    },
+    "sliding_model": {
+        "overall_precision": 0.2634,
+        "overall_recall": 0.702,
+        "overall_f1": 0.383,
+        "overall_auc_pr": 0.5416,
+        "true_positives": 14506,
+        "false_positives": 40574,
+        "false_negatives": 6157,
+        "true_negatives": 529303,
+        "total_frauds": 20663
+    },
+    "out_of_sample_stream": {
+        "static_model": {
+            "overall_precision": 0.2225,
+            "overall_recall": 0.6327,
+            "overall_f1": 0.3293,
+            "overall_auc_pr": 0.4606,
+            "true_positives": 10541,
+            "false_positives": 36825,
+            "false_negatives": 6119,
+            "true_negatives": 385850,
+            "total_frauds": 16660
+        },
+        "adaptive_model": {
+            "overall_precision": 0.2352,
+            "overall_recall": 0.7358,
+            "overall_f1": 0.3565,
+            "overall_auc_pr": 0.5318,
+            "true_positives": 12259,
+            "false_positives": 39854,
+            "false_negatives": 4401,
+            "true_negatives": 382821,
+            "total_frauds": 16660
+        },
+        "periodic_model": {
+            "overall_precision": 0.2293,
+            "overall_recall": 0.7134,
+            "overall_f1": 0.3471,
+            "overall_auc_pr": 0.5097,
+            "true_positives": 11886,
+            "false_positives": 39950,
+            "false_negatives": 4774,
+            "true_negatives": 382725,
+            "total_frauds": 16660
+        },
+        "sliding_model": {
+            "overall_precision": 0.2698,
+            "overall_recall": 0.6592,
+            "overall_f1": 0.3829,
+            "overall_auc_pr": 0.5099,
+            "true_positives": 10983,
+            "false_positives": 29731,
+            "false_negatives": 5677,
+            "true_negatives": 392944,
+            "total_frauds": 16660
+        }
+    }
+}

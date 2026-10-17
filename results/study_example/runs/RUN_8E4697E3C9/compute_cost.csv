@@ -1,0 +1,6 @@
+model,retrains,training_seconds,initial_training_seconds
+static,0,0,0.019203898998966906
+periodic,0,0,0.019203898998966906
+weekly,0,0,0.019203898998966906
+sliding,0,0,0.019203898998966906
+adaptive,0,0,0.019203898998966906

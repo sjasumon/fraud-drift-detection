@@ -1,0 +1,203 @@
+<!doctype html><html><meta charset="utf-8"><title>Fraud experiment report</title>
+    <style>body{font:16px system-ui;margin:40px;max-width:1200px;color:#182237}table{border-collapse:collapse;width:100%;font-size:14px}td,th{padding:10px;border-bottom:1px solid #ddd;text-align:right}img{width:100%}pre{white-space:pre-wrap}</style>
+    <h1>Fraud detection experiment</h1><p>RUN_F4D2D56799 · unverified data · out-of-sample only</p>
+    <p>Thresholds and calibration use prior chronological validation data. Daily alert budgets are retrospective review rankings. Average precision is used consistently. Timestamp basis: dataset-relative hours.</p>
+    <table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>overall_precision</th>
+      <th>overall_recall</th>
+      <th>overall_f1</th>
+      <th>overall_auc_pr</th>
+      <th>false_positives</th>
+      <th>false_negatives</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>adaptive_model</th>
+      <td>0.110497</td>
+      <td>1.0</td>
+      <td>0.199005</td>
+      <td>0.109458</td>
+      <td>161</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>static_model</th>
+      <td>0.110497</td>
+      <td>1.0</td>
+      <td>0.199005</td>
+      <td>0.109458</td>
+      <td>161</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table><img src="overview.png" alt="PR, weekly F1, calibration and training cost plots">
+    <h2>Daily review budgets</h2><table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>model</th>
+      <th>daily_budget</th>
+      <th>alerts</th>
+      <th>detected_fraud</th>
+      <th>precision</th>
+      <th>recall</th>
+      <th>interpretation</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>adaptive</td>
+      <td>100</td>
+      <td>200</td>
+      <td>20</td>
+      <td>0.1</td>
+      <td>1.0</td>
+      <td>retrospective daily ranking; requires batch review</td>
+    </tr>
+    <tr>
+      <td>adaptive</td>
+      <td>500</td>
+      <td>200</td>
+      <td>20</td>
+      <td>0.1</td>
+      <td>1.0</td>
+      <td>retrospective daily ranking; requires batch review</td>
+    </tr>
+    <tr>
+      <td>static</td>
+      <td>100</td>
+      <td>200</td>
+      <td>20</td>
+      <td>0.1</td>
+      <td>1.0</td>
+      <td>retrospective daily ranking; requires batch review</td>
+    </tr>
+    <tr>
+      <td>static</td>
+      <td>500</td>
+      <td>200</td>
+      <td>20</td>
+      <td>0.1</td>
+      <td>1.0</td>
+      <td>retrospective daily ranking; requires batch review</td>
+    </tr>
+  </tbody>
+</table><h2>Compute</h2><table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>model</th>
+      <th>retrains</th>
+      <th>training_seconds</th>
+      <th>initial_training_seconds</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>static</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0.030049</td>
+    </tr>
+    <tr>
+      <td>adaptive</td>
+      <td>0</td>
+      <td>0</td>
+      <td>0.030049</td>
+    </tr>
+  </tbody>
+</table>
+    <h2>Paired uncertainty</h2><pre>{
+  &quot;adaptive&quot;: {
+    &quot;mean_delta&quot;: 0.0,
+    &quot;ci_95&quot;: [
+      0.0,
+      0.0
+    ],
+    &quot;n_bootstrap&quot;: 500,
+    &quot;n_seeds&quot;: 1,
+    &quot;temporal_blocks&quot;: 2,
+    &quot;block_length_slices&quot;: 2,
+    &quot;status&quot;: &quot;exploratory_short_stream&quot;,
+    &quot;method&quot;: &quot;paired circular moving-block bootstrap; shared time draws across seeds&quot;,
+    &quot;limitation&quot;: &quot;Conditional on supplied periods; seeds do not add independent transaction populations.&quot;
+  }
+}</pre>
+    <h2>Reproducibility</h2><pre>{
+  &quot;run_id&quot;: &quot;RUN_F4D2D56799&quot;,
+  &quot;version&quot;: &quot;0.4.1&quot;,
+  &quot;source_sha256&quot;: &quot;b52eaacbd0ca1f919b9d6ecf5e920a2cc06b24ccf49dcd53e82ae7071512884c&quot;,
+  &quot;data_kind&quot;: &quot;unverified&quot;,
+  &quot;dataset&quot;: &quot;provided_entity_frame.csv&quot;,
+  &quot;dataset_sha256&quot;: &quot;90e5c9948501fde79374fbca06f4a8457fcba367323ea98b7507c1c64e03fa7d&quot;,
+  &quot;identity_sha256&quot;: null,
+  &quot;seed&quot;: 42,
+  &quot;n_train_slices&quot;: 1,
+  &quot;evaluation_slice_indices&quot;: [
+    1,
+    2
+  ],
+  &quot;adaptive_window&quot;: null,
+  &quot;half_life_slices&quot;: null,
+  &quot;max_retrains&quot;: null,
+  &quot;delay_slices&quot;: 0,
+  &quot;latency_mode&quot;: &quot;fixed&quot;,
+  &quot;lognormal_mu&quot;: 1.38,
+  &quot;lognormal_sigma&quot;: 0.45,
+  &quot;model_params&quot;: {
+    &quot;n_estimators&quot;: 150,
+    &quot;max_depth&quot;: 6,
+    &quot;learning_rate&quot;: 0.08,
+    &quot;subsample&quot;: 0.85,
+    &quot;colsample_bytree&quot;: 0.85,
+    &quot;eval_metric&quot;: &quot;logloss&quot;,
+    &quot;n_jobs&quot;: 2
+  },
+  &quot;strategies&quot;: [
+    &quot;static&quot;,
+    &quot;adaptive&quot;
+  ],
+  &quot;recent_window_basis&quot;: &quot;latest verified transaction arrival slice&quot;,
+  &quot;initial_training_seconds&quot;: 0.030048600001464365,
+  &quot;calibration_policy&quot;: &quot;chronological final 20%, sigmoid if &gt;=5 examples per class&quot;,
+  &quot;initial_fit&quot;: {
+    &quot;fit_rows&quot;: 80,
+    &quot;validation_rows&quot;: 20,
+    &quot;calibration&quot;: &quot;disabled_or_insufficient_validation_classes&quot;,
+    &quot;threshold&quot;: 0.007278261706233025,
+    &quot;threshold_objective&quot;: &quot;validation_f1&quot;
+  },
+  &quot;device&quot;: &quot;cpu&quot;,
+  &quot;python&quot;: &quot;3.12.10&quot;,
+  &quot;packages&quot;: {
+    &quot;numpy&quot;: &quot;2.5.4&quot;,
+    &quot;pandas&quot;: &quot;3.0.6&quot;,
+    &quot;scipy&quot;: &quot;1.18.1&quot;,
+    &quot;scikit-learn&quot;: &quot;1.9.1&quot;,
+    &quot;xgboost&quot;: &quot;3.4.1&quot;,
+    &quot;river&quot;: &quot;0.26.1&quot;
+  },
+  &quot;history_features&quot;: false,
+  &quot;pre_transaction_only&quot;: false,
+  &quot;all_features&quot;: false,
+  &quot;label_queue&quot;: {
+    &quot;current_slice&quot;: 2,
+    &quot;delay_slices&quot;: 0,
+    &quot;latency_mode&quot;: &quot;fixed&quot;,
+    &quot;total_enqueued&quot;: 200,
+    &quot;total_matured&quot;: 200,
+    &quot;total_pending&quot;: 0,
+    &quot;maturity_rate&quot;: 1.0
+  },
+  &quot;time_basis&quot;: &quot;dataset-relative hours&quot;,
+  &quot;exclude_card_identifiers&quot;: true,
+  &quot;elapsed_seconds&quot;: 0.08549789999960922,
+  &quot;validation&quot;: {
+    &quot;source&quot;: &quot;provided_dataframe&quot;,
+    &quot;total_rows&quot;: 300
+  },
+  &quot;process_rss_mb&quot;: 287.12890625
+}</pre>
+    <p>Error examples: error_examples.csv. Predictions and labels: predictions.csv. Threshold diagnostics are descriptive only. No publication claims are inferred from synthetic runs.</p></html>

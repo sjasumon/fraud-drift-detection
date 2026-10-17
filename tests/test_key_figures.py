@@ -1,59 +1,61 @@
-"""
-Unit tests for the publication key figures generator (src/generate_key_figures.py).
-Validates strict absence of silent synthetic-data fallbacks and guarantees that
-figure generation refuses to plot placeholder data when artifacts are missing.
-"""
+"""Reports must consume explicit saved run artifacts, never historical logs."""
 
-import pytest
-from pathlib import Path
+import json
 import pandas as pd
-
-from src.generate_key_figures import (
-    parse_ieee_26w_metrics,
-    plot_stream_f1_drift_timeline,
-    plot_verification_latency_degradation
-)
+import pytest
+from src.reporting import generate_report, block_bootstrap_delta
 
 
-def test_parse_ieee_26w_metrics_missing_log_raises(monkeypatch, tmp_path):
-    """Verifies that missing pipeline log immediately raises FileNotFoundError without synthetic fallback."""
-    fake_root = tmp_path / "nonexistent_root"
-    monkeypatch.setattr("src.generate_key_figures.ROOT_DIR", fake_root)
-
-    with pytest.raises(FileNotFoundError, match="refusing to plot synthetic placeholder data"):
-        parse_ieee_26w_metrics()
+def test_report_requires_manifest(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        generate_report(tmp_path)
 
 
-def test_parse_ieee_26w_metrics_valid_execution():
-    """Verifies that real pipeline log parses exactly 26 sequential weeks with expected metrics."""
-    df = parse_ieee_26w_metrics()
-    assert isinstance(df, pd.DataFrame)
-    assert len(df) == 26
-    assert list(df["week"]) == list(range(1, 27))
-    assert "static_f1" in df.columns
-    assert "adaptive_f1" in df.columns
-    assert "is_retrain" in df.columns
-    assert df["is_retrain"].sum() == 22  # Exactly 22 GPU retrains
+def test_generate_report_from_prediction_ledger(tmp_path):
+    rows = []
+    for model in ["static", "adaptive"]:
+        for t in range(3):
+            for i in range(20):
+                y = int(i % 5 == 0)
+                rows.append(
+                    dict(
+                        seed=42,
+                        window=2,
+                        slice_index=t + 2,
+                        day=t,
+                        trans_id=f"{t}-{i}",
+                        model=model,
+                        y_true=y,
+                        probability=0.8 if y else 0.1,
+                        prediction=y,
+                    )
+                )
+    pd.DataFrame(rows).to_csv(tmp_path / "predictions.csv", index=False)
+    (tmp_path / "manifest.json").write_text(
+        json.dumps({"run_id": "TEST", "data_kind": "synthetic"})
+    )
+    (tmp_path / "retrain_events.json").write_text("[]")
+    summary = generate_report(tmp_path)
+    assert summary["adaptive_model"]["overall_f1"] == 1
+    assert (tmp_path / "report.html").exists() and (tmp_path / "overview.png").exists()
+    assert "synthetic" in (tmp_path / "report.html").read_text()
+    ci = json.loads((tmp_path / "confidence_intervals.json").read_text())
+    assert ci["adaptive"]["ci_95"] == [0, 0]
 
 
-def test_plot_stream_f1_drift_timeline_execution():
-    """Verifies that Figure 1 can be rendered and saved cleanly."""
-    df = parse_ieee_26w_metrics()
-    out = plot_stream_f1_drift_timeline(df)
-    assert out.exists()
-
-
-def test_plot_verification_latency_degradation_missing_json_raises(monkeypatch, tmp_path):
-    """Verifies that missing delayed feedback benchmark JSON raises FileNotFoundError."""
-    fake_root = tmp_path / "nonexistent_root"
-    monkeypatch.setattr("src.generate_key_figures.ROOT_DIR", fake_root)
-
-    with pytest.raises(FileNotFoundError, match="refusing to plot synthetic placeholder data"):
-        plot_verification_latency_degradation()
-
-
-def test_plot_verification_latency_degradation_execution():
-    """Verifies that Figure 2 can be rendered and saved cleanly from benchmark JSON."""
-    out = plot_verification_latency_degradation()
-    assert out.exists()
-
+def test_bootstrap_requires_matching_predictions():
+    df = pd.DataFrame(
+        [
+            dict(
+                seed=1,
+                window=1,
+                slice_index=1,
+                trans_id="a",
+                model="adaptive",
+                y_true=1,
+                prediction=1,
+            )
+        ]
+    )
+    with pytest.raises(ValueError, match="paired"):
+        block_bootstrap_delta(df, "adaptive")

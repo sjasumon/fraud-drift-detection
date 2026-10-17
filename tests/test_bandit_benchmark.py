@@ -4,7 +4,6 @@ Tests simulation convergence, statistical hypothesis testing (paired t-test),
 and visualization rendering under controlled change-points.
 """
 
-import pytest
 import numpy as np
 from pathlib import Path
 
@@ -57,19 +56,25 @@ def test_generate_bandit_plots_custom(tmp_path: Path, monkeypatch):
         "standard_ucb": [np.array([1.0, 2.5, 4.0]), np.array([1.2, 2.8, 4.5])],
         "sliding_window_ucb": [np.array([1.0, 2.0, 3.0]), np.array([1.1, 2.2, 3.2])],
         "discounted_ucb": [np.array([1.0, 1.8, 2.8]), np.array([1.0, 1.9, 2.9])],
-        "adwin_ucb": [np.array([1.0, 1.5, 2.0]), np.array([1.0, 1.6, 2.2])]
+        "adwin_ucb": [np.array([1.0, 1.5, 2.0]), np.array([1.0, 1.6, 2.2])],
     }
     summary = {
         "agents": {
             "standard_ucb": {"final_regret": {"mean": 4.25, "std": 0.35}},
             "sliding_window_ucb": {"final_regret": {"mean": 3.1, "std": 0.14}},
             "discounted_ucb": {"final_regret": {"mean": 2.85, "std": 0.07}},
-            "adwin_ucb": {"final_regret": {"mean": 2.1, "std": 0.14}}
+            "adwin_ucb": {"final_regret": {"mean": 2.1, "std": 0.14}},
         },
         "paired_tests": {
             "adwin_vs_standard_ucb": {"p_value": 0.0005, "pct_regret_reduction": 50.59}
-        }
+        },
     }
 
-    out = generate_bandit_plots(all_regrets, summary, change_points=[2], total_steps=3, output_filename="test_plot.png")
+    out = generate_bandit_plots(
+        all_regrets,
+        summary,
+        change_points=[2],
+        total_steps=3,
+        output_filename="test_plot.png",
+    )
     assert out.exists()

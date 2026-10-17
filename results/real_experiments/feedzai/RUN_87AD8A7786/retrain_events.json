@@ -1,0 +1,67 @@
+[
+  {
+    "adaptation_num": 1,
+    "slice_idx": 2,
+    "accumulated_samples": 397039,
+    "fraud_count": 3896,
+    "duration_seconds": 4.648720699999103,
+    "device": "cpu",
+    "latest_training_arrival_slice": 2,
+    "verification_staleness_slices": 0,
+    "training_id_digest": "adbbf70b1a8f1152cf228314d3d8e38ab14460fe315969656597a14c98151374",
+    "threshold": 0.12430994212627411,
+    "model": "weekly"
+  },
+  {
+    "adaptation_num": 1,
+    "slice_idx": 2,
+    "accumulated_samples": 397039,
+    "fraud_count": 3896,
+    "duration_seconds": 6.462545700000192,
+    "device": "cpu",
+    "latest_training_arrival_slice": 2,
+    "verification_staleness_slices": 0,
+    "training_id_digest": "adbbf70b1a8f1152cf228314d3d8e38ab14460fe315969656597a14c98151374",
+    "threshold": 0.12430994212627411,
+    "model": "adaptive"
+  },
+  {
+    "adaptation_num": 1,
+    "slice_idx": 3,
+    "accumulated_samples": 547975,
+    "fraud_count": 5288,
+    "duration_seconds": 7.717519199999515,
+    "device": "cpu",
+    "latest_training_arrival_slice": 3,
+    "verification_staleness_slices": 0,
+    "training_id_digest": "7e55a77affc684d27c1bbb1c01aaa7fa2630d9651ecac09f199eabf8f8cd39b6",
+    "threshold": 0.1063346415758133,
+    "model": "periodic"
+  },
+  {
+    "adaptation_num": 2,
+    "slice_idx": 3,
+    "accumulated_samples": 547975,
+    "fraud_count": 5288,
+    "duration_seconds": 6.784725400000752,
+    "device": "cpu",
+    "latest_training_arrival_slice": 3,
+    "verification_staleness_slices": 0,
+    "training_id_digest": "7e55a77affc684d27c1bbb1c01aaa7fa2630d9651ecac09f199eabf8f8cd39b6",
+    "threshold": 0.1063346415758133,
+    "model": "weekly"
+  },
+  {
+    "adaptation_num": 1,
+    "slice_idx": 3,
+    "accumulated_samples": 287915,
+    "fraud_count": 2590,
+    "duration_seconds": 3.4723378000016965,
+    "device": "cpu",
+    "latest_training_arrival_slice": 3,
+    "verification_staleness_slices": 0,
+    "training_id_digest": "aa63b7b8f1bace17f7fe120c815ba69490adfc4aab37cc9b5aca3fc422edc57d",
+    "threshold": 0.12874309718608856,
+    "model": "sliding"
+  }
+]

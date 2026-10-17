@@ -1,0 +1,93 @@
+{
+  "run_id": "RUN_12C56BA057",
+  "version": "0.4.1",
+  "source_sha256": "2e1c57766b4d62a0821f223c4b0124a536e625a3095674f52048bb7ee41f660d",
+  "data_kind": "synthetic",
+  "dataset": "synthetic_paysim.csv",
+  "dataset_sha256": "c70534e817328a4d8eae3b491b4b693d85aee358012ba43a89c97d0c544da913",
+  "identity_sha256": null,
+  "seed": 42,
+  "n_train_slices": 2,
+  "evaluation_slice_indices": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "adaptive_window": 4,
+  "half_life_slices": null,
+  "max_retrains": null,
+  "delay_slices": 0,
+  "latency_mode": "fixed",
+  "lognormal_mu": 1.38,
+  "lognormal_sigma": 0.45,
+  "model_params": {
+    "n_estimators": 40,
+    "max_depth": 6,
+    "learning_rate": 0.08,
+    "subsample": 0.85,
+    "colsample_bytree": 0.85,
+    "eval_metric": "logloss",
+    "n_jobs": 2
+  },
+  "strategies": [
+    "static",
+    "periodic",
+    "weekly",
+    "sliding",
+    "adaptive"
+  ],
+  "recent_window_basis": "latest verified transaction arrival slice",
+  "initial_training_seconds": 0.01264490600078716,
+  "calibration_policy": "chronological final 20%, sigmoid if >=5 examples per class",
+  "initial_fit": {
+    "fit_rows": 160,
+    "validation_rows": 41,
+    "calibration": "disabled_or_insufficient_validation_classes",
+    "threshold": 0.057310301810503006,
+    "threshold_objective": "validation_f1"
+  },
+  "device": "cpu",
+  "python": "3.12.14",
+  "packages": {
+    "numpy": "2.5.4",
+    "pandas": "3.0.6",
+    "scipy": "1.18.1",
+    "scikit-learn": "1.9.1",
+    "xgboost": "3.4.1",
+    "river": "0.26.1"
+  },
+  "history_features": false,
+  "pre_transaction_only": true,
+  "all_features": false,
+  "label_queue": {
+    "current_slice": 7,
+    "delay_slices": 0,
+    "latency_mode": "fixed",
+    "total_enqueued": 585,
+    "total_matured": 585,
+    "total_pending": 0,
+    "maturity_rate": 1.0
+  },
+  "time_basis": "dataset-relative hours",
+  "exclude_card_identifiers": false,
+  "elapsed_seconds": 1.3585323030019936,
+  "validation": {
+    "dataset_type": "PaySim",
+    "file_name": "synthetic_paysim.csv",
+    "total_rows": 786,
+    "columns_count": 16,
+    "fraud_count": 52,
+    "legit_count": 734,
+    "fraud_ratio_pct": 6.616,
+    "step_min": 3,
+    "step_max": 1343,
+    "total_hours": 1341,
+    "total_days": 55.9,
+    "total_weeks": 8.0,
+    "validation_status": "PASSED"
+  },
+  "process_rss_mb": null
+}

@@ -1,65 +1,16 @@
-version: '3.8'
-
 services:
-  mysql:
-    image: mysql:8.4
-    container_name: fraud_mysql_db
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-fraud_dev_pass_12345}
-      MYSQL_DATABASE: fraud_drift_db
-    ports:
-      # Bound to localhost only to prevent exposure across public network interfaces
-      - "127.0.0.1:3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p${DB_PASSWORD:-fraud_dev_pass_12345} || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-    networks:
-      - fraud_net
-
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: fraud_scoring_api
-    restart: unless-stopped
+    build: .
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
-      - APP_ENV=${APP_ENV:-development}
-      - API_KEY=${API_KEY:-dev-secret-key}
-      - DB_HOST=mysql
-      - DB_PORT=3306
-      - DB_USER=root
-      - DB_PASSWORD=${DB_PASSWORD:-fraud_dev_pass_12345}
-      - DB_NAME=fraud_drift_db
-      - USE_GPU=${USE_GPU:-false}
-      - GPU_DEVICE=${GPU_DEVICE:-cpu}
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - fraud_net
-    # CPU-portable by default. To enable NVIDIA GPU reservation on GPU hosts,
-    # uncomment the deploy block below or set compose environment overrides:
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
-
+      USE_GPU: "false"
+      API_KEY: "${API_KEY:?Set API_KEY before starting}"
+      MODEL_BUNDLE_PATH: /models/active
+      PREDICTION_DB: /state/predictions.sqlite
+      MODEL_OUTPUT_DIR: /state/models
+    volumes:
+      - "${MODEL_BUNDLE_DIR:?Set MODEL_BUNDLE_DIR to a real model package}:/models/active:ro"
+      - service_state:/state
 volumes:
-  mysql_data:
-    driver: local
-
-networks:
-  fraud_net:
-    driver: bridge
-
+  service_state:

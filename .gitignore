@@ -25,13 +25,10 @@ mysql_data/
 data/
 ieee/
 ieee-fraud-detection.zip
+*.zip
 *.tar.gz
 *.csv
-!results/**/*.csv
-!results/*.csv
-*.zip
-!results/**/*.zip
-!results/*.zip
+!results/metrics/*.csv
 
 # OS metadata
 .DS_Store
@@ -41,6 +38,19 @@ Thumbs.db
 *.log
 results/logs/
 
-# Local notes
+# Private applicant due-diligence & supervisor notes
+Prof_Yun_Sing_Koh_profile.md
 *profile*.md
 
+
+# Mutable serving state and generated model packages
+results/service/
+!results/**/predictions.csv
+results/real_experiments/**/predictions.csv
+results/operational_model/**/predictions.csv
+!results/**/weekly_metrics.csv
+!results/**/metrics.csv
+!results/**/alert_budgets.csv
+!results/**/compute_cost.csv
+!results/**/error_examples.csv
+!results/**/study.csv

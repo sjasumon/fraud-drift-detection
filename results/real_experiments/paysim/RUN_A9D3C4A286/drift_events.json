@@ -1,0 +1,1412 @@
+[
+  {
+    "slice_index": 2,
+    "step_number": 344,
+    "trans_id": "PS_4785685",
+    "detector_type": "DDM",
+    "error_rate": 0.0011,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 344 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 345,
+    "trans_id": "PS_4785769",
+    "detector_type": "DDM",
+    "error_rate": 0.002,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 345 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 345,
+    "trans_id": "PS_4793604",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 345 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 345,
+    "trans_id": "PS_4796624",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 345 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 345,
+    "trans_id": "PS_4798738",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 345 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 346,
+    "trans_id": "PS_4810487",
+    "detector_type": "DDM",
+    "error_rate": 0.0002,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 346 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 346,
+    "trans_id": "PS_4823480",
+    "detector_type": "DDM",
+    "error_rate": 0.0002,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 346 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 348,
+    "trans_id": "PS_4863914",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 348 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 348,
+    "trans_id": "PS_4875893",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 348 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 348,
+    "trans_id": "PS_4881850",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 348 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 349,
+    "trans_id": "PS_4894990",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 349 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 349,
+    "trans_id": "PS_4895069",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 349 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 349,
+    "trans_id": "PS_4912416",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 349 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 349,
+    "trans_id": "PS_4913825",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 349 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 350,
+    "trans_id": "PS_4917300",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 350 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 350,
+    "trans_id": "PS_4932995",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 350 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 351,
+    "trans_id": "PS_4945979",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 351 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 351,
+    "trans_id": "PS_4950858",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 351 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 351,
+    "trans_id": "PS_4955046",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 351 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 351,
+    "trans_id": "PS_4965642",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 351 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 351,
+    "trans_id": "PS_4968257",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 351 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 352,
+    "trans_id": "PS_4981589",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 352 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 352,
+    "trans_id": "PS_4983562",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 352 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 352,
+    "trans_id": "PS_4991602",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 352 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 352,
+    "trans_id": "PS_4995884",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 352 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 353,
+    "trans_id": "PS_5001612",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 353 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 353,
+    "trans_id": "PS_5010003",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 353 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 353,
+    "trans_id": "PS_5013181",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 353 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 353,
+    "trans_id": "PS_5025311",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 353 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 354,
+    "trans_id": "PS_5039841",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 354 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 354,
+    "trans_id": "PS_5040726",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 354 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 354,
+    "trans_id": "PS_5045174",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 354 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 354,
+    "trans_id": "PS_5065626",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 354 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 355,
+    "trans_id": "PS_5099867",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 355 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 356,
+    "trans_id": "PS_5115795",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 356 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 356,
+    "trans_id": "PS_5133543",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 356 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 356,
+    "trans_id": "PS_5144911",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 356 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 357,
+    "trans_id": "PS_5149974",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 357 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 357,
+    "trans_id": "PS_5155923",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 357 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 357,
+    "trans_id": "PS_5160996",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 357 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 358,
+    "trans_id": "PS_5162648",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 358 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 359,
+    "trans_id": "PS_5175413",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 359 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 359,
+    "trans_id": "PS_5176096",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 359 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 359,
+    "trans_id": "PS_5178429",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 359 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 359,
+    "trans_id": "PS_5179096",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 359 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 360,
+    "trans_id": "PS_5185491",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 360 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 360,
+    "trans_id": "PS_5186050",
+    "detector_type": "DDM",
+    "error_rate": 0.0001,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 360 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 419,
+    "trans_id": "PS_5990470",
+    "detector_type": "ADWIN",
+    "error_rate": 0.0002,
+    "confidence_score": 681408.0,
+    "status": "DRIFT",
+    "notes": "ADWIN flagged distribution shift at step 419 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 424,
+    "trans_id": "PS_5996380",
+    "detector_type": "DDM",
+    "error_rate": 0.0002,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 424 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 426,
+    "trans_id": "PS_5996422",
+    "detector_type": "ADWIN",
+    "error_rate": 0.0054,
+    "confidence_score": 3904.0,
+    "status": "DRIFT",
+    "notes": "ADWIN flagged distribution shift at step 426 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 446,
+    "trans_id": "PS_6010946",
+    "detector_type": "DDM",
+    "error_rate": 0.0002,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 446 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 447,
+    "trans_id": "PS_6010950",
+    "detector_type": "ADWIN",
+    "error_rate": 0.002,
+    "confidence_score": 10432.0,
+    "status": "DRIFT",
+    "notes": "ADWIN flagged distribution shift at step 447 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 450,
+    "trans_id": "PS_6014714",
+    "detector_type": "DDM",
+    "error_rate": 0.0002,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 450 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 451,
+    "trans_id": "PS_6015239",
+    "detector_type": "DDM",
+    "error_rate": 0.0002,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 451 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 451,
+    "trans_id": "PS_6017611",
+    "detector_type": "DDM",
+    "error_rate": 0.0002,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 451 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 452,
+    "trans_id": "PS_6018490",
+    "detector_type": "DDM",
+    "error_rate": 0.0002,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 452 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 452,
+    "trans_id": "PS_6018618",
+    "detector_type": "DDM",
+    "error_rate": 0.0002,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 452 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 453,
+    "trans_id": "PS_6018793",
+    "detector_type": "DDM",
+    "error_rate": 0.0002,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 453 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 456,
+    "trans_id": "PS_6019703",
+    "detector_type": "DDM",
+    "error_rate": 0.0002,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 456 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 466,
+    "trans_id": "PS_6020473",
+    "detector_type": "DDM",
+    "error_rate": 0.0002,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 466 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 466,
+    "trans_id": "PS_6020958",
+    "detector_type": "DDM",
+    "error_rate": 0.0002,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 466 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 467,
+    "trans_id": "PS_6021353",
+    "detector_type": "DDM",
+    "error_rate": 0.0002,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 467 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 473,
+    "trans_id": "PS_6030113",
+    "detector_type": "DDM",
+    "error_rate": 0.0002,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 473 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 475,
+    "trans_id": "PS_6032855",
+    "detector_type": "DDM",
+    "error_rate": 0.0002,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 475 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 499,
+    "trans_id": "PS_6055695",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 499 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 500,
+    "trans_id": "PS_6055718",
+    "detector_type": "ADWIN",
+    "error_rate": 0.0121,
+    "confidence_score": 992.0,
+    "status": "DRIFT",
+    "notes": "ADWIN flagged distribution shift at step 500 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 501,
+    "trans_id": "PS_6061832",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 501 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 502,
+    "trans_id": "PS_6061883",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 502 in slice 3"
+  },
+  {
+    "slice_index": 2,
+    "step_number": 504,
+    "trans_id": "PS_6064033",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 504 in slice 3"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 513,
+    "trans_id": "PS_6065317",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 513 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 516,
+    "trans_id": "PS_6074070",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 516 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 519,
+    "trans_id": "PS_6078961",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 519 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 521,
+    "trans_id": "PS_6082018",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 521 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 522,
+    "trans_id": "PS_6089321",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 522 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 522,
+    "trans_id": "PS_6092252",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 522 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 522,
+    "trans_id": "PS_6100209",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 522 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 523,
+    "trans_id": "PS_6100661",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 523 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 537,
+    "trans_id": "PS_6118836",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 537 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 538,
+    "trans_id": "PS_6118851",
+    "detector_type": "ADWIN",
+    "error_rate": 0.0019,
+    "confidence_score": 7712.0,
+    "status": "DRIFT",
+    "notes": "ADWIN flagged distribution shift at step 538 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 539,
+    "trans_id": "PS_6121962",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 539 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 540,
+    "trans_id": "PS_6122724",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 540 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 541,
+    "trans_id": "PS_6127446",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 541 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 568,
+    "trans_id": "PS_6186782",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 568 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 569,
+    "trans_id": "PS_6187268",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 569 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 569,
+    "trans_id": "PS_6187831",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 569 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 572,
+    "trans_id": "PS_6194207",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 572 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 573,
+    "trans_id": "PS_6196491",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 573 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 574,
+    "trans_id": "PS_6198102",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 574 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 574,
+    "trans_id": "PS_6198455",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 574 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 574,
+    "trans_id": "PS_6200004",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 574 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 576,
+    "trans_id": "PS_6201025",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 576 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 577,
+    "trans_id": "PS_6201197",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 577 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 586,
+    "trans_id": "PS_6205440",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 586 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 586,
+    "trans_id": "PS_6206519",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 586 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 587,
+    "trans_id": "PS_6207689",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 587 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 588,
+    "trans_id": "PS_6210710",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 588 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 588,
+    "trans_id": "PS_6211845",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 588 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 588,
+    "trans_id": "PS_6212776",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 588 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 588,
+    "trans_id": "PS_6213538",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 588 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 588,
+    "trans_id": "PS_6213753",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 588 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 589,
+    "trans_id": "PS_6216502",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 589 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 590,
+    "trans_id": "PS_6226751",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 590 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 591,
+    "trans_id": "PS_6227078",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 591 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 593,
+    "trans_id": "PS_6232501",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 593 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 594,
+    "trans_id": "PS_6238907",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 594 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 595,
+    "trans_id": "PS_6239362",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 595 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 595,
+    "trans_id": "PS_6243166",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 595 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 595,
+    "trans_id": "PS_6243646",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 595 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 596,
+    "trans_id": "PS_6248335",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 596 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 596,
+    "trans_id": "PS_6252281",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 596 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 596,
+    "trans_id": "PS_6252831",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 596 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 597,
+    "trans_id": "PS_6256182",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 597 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 599,
+    "trans_id": "PS_6258826",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 599 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 600,
+    "trans_id": "PS_6259034",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 600 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 601,
+    "trans_id": "PS_6259149",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 601 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 608,
+    "trans_id": "PS_6260309",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 608 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 609,
+    "trans_id": "PS_6261061",
+    "detector_type": "DDM",
+    "error_rate": 0.0003,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 609 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 611,
+    "trans_id": "PS_6262276",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 611 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 612,
+    "trans_id": "PS_6262608",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 612 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 612,
+    "trans_id": "PS_6262829",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 612 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 612,
+    "trans_id": "PS_6262999",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 612 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 612,
+    "trans_id": "PS_6264914",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 612 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 613,
+    "trans_id": "PS_6264965",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 613 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 614,
+    "trans_id": "PS_6265347",
+    "detector_type": "ADWIN",
+    "error_rate": 0.0009,
+    "confidence_score": 113728.0,
+    "status": "DRIFT",
+    "notes": "ADWIN flagged distribution shift at step 614 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 616,
+    "trans_id": "PS_6266290",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 616 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 617,
+    "trans_id": "PS_6268009",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 617 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 618,
+    "trans_id": "PS_6268976",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 618 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 620,
+    "trans_id": "PS_6271788",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 620 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 624,
+    "trans_id": "PS_6272927",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 624 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 633,
+    "trans_id": "PS_6273163",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 633 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 637,
+    "trans_id": "PS_6273219",
+    "detector_type": "ADWIN",
+    "error_rate": 0.0199,
+    "confidence_score": 704.0,
+    "status": "DRIFT",
+    "notes": "ADWIN flagged distribution shift at step 637 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 639,
+    "trans_id": "PS_6276619",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 639 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 640,
+    "trans_id": "PS_6276643",
+    "detector_type": "ADWIN",
+    "error_rate": 0.0221,
+    "confidence_score": 544.0,
+    "status": "DRIFT",
+    "notes": "ADWIN flagged distribution shift at step 640 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 648,
+    "trans_id": "PS_6281507",
+    "detector_type": "ADWIN",
+    "error_rate": 0.0112,
+    "confidence_score": 896.0,
+    "status": "DRIFT",
+    "notes": "ADWIN flagged distribution shift at step 648 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 648,
+    "trans_id": "PS_6281507",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 648 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 656,
+    "trans_id": "PS_6283253",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 656 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 657,
+    "trans_id": "PS_6283801",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 657 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 660,
+    "trans_id": "PS_6286331",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 660 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 663,
+    "trans_id": "PS_6291214",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 663 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 665,
+    "trans_id": "PS_6292357",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 665 in slice 4"
+  },
+  {
+    "slice_index": 3,
+    "step_number": 672,
+    "trans_id": "PS_6296166",
+    "detector_type": "DDM",
+    "error_rate": 0.0004,
+    "confidence_score": null,
+    "status": "DRIFT",
+    "notes": "DDM flagged drift level reached at step 672 in slice 4"
+  }
+]

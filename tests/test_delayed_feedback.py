@@ -15,12 +15,14 @@ from src.delayed_feedback import DelayedFeedbackQueue
 def sample_slice_data():
     """Generates synthetic transactions for testing delayed feedback queues."""
     n_rows = 100
-    df = pd.DataFrame({
-        "trans_id": [f"TX_{i:04d}" for i in range(n_rows)],
-        "step": np.arange(n_rows),
-        "TransactionAmt": np.random.uniform(10, 500, size=n_rows),
-        "isFraud": np.random.binomial(1, 0.05, size=n_rows)
-    })
+    df = pd.DataFrame(
+        {
+            "trans_id": [f"TX_{i:04d}" for i in range(n_rows)],
+            "step": np.arange(n_rows),
+            "TransactionAmt": np.random.uniform(10, 500, size=n_rows),
+            "isFraud": np.random.binomial(1, 0.05, size=n_rows),
+        }
+    )
     return df
 
 
@@ -57,7 +59,7 @@ def test_zero_delay_immediate_feedback(sample_slice_data):
     """Verifies that delay_slices=0 acts as an immediate verification baseline."""
     queue = DelayedFeedbackQueue(delay_slices=0, latency_mode="fixed")
     queue.enqueue(sample_slice_data, current_slice=5)
-    
+
     matured = queue.dequeue_matured(current_slice=5)
     assert len(matured) == len(sample_slice_data)
     assert queue.get_pending_count() == 0
@@ -92,7 +94,9 @@ def test_zero_temporal_leakage_in_training_data(sample_slice_data):
 
 def test_lognormal_delay_distribution(sample_slice_data):
     """Verifies that LogNormal delays produce valid positive future maturity slices."""
-    queue = DelayedFeedbackQueue(latency_mode="lognormal", lognormal_mu=1.38, random_seed=42)
+    queue = DelayedFeedbackQueue(
+        latency_mode="lognormal", lognormal_mu=1.38, random_seed=42
+    )
     assigned = queue.enqueue(sample_slice_data, current_slice=10)
 
     assert len(assigned) == len(sample_slice_data)
@@ -142,11 +146,12 @@ def test_delayed_feedback_skipped_slice_no_data_loss(sample_slice_data):
 
     # Invariant: Enqueued == Matured + Pending
     summary = queue.get_status_summary(current_slice=4)
-    assert summary["total_enqueued"] == summary["total_matured"] + summary["total_pending"]
+    assert (
+        summary["total_enqueued"] == summary["total_matured"] + summary["total_pending"]
+    )
 
     # Now advance to slice 6: the remaining slice 2 (maturing at 5) must mature
     matured_at_6 = queue.dequeue_matured(current_slice=6)
     assert len(matured_at_6) == 1 * n
     assert queue.get_pending_count() == 0
     assert queue.get_matured_count() == 3 * n
-

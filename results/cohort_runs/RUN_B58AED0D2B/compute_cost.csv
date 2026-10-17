@@ -1,0 +1,3 @@
+model,retrains,training_seconds,initial_training_seconds
+static,0,0,0.030853799999022158
+adaptive,0,0,0.030853799999022158

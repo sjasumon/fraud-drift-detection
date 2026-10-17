@@ -19,7 +19,7 @@ class NonStationaryBanditEnv:
         drift_schedule: Optional[List[Dict[str, Any]]] = None,
         reward_distribution: str = "bernoulli",
         noise_std: float = 0.1,
-        random_seed: int = 42
+        random_seed: int = 42,
     ):
         self.n_arms = n_arms
         self.reward_distribution = reward_distribution.lower()
@@ -30,10 +30,26 @@ class NonStationaryBanditEnv:
         # Reflects initial regime, abrupt attack shift, second attack shift, and cyclical recurrence
         if drift_schedule is None:
             self.drift_schedule = [
-                {"end_step": 2500, "means": [0.80, 0.30, 0.20, 0.40, 0.15], "name": "Phase 1: Baseline"},
-                {"end_step": 5000, "means": [0.20, 0.25, 0.85, 0.30, 0.10], "name": "Phase 2: Abrupt Drift to Arm 2"},
-                {"end_step": 7500, "means": [0.15, 0.20, 0.25, 0.30, 0.90], "name": "Phase 3: Abrupt Drift to Arm 4"},
-                {"end_step": 10000, "means": [0.85, 0.20, 0.15, 0.35, 0.25], "name": "Phase 4: Cyclical Recurrence to Arm 0"}
+                {
+                    "end_step": 2500,
+                    "means": [0.80, 0.30, 0.20, 0.40, 0.15],
+                    "name": "Phase 1: Baseline",
+                },
+                {
+                    "end_step": 5000,
+                    "means": [0.20, 0.25, 0.85, 0.30, 0.10],
+                    "name": "Phase 2: Abrupt Drift to Arm 2",
+                },
+                {
+                    "end_step": 7500,
+                    "means": [0.15, 0.20, 0.25, 0.30, 0.90],
+                    "name": "Phase 3: Abrupt Drift to Arm 4",
+                },
+                {
+                    "end_step": 10000,
+                    "means": [0.85, 0.20, 0.15, 0.35, 0.25],
+                    "name": "Phase 4: Cyclical Recurrence to Arm 0",
+                },
             ]
         else:
             self.drift_schedule = drift_schedule
@@ -100,7 +116,7 @@ class NonStationaryBanditEnv:
             "optimal_arm": int(np.argmax(means)),
             "optimal_mean": opt_mean,
             "instant_regret": instant_regret,
-            "phase": self.drift_schedule[self.current_phase_idx]["name"]
+            "phase": self.drift_schedule[self.current_phase_idx]["name"],
         }
 
         return reward, instant_regret, info

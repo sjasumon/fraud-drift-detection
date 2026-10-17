@@ -5,7 +5,6 @@ schema adaptation, categorical handling, and temporal partitioning.
 """
 
 from pathlib import Path
-import pytest
 import numpy as np
 import pandas as pd
 
@@ -25,12 +24,14 @@ def test_feedzai_baf_ingestion_schema(tmp_path: Path):
     else:
         # Fallback to self-contained synthetic fixture so tests never skip on clean clones
         sample_path = tmp_path / "synthetic_feedzai_base.csv"
-        mock_df = pd.DataFrame({
-            "fraud_bool": [0, 1] * 60,
-            "month": [0] * 60 + [1] * 60,
-            "proposed_credit_limit": [1200.0] * 120,
-            "payment_type": ["AA", "AB", "AC", "AA"] * 30
-        })
+        mock_df = pd.DataFrame(
+            {
+                "fraud_bool": [0, 1] * 60,
+                "month": [0] * 60 + [1] * 60,
+                "proposed_credit_limit": [1200.0] * 120,
+                "payment_type": ["AA", "AB", "AC", "AA"] * 30,
+            }
+        )
         mock_df.to_csv(sample_path, index=False)
         ingestor = DatasetIngestion(sample_path)
         df, report = ingestor.load_and_validate()
@@ -51,11 +52,13 @@ def test_feedzai_baf_monthly_partitioning():
         sample_df = pd.read_csv(feedzai_path, nrows=10_000)
     else:
         # Fallback to self-contained 8-month fixture so tests never skip on clean clones
-        sample_df = pd.DataFrame({
-            "fraud_bool": [0, 1] * 40,
-            "month": [m for m in range(8) for _ in range(10)],
-            "proposed_credit_limit": [1500.0] * 80
-        })
+        sample_df = pd.DataFrame(
+            {
+                "fraud_bool": [0, 1] * 40,
+                "month": [m for m in range(8) for _ in range(10)],
+                "proposed_credit_limit": [1500.0] * 80,
+            }
+        )
 
     sample_df["isFraud"] = sample_df["fraud_bool"].astype(int)
     sample_df["trans_id"] = [f"BAF_{i}" for i in range(len(sample_df))]
@@ -77,19 +80,21 @@ def test_feedzai_baf_monthly_partitioning():
 
 def test_paysim_ingestion_schema():
     """Verifies that PaySim dataset loads and computes accounting balance features."""
-    sample_df = pd.DataFrame({
-        "step": [1, 100, 250, 400],  # 400 hours = 16.6 days (>14 days check)
-        "type": ["PAYMENT", "TRANSFER", "CASH_OUT", "DEBIT"],
-        "amount": [100.0, 500.0, 1000.0, 50.0],
-        "nameOrig": ["C1", "C2", "C3", "C4"],
-        "oldbalanceOrg": [100.0, 500.0, 1000.0, 50.0],
-        "newbalanceOrig": [0.0, 0.0, 0.0, 0.0],
-        "nameDest": ["M1", "C5", "C6", "M2"],
-        "oldbalanceDest": [0.0, 0.0, 500.0, 0.0],
-        "newbalanceDest": [0.0, 500.0, 1500.0, 0.0],
-        "isFraud": [0, 1, 1, 0],
-        "isFlaggedFraud": [0, 0, 0, 0]
-    })
+    sample_df = pd.DataFrame(
+        {
+            "step": [1, 100, 250, 400],  # 400 hours = 16.6 days (>14 days check)
+            "type": ["PAYMENT", "TRANSFER", "CASH_OUT", "DEBIT"],
+            "amount": [100.0, 500.0, 1000.0, 50.0],
+            "nameOrig": ["C1", "C2", "C3", "C4"],
+            "oldbalanceOrg": [100.0, 500.0, 1000.0, 50.0],
+            "newbalanceOrig": [0.0, 0.0, 0.0, 0.0],
+            "nameDest": ["M1", "C5", "C6", "M2"],
+            "oldbalanceDest": [0.0, 0.0, 500.0, 0.0],
+            "newbalanceDest": [0.0, 500.0, 1500.0, 0.0],
+            "isFraud": [0, 1, 1, 0],
+            "isFlaggedFraud": [0, 0, 0, 0],
+        }
+    )
     sample_path = Path("data/paysim/sample_test.csv")
     sample_path.parent.mkdir(parents=True, exist_ok=True)
     sample_df.to_csv(sample_path, index=False)
@@ -110,34 +115,44 @@ def test_paysim_ingestion_schema():
 
 def test_preprocessor_multi_dataset_categoricals():
     """Verifies that candidate categoricals from Feedzai and PaySim are encoded without error."""
-    mock_df = pd.DataFrame({
-        "step": [1, 2, 3, 4],
-        "trans_id": ["TX1", "TX2", "TX3", "TX4"],
-        "isFraud": [0, 1, 0, 0],
-        "payment_type": ["AA", "AB", "AC", "AA"],
-        "employment_status": ["CA", "CB", "CA", "CC"],
-        "housing_status": ["BA", "BB", "BA", "BC"],
-        "device_os": ["windows", "linux", "mac", "windows"],
-        "proposed_credit_limit": [500.0, 1000.0, 1500.0, 2000.0]
-    })
+    mock_df = pd.DataFrame(
+        {
+            "step": [1, 2, 3, 4],
+            "trans_id": ["TX1", "TX2", "TX3", "TX4"],
+            "isFraud": [0, 1, 0, 0],
+            "payment_type": ["AA", "AB", "AC", "AA"],
+            "employment_status": ["CA", "CB", "CA", "CC"],
+            "housing_status": ["BA", "BB", "BA", "BC"],
+            "device_os": ["windows", "linux", "mac", "windows"],
+            "proposed_credit_limit": [500.0, 1000.0, 1500.0, 2000.0],
+        }
+    )
 
     preprocessor = Preprocessor()
     preprocessor.fit(mock_df)
     transformed = preprocessor.transform(mock_df)
 
-    assert "payment_type_AA" in preprocessor.feature_names or any("payment_type" in f for f in preprocessor.feature_names)
-    assert "employment_status_CA" in preprocessor.feature_names or any("employment_status" in f for f in preprocessor.feature_names)
-    assert "device_os_windows" in preprocessor.feature_names or any("device_os" in f for f in preprocessor.feature_names)
+    assert "payment_type_AA" in preprocessor.feature_names or any(
+        "payment_type" in f for f in preprocessor.feature_names
+    )
+    assert "employment_status_CA" in preprocessor.feature_names or any(
+        "employment_status" in f for f in preprocessor.feature_names
+    )
+    assert "device_os_windows" in preprocessor.feature_names or any(
+        "device_os" in f for f in preprocessor.feature_names
+    )
     assert len(transformed) == len(mock_df)
 
 
 def test_feedzai_baf_non_degenerate_step_ranges():
     """Verifies that Feedzai BAF monthly partitions report non-degenerate start_step < end_step."""
-    mock_baf = pd.DataFrame({
-        "month": [0, 0, 0, 1, 1, 1],
-        "fraud_bool": [0, 1, 0, 0, 0, 1],
-        "proposed_credit_limit": [1000.0] * 6,
-    })
+    mock_baf = pd.DataFrame(
+        {
+            "month": [0, 0, 0, 1, 1, 1],
+            "fraud_bool": [0, 1, 0, 0, 0, 1],
+            "proposed_credit_limit": [1000.0] * 6,
+        }
+    )
     tmp_path = Path("data/feedzai/sample_baf.csv")
     tmp_path.parent.mkdir(parents=True, exist_ok=True)
     mock_baf.to_csv(tmp_path, index=False)
@@ -164,12 +179,14 @@ def test_feedzai_baf_non_degenerate_step_ranges():
 
 def test_feedzai_baf_degenerate_step_fallback():
     """Verifies that partition_time_slices guards against start_step == end_step when steps are uniform."""
-    mock_df = pd.DataFrame({
-        "month": [0, 0, 1, 1],
-        "step": [1, 1, 721, 721],  # uniform steps per month
-        "isFraud": [0, 1, 0, 0],
-        "trans_id": ["T1", "T2", "T3", "T4"]
-    })
+    mock_df = pd.DataFrame(
+        {
+            "month": [0, 0, 1, 1],
+            "step": [1, 1, 721, 721],  # uniform steps per month
+            "isFraud": [0, 1, 0, 0],
+            "trans_id": ["T1", "T2", "T3", "T4"],
+        }
+    )
     preprocessor = Preprocessor()
     slices = preprocessor.partition_time_slices(mock_df)
     assert len(slices) == 2
@@ -182,12 +199,14 @@ def test_feedzai_baf_degenerate_step_fallback():
 def test_monthly_partitioning_intra_slice_sequential_ordering():
     """Verifies that partition_time_slices strictly orders transactions within each month by step and trans_id."""
     # Deliberately scrambled transactions within each month
-    mock_df = pd.DataFrame({
-        "month": [0, 0, 0, 1, 1],
-        "step": [300, 100, 200, 900, 800],
-        "trans_id": ["T3", "T1", "T2", "T5", "T4"],
-        "isFraud": [0, 1, 0, 0, 1]
-    })
+    mock_df = pd.DataFrame(
+        {
+            "month": [0, 0, 0, 1, 1],
+            "step": [300, 100, 200, 900, 800],
+            "trans_id": ["T3", "T1", "T2", "T5", "T4"],
+            "isFraud": [0, 1, 0, 0, 1],
+        }
+    )
     preprocessor = Preprocessor()
     slices = preprocessor.partition_time_slices(mock_df)
     assert len(slices) == 2
@@ -203,24 +222,26 @@ def test_monthly_partitioning_intra_slice_sequential_ordering():
 
 def test_preprocessor_modular_schema_config():
     """Verifies that Preprocessor correctly applies dataset_name schemas and custom schema overrides."""
-    mock_df = pd.DataFrame({
-        "step": [1, 2, 3],
-        "trans_id": ["T1", "T2", "T3"],
-        "isFraud": [0, 1, 0],
-        "channel": ["web", "mobile", "pos"],
-        "partner_id": ["P1", "P2", "P3"],
-        "amount": [10.0, 20.0, 30.0]
-    })
+    mock_df = pd.DataFrame(
+        {
+            "step": [1, 2, 3],
+            "trans_id": ["T1", "T2", "T3"],
+            "isFraud": [0, 1, 0],
+            "channel": ["web", "mobile", "pos"],
+            "partner_id": ["P1", "P2", "P3"],
+            "amount": [10.0, 20.0, 30.0],
+        }
+    )
 
     # Test custom categorical and exclusion schema overrides
     prep = Preprocessor(
         custom_categorical_cols=["channel"],
-        custom_exclude_cols={"partner_id", "isFraud", "step", "trans_id"}
+        custom_exclude_cols={"partner_id", "isFraud", "step", "trans_id"},
     )
     prep.fit(mock_df)
 
     assert "partner_id" not in prep.feature_names
-    assert "channel_web" in prep.feature_names or any("channel" in f for f in prep.feature_names)
+    assert "channel_web" in prep.feature_names or any(
+        "channel" in f for f in prep.feature_names
+    )
     assert "amount" in prep.feature_names
-
-

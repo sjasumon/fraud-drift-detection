@@ -22,11 +22,13 @@ def synthetic_stream_df() -> pd.DataFrame:
     n_rows = 300
 
     # 3 non-overlapping slices: steps 1-24, 25-48, 49-72
-    steps = np.concatenate([
-        np.random.randint(1, 25, size=100),
-        np.random.randint(25, 49, size=100),
-        np.random.randint(49, 73, size=100)
-    ])
+    steps = np.concatenate(
+        [
+            np.random.randint(1, 25, size=100),
+            np.random.randint(25, 49, size=100),
+            np.random.randint(49, 73, size=100),
+        ]
+    )
 
     tx_ids = np.arange(1000000, 1000000 + n_rows)
     tx_dt = (steps - 1) * 3600 + np.random.randint(0, 3600, size=n_rows)
@@ -41,7 +43,9 @@ def synthetic_stream_df() -> pd.DataFrame:
 
     # Card and address identifiers
     card1 = np.random.choice([1001, 1002, 1003, 1004, 1005], size=n_rows).astype(float)
-    card2 = np.random.choice([201.0, 202.0, 203.0, np.nan], size=n_rows, p=[0.35, 0.35, 0.15, 0.15])
+    card2 = np.random.choice(
+        [201.0, 202.0, 203.0, np.nan], size=n_rows, p=[0.35, 0.35, 0.15, 0.15]
+    )
     addr1 = np.random.choice([301.0, 302.0, np.nan], size=n_rows, p=[0.45, 0.45, 0.10])
 
     # Numerical features
@@ -56,21 +60,23 @@ def synthetic_stream_df() -> pd.DataFrame:
     is_fraud[120] = 1
     is_fraud[240] = 1
 
-    df = pd.DataFrame({
-        "TransactionID": tx_ids,
-        "trans_id": [str(x) for x in tx_ids],
-        "TransactionDT": tx_dt,
-        "step": steps,
-        "TransactionAmt": amt,
-        "amount": amt,
-        "ProductCD": cats,
-        "card1": card1,
-        "card2": card2,
-        "addr1": addr1,
-        "C1": c1,
-        "D1": d1,
-        "isFraud": is_fraud
-    })
+    df = pd.DataFrame(
+        {
+            "TransactionID": tx_ids,
+            "trans_id": [str(x) for x in tx_ids],
+            "TransactionDT": tx_dt,
+            "step": steps,
+            "TransactionAmt": amt,
+            "amount": amt,
+            "ProductCD": cats,
+            "card1": card1,
+            "card2": card2,
+            "addr1": addr1,
+            "C1": c1,
+            "D1": d1,
+            "isFraud": is_fraud,
+        }
+    )
 
     # Sort chronologically by step then trans_id
     df = df.sort_values(by=["step", "trans_id"]).reset_index(drop=True)

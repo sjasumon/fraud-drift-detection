@@ -9,7 +9,7 @@ Implements:
 
 from collections import deque
 import math
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any
 import numpy as np
 from river import drift
 
@@ -161,7 +161,9 @@ class DiscountedUCBAgent(BaseBanditAgent):
         ucb_values = np.zeros(self.n_arms)
         for a in range(self.n_arms):
             mean_a = self.discounted_rewards[a] / safe_pulls[a]
-            bonus = self.c * math.sqrt(2.0 * math.log(max(1.0, n_gamma)) / safe_pulls[a])
+            bonus = self.c * math.sqrt(
+                2.0 * math.log(max(1.0, n_gamma)) / safe_pulls[a]
+            )
             ucb_values[a] = mean_a + bonus
 
         return int(np.argmax(ucb_values))
@@ -219,7 +221,9 @@ class AdwinUCBAgent(BaseBanditAgent):
         ucb_values = np.zeros(self.n_arms)
         for a in range(self.n_arms):
             mean_a = self.active_rewards[a] / self.active_pulls[a]
-            bonus = self.c * math.sqrt(2.0 * math.log(total_active) / self.active_pulls[a])
+            bonus = self.c * math.sqrt(
+                2.0 * math.log(total_active) / self.active_pulls[a]
+            )
             ucb_values[a] = mean_a + bonus
 
         return int(np.argmax(ucb_values))
@@ -236,14 +240,25 @@ class AdwinUCBAgent(BaseBanditAgent):
         # Check if ADWIN flags concept drift in the arm's reward distribution
         if self.detectors[arm].drift_detected:
             # Concept drift confirmed: reset memory for this arm
-            est_mean = self.detectors[arm].estimation if hasattr(self.detectors[arm], "estimation") else reward
-            self.drift_events.append({
-                "step": self.t,
-                "arm": arm,
-                "prior_pulls": int(self.active_pulls[arm]),
-                "prior_mean": round(float(self.active_rewards[arm] / max(1, self.active_pulls[arm])), 4),
-                "adwin_est": round(float(est_mean), 4)
-            })
+            est_mean = (
+                self.detectors[arm].estimation
+                if hasattr(self.detectors[arm], "estimation")
+                else reward
+            )
+            self.drift_events.append(
+                {
+                    "step": self.t,
+                    "arm": arm,
+                    "prior_pulls": int(self.active_pulls[arm]),
+                    "prior_mean": round(
+                        float(
+                            self.active_rewards[arm] / max(1, self.active_pulls[arm])
+                        ),
+                        4,
+                    ),
+                    "adwin_est": round(float(est_mean), 4),
+                }
+            )
 
             # Reset arm statistics to allow rapid re-learning
             self.active_pulls[arm] = 1

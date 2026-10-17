@@ -1,0 +1,80 @@
+[
+  {
+    "adaptation_num": 1,
+    "slice_idx": 2,
+    "accumulated_samples": 6064036,
+    "fraud_count": 5621,
+    "duration_seconds": 40.153782800000045,
+    "device": "cpu",
+    "latest_training_arrival_slice": 2,
+    "verification_staleness_slices": 0,
+    "training_id_digest": "a930a4989a6966bb5e75cfe4344b66af950c9c3632002ca51c9fc9346322cf75",
+    "threshold": 0.5695400834083557,
+    "model": "weekly"
+  },
+  {
+    "adaptation_num": 1,
+    "slice_idx": 2,
+    "accumulated_samples": 6064036,
+    "fraud_count": 5621,
+    "duration_seconds": 37.213174999997136,
+    "device": "cpu",
+    "latest_training_arrival_slice": 2,
+    "verification_staleness_slices": 0,
+    "training_id_digest": "a930a4989a6966bb5e75cfe4344b66af950c9c3632002ca51c9fc9346322cf75",
+    "threshold": 0.5695400834083557,
+    "model": "adaptive"
+  },
+  {
+    "adaptation_num": 1,
+    "slice_idx": 3,
+    "accumulated_samples": 6296171,
+    "fraud_count": 7413,
+    "duration_seconds": 41.54178499999762,
+    "device": "cpu",
+    "latest_training_arrival_slice": 3,
+    "verification_staleness_slices": 0,
+    "training_id_digest": "8065af5835a270b77e0f4c90a36eb3b9a2d5d54c13914ac16f5e72ab4d34ad95",
+    "threshold": 0.5599237084388733,
+    "model": "periodic"
+  },
+  {
+    "adaptation_num": 2,
+    "slice_idx": 3,
+    "accumulated_samples": 6296171,
+    "fraud_count": 7413,
+    "duration_seconds": 44.55673549999847,
+    "device": "cpu",
+    "latest_training_arrival_slice": 3,
+    "verification_staleness_slices": 0,
+    "training_id_digest": "8065af5835a270b77e0f4c90a36eb3b9a2d5d54c13914ac16f5e72ab4d34ad95",
+    "threshold": 0.5599237084388733,
+    "model": "weekly"
+  },
+  {
+    "adaptation_num": 1,
+    "slice_idx": 3,
+    "accumulated_samples": 1511396,
+    "fraud_count": 3646,
+    "duration_seconds": 9.805688799999189,
+    "device": "cpu",
+    "latest_training_arrival_slice": 3,
+    "verification_staleness_slices": 0,
+    "training_id_digest": "17bc21c385dde737d9ed5e6f8cd618adbb6ac4803e641f2403a00f181fc3b8fb",
+    "threshold": 0.0995555892586708,
+    "model": "sliding"
+  },
+  {
+    "adaptation_num": 2,
+    "slice_idx": 3,
+    "accumulated_samples": 6296171,
+    "fraud_count": 7413,
+    "duration_seconds": 47.63827780000065,
+    "device": "cpu",
+    "latest_training_arrival_slice": 3,
+    "verification_staleness_slices": 0,
+    "training_id_digest": "8065af5835a270b77e0f4c90a36eb3b9a2d5d54c13914ac16f5e72ab4d34ad95",
+    "threshold": 0.5599237084388733,
+    "model": "adaptive"
+  }
+]

@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fraud-drift-detection"
-version = "0.3.0"
+version = "0.4.1"
 description = "Concept-Drift-Aware Fraud Detection Platform under Streaming Financial Distributions"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = { text = "MIT" }
 authors = [
     { name = "Sheikh Joynal Abedin Sumon", email = "me@sumon.me" }
@@ -17,32 +17,31 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
 
-
 dependencies = [
-    "numpy==2.5.3",
+    "numpy==2.5.4",
     "pandas==3.0.6",
     "scipy==1.18.1",
     "scikit-learn==1.9.1",
-    "imbalanced-learn==0.14.2",
     "xgboost==3.4.1",
     "river==0.26.1",
-    "matplotlib==3.11.2",
+    "shap==0.53.0",
+    "matplotlib==3.10.8",
     "seaborn==0.13.2",
-    "sqlalchemy==2.1.1",
-    "pymysql==1.2.3",
+    "SQLAlchemy==2.1.4",
+    "PyMySQL==1.2.3",
     "cryptography==50.0.1",
-    "python-dotenv==1.2.3",
-    "pydantic==2.13.5",
-    "pydantic-settings==2.15.0",
-    "shap==0.52.0",
-    "fastapi==0.141.1",
+    "python-dotenv==1.2.4",
+    "pydantic==2.14.1",
+    "pydantic-settings==2.16.0",
+    "fastapi==0.143.2",
+    "starlette==1.8.0",
     "uvicorn==0.54.0",
     "httpx==0.28.1",
-    "psutil==7.1.0",
+    "psutil==7.2.2",
+    "joblib==1.6.0",
 ]
 
 [project.optional-dependencies]
@@ -54,16 +53,14 @@ test = [
 [project.scripts]
 fraud-pipeline = "src.pipeline:main"
 fraud-audit = "src.evaluate_uid_split:run"
-fraud-latency-audit = "src.delayed_audit:main"
+fraud-latency-audit = "src.delayed_audit:cli"
 fraud-stats-rigor = "src.benchmark_statistical_rigor:run"
 fraud-bandit = "src.bandit.benchmark:main"
-fraud-federated = "src.federated:main"
+fraud-study = "src.study:main"
+fraud-demo = "src.demo:main"
+fraud-latency = "src.benchmark_latency:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["src*"]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-pythonpath = ["."]
-addopts = "-v --strict-markers"

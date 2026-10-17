@@ -1,0 +1,15 @@
+[
+  {
+    "adaptation_num": 1,
+    "slice_idx": 6,
+    "accumulated_samples": 195,
+    "fraud_count": 14,
+    "duration_seconds": 0.018195184999058256,
+    "device": "cpu",
+    "latest_training_arrival_slice": 4,
+    "verification_staleness_slices": 2,
+    "training_id_digest": "212e5fb66506cf8b37b196894cdbd2fd18750475373445b3bba6d19ce7e80081",
+    "threshold": 0.98985755443573,
+    "model": "sliding"
+  }
+]

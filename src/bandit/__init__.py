@@ -13,7 +13,7 @@ from src.bandit.agents import (
     StandardUCBAgent,
     SlidingWindowUCBAgent,
     DiscountedUCBAgent,
-    AdwinUCBAgent
+    AdwinUCBAgent,
 )
 
 __all__ = [
@@ -21,5 +21,5 @@ __all__ = [
     "StandardUCBAgent",
     "SlidingWindowUCBAgent",
     "DiscountedUCBAgent",
-    "AdwinUCBAgent"
+    "AdwinUCBAgent",
 ]

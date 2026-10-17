@@ -1,0 +1,313 @@
+{
+  "protocol": "predefined exploratory seed/time-window comparisons; no automatic winner selection",
+  "seeds": [
+    42,
+    101
+  ],
+  "train_windows": [
+    2,
+    5
+  ],
+  "test_slices": 2,
+  "runs": [
+    "runs/RUN_5B0611EACD",
+    "runs/RUN_3F8DD89076",
+    "runs/RUN_8E4697E3C9",
+    "runs/RUN_AEC3177232"
+  ],
+  "comparisons": [
+    {
+      "window_slices": 2,
+      "half_life_slices": null,
+      "max_retrains": 1,
+      "delay_slices": 2,
+      "pre_transaction_only": false,
+      "all_features": false,
+      "history_features": false,
+      "exclude_identifiers": false,
+      "latency_mode": "fixed",
+      "model": "static",
+      "mean_seed_precision": 1.0,
+      "mean_seed_recall": 0.4545454545454546,
+      "mean_seed_f1": 0.6236559139784946,
+      "mean_seed_auc_pr": 0.5409753052164261,
+      "mean_seed_brier_score": 0.036768076692561324,
+      "mean_seed_false_positives": 0.0,
+      "mean_seed_false_negatives": 12.0,
+      "mean_retrains_per_run": 0.0,
+      "mean_training_seconds_per_run": 0.0,
+      "daily_review_budgets": [
+        {
+          "model": "static",
+          "daily_budget": 100,
+          "alerts": 798,
+          "detected_fraud": 44,
+          "precision": 0.05513784461152882,
+          "recall": 1.0,
+          "interpretation": "retrospective daily ranking; requires batch review"
+        },
+        {
+          "model": "static",
+          "daily_budget": 500,
+          "alerts": 798,
+          "detected_fraud": 44,
+          "precision": 0.05513784461152882,
+          "recall": 1.0,
+          "interpretation": "retrospective daily ranking; requires batch review"
+        }
+      ],
+      "run_ids": [
+        "RUN_5B0611EACD",
+        "RUN_3F8DD89076",
+        "RUN_8E4697E3C9",
+        "RUN_AEC3177232"
+      ]
+    },
+    {
+      "window_slices": 2,
+      "half_life_slices": null,
+      "max_retrains": 1,
+      "delay_slices": 2,
+      "pre_transaction_only": false,
+      "all_features": false,
+      "history_features": false,
+      "exclude_identifiers": false,
+      "latency_mode": "fixed",
+      "model": "periodic",
+      "mean_seed_precision": 1.0,
+      "mean_seed_recall": 0.4545454545454546,
+      "mean_seed_f1": 0.6236559139784946,
+      "mean_seed_auc_pr": 0.5409753052164261,
+      "mean_seed_brier_score": 0.036768076692561324,
+      "mean_seed_false_positives": 0.0,
+      "mean_seed_false_negatives": 12.0,
+      "mean_retrains_per_run": 0.0,
+      "mean_training_seconds_per_run": 0.0,
+      "daily_review_budgets": [
+        {
+          "model": "periodic",
+          "daily_budget": 100,
+          "alerts": 798,
+          "detected_fraud": 44,
+          "precision": 0.05513784461152882,
+          "recall": 1.0,
+          "interpretation": "retrospective daily ranking; requires batch review"
+        },
+        {
+          "model": "periodic",
+          "daily_budget": 500,
+          "alerts": 798,
+          "detected_fraud": 44,
+          "precision": 0.05513784461152882,
+          "recall": 1.0,
+          "interpretation": "retrospective daily ranking; requires batch review"
+        }
+      ],
+      "run_ids": [
+        "RUN_5B0611EACD",
+        "RUN_3F8DD89076",
+        "RUN_8E4697E3C9",
+        "RUN_AEC3177232"
+      ],
+      "paired_f1_delta": {
+        "mean_delta": 0.0,
+        "ci_95": [
+          0.0,
+          0.0
+        ],
+        "n_bootstrap": 500,
+        "n_seeds": 2,
+        "temporal_blocks": 4,
+        "block_length_slices": 2,
+        "status": "exploratory_short_stream",
+        "method": "paired circular moving-block bootstrap; shared time draws across seeds",
+        "limitation": "Conditional on supplied periods; seeds do not add independent transaction populations."
+      }
+    },
+    {
+      "window_slices": 2,
+      "half_life_slices": null,
+      "max_retrains": 1,
+      "delay_slices": 2,
+      "pre_transaction_only": false,
+      "all_features": false,
+      "history_features": false,
+      "exclude_identifiers": false,
+      "latency_mode": "fixed",
+      "model": "weekly",
+      "mean_seed_precision": 1.0,
+      "mean_seed_recall": 0.4545454545454546,
+      "mean_seed_f1": 0.6236559139784946,
+      "mean_seed_auc_pr": 0.5409753052164261,
+      "mean_seed_brier_score": 0.036768076692561324,
+      "mean_seed_false_positives": 0.0,
+      "mean_seed_false_negatives": 12.0,
+      "mean_retrains_per_run": 0.0,
+      "mean_training_seconds_per_run": 0.0,
+      "daily_review_budgets": [
+        {
+          "model": "weekly",
+          "daily_budget": 100,
+          "alerts": 798,
+          "detected_fraud": 44,
+          "precision": 0.05513784461152882,
+          "recall": 1.0,
+          "interpretation": "retrospective daily ranking; requires batch review"
+        },
+        {
+          "model": "weekly",
+          "daily_budget": 500,
+          "alerts": 798,
+          "detected_fraud": 44,
+          "precision": 0.05513784461152882,
+          "recall": 1.0,
+          "interpretation": "retrospective daily ranking; requires batch review"
+        }
+      ],
+      "run_ids": [
+        "RUN_5B0611EACD",
+        "RUN_3F8DD89076",
+        "RUN_8E4697E3C9",
+        "RUN_AEC3177232"
+      ],
+      "paired_f1_delta": {
+        "mean_delta": 0.0,
+        "ci_95": [
+          0.0,
+          0.0
+        ],
+        "n_bootstrap": 500,
+        "n_seeds": 2,
+        "temporal_blocks": 4,
+        "block_length_slices": 2,
+        "status": "exploratory_short_stream",
+        "method": "paired circular moving-block bootstrap; shared time draws across seeds",
+        "limitation": "Conditional on supplied periods; seeds do not add independent transaction populations."
+      }
+    },
+    {
+      "window_slices": 2,
+      "half_life_slices": null,
+      "max_retrains": 1,
+      "delay_slices": 2,
+      "pre_transaction_only": false,
+      "all_features": false,
+      "history_features": false,
+      "exclude_identifiers": false,
+      "latency_mode": "fixed",
+      "model": "sliding",
+      "mean_seed_precision": 1.0,
+      "mean_seed_recall": 0.4545454545454546,
+      "mean_seed_f1": 0.6236559139784946,
+      "mean_seed_auc_pr": 0.5409753052164261,
+      "mean_seed_brier_score": 0.036768076692561324,
+      "mean_seed_false_positives": 0.0,
+      "mean_seed_false_negatives": 12.0,
+      "mean_retrains_per_run": 0.5,
+      "mean_training_seconds_per_run": 0.008736333499655302,
+      "daily_review_budgets": [
+        {
+          "model": "sliding",
+          "daily_budget": 100,
+          "alerts": 798,
+          "detected_fraud": 44,
+          "precision": 0.05513784461152882,
+          "recall": 1.0,
+          "interpretation": "retrospective daily ranking; requires batch review"
+        },
+        {
+          "model": "sliding",
+          "daily_budget": 500,
+          "alerts": 798,
+          "detected_fraud": 44,
+          "precision": 0.05513784461152882,
+          "recall": 1.0,
+          "interpretation": "retrospective daily ranking; requires batch review"
+        }
+      ],
+      "run_ids": [
+        "RUN_5B0611EACD",
+        "RUN_3F8DD89076",
+        "RUN_8E4697E3C9",
+        "RUN_AEC3177232"
+      ],
+      "paired_f1_delta": {
+        "mean_delta": 0.0,
+        "ci_95": [
+          0.0,
+          0.0
+        ],
+        "n_bootstrap": 500,
+        "n_seeds": 2,
+        "temporal_blocks": 4,
+        "block_length_slices": 2,
+        "status": "exploratory_short_stream",
+        "method": "paired circular moving-block bootstrap; shared time draws across seeds",
+        "limitation": "Conditional on supplied periods; seeds do not add independent transaction populations."
+      }
+    },
+    {
+      "window_slices": 2,
+      "half_life_slices": null,
+      "max_retrains": 1,
+      "delay_slices": 2,
+      "pre_transaction_only": false,
+      "all_features": false,
+      "history_features": false,
+      "exclude_identifiers": false,
+      "latency_mode": "fixed",
+      "model": "adaptive",
+      "mean_seed_precision": 1.0,
+      "mean_seed_recall": 0.4545454545454546,
+      "mean_seed_f1": 0.6236559139784946,
+      "mean_seed_auc_pr": 0.5409753052164261,
+      "mean_seed_brier_score": 0.036768076692561324,
+      "mean_seed_false_positives": 0.0,
+      "mean_seed_false_negatives": 12.0,
+      "mean_retrains_per_run": 0.0,
+      "mean_training_seconds_per_run": 0.0,
+      "daily_review_budgets": [
+        {
+          "model": "adaptive",
+          "daily_budget": 100,
+          "alerts": 798,
+          "detected_fraud": 44,
+          "precision": 0.05513784461152882,
+          "recall": 1.0,
+          "interpretation": "retrospective daily ranking; requires batch review"
+        },
+        {
+          "model": "adaptive",
+          "daily_budget": 500,
+          "alerts": 798,
+          "detected_fraud": 44,
+          "precision": 0.05513784461152882,
+          "recall": 1.0,
+          "interpretation": "retrospective daily ranking; requires batch review"
+        }
+      ],
+      "run_ids": [
+        "RUN_5B0611EACD",
+        "RUN_3F8DD89076",
+        "RUN_8E4697E3C9",
+        "RUN_AEC3177232"
+      ],
+      "paired_f1_delta": {
+        "mean_delta": 0.0,
+        "ci_95": [
+          0.0,
+          0.0
+        ],
+        "n_bootstrap": 500,
+        "n_seeds": 2,
+        "temporal_blocks": 4,
+        "block_length_slices": 2,
+        "status": "exploratory_short_stream",
+        "method": "paired circular moving-block bootstrap; shared time draws across seeds",
+        "limitation": "Conditional on supplied periods; seeds do not add independent transaction populations."
+      }
+    }
+  ],
+  "data_kind": "synthetic",
+  "version": "0.4.1"
+}

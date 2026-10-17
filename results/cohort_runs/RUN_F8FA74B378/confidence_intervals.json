@@ -1,0 +1,16 @@
+{
+  "adaptive": {
+    "mean_delta": 0.0,
+    "ci_95": [
+      0.0,
+      0.0
+    ],
+    "n_bootstrap": 500,
+    "n_seeds": 1,
+    "temporal_blocks": 2,
+    "block_length_slices": 2,
+    "status": "exploratory_short_stream",
+    "method": "paired circular moving-block bootstrap; shared time draws across seeds",
+    "limitation": "Conditional on supplied periods; seeds do not add independent transaction populations."
+  }
+}

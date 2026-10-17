@@ -1,0 +1,6 @@
+model,overall_precision,overall_recall,overall_f1,overall_auc_pr,brier_score,log_loss,true_positives,false_positives,false_negatives,true_negatives,total_frauds,total_transactions,evaluation_scope,is_pure_out_of_sample
+adaptive_model,1.0,0.8181818181818182,0.9,1.0,0.01970906448747392,0.08431910437506722,9,0,2,183,11,194,Pure Out-of-Sample,True
+periodic_model,1.0,0.8181818181818182,0.9,1.0,0.01970906448747392,0.08431910437506722,9,0,2,183,11,194,Pure Out-of-Sample,True
+sliding_model,1.0,0.8181818181818182,0.9,1.0,0.01970906448747392,0.08431910437506722,9,0,2,183,11,194,Pure Out-of-Sample,True
+static_model,1.0,0.8181818181818182,0.9,1.0,0.01970906448747392,0.08431910437506722,9,0,2,183,11,194,Pure Out-of-Sample,True
+weekly_model,1.0,0.8181818181818182,0.9,1.0,0.01970906448747392,0.08431910437506722,9,0,2,183,11,194,Pure Out-of-Sample,True

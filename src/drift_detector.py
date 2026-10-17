@@ -7,11 +7,14 @@ and correlating them with adaptation triggers.
 
 import logging
 import threading
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any
 from river import drift
 
 from src.config import (
-    ADWIN_DELTA, DDM_MIN_INSTANCES, DDM_WARNING_LEVEL, DDM_DRIFT_LEVEL
+    ADWIN_DELTA,
+    DDM_MIN_INSTANCES,
+    DDM_WARNING_LEVEL,
+    DDM_DRIFT_LEVEL,
 )
 
 logger = logging.getLogger("fraud_drift.detector")
@@ -29,7 +32,7 @@ class DriftMonitor:
         adwin_delta: float = ADWIN_DELTA,
         ddm_min_instances: int = DDM_MIN_INSTANCES,
         ddm_warning_level: float = DDM_WARNING_LEVEL,
-        ddm_drift_level: float = DDM_DRIFT_LEVEL
+        ddm_drift_level: float = DDM_DRIFT_LEVEL,
     ):
         self.adwin_delta = adwin_delta
         self.ddm_min_instances = ddm_min_instances
@@ -40,7 +43,7 @@ class DriftMonitor:
         self.ddm = drift.binary.DDM(
             warm_start=ddm_min_instances,
             warning_threshold=ddm_warning_level,
-            drift_threshold=ddm_drift_level
+            drift_threshold=ddm_drift_level,
         )
         self.drift_events: List[Dict[str, Any]] = []
         self.total_samples_monitored = 0
@@ -52,7 +55,7 @@ class DriftMonitor:
         y_pred: int,
         slice_index: int,
         step_number: int,
-        trans_id: str
+        trans_id: str,
     ) -> Dict[str, Any]:
         """
         Thread-safely updates detectors with single transaction prediction error.
@@ -77,7 +80,7 @@ class DriftMonitor:
                 "ddm_drift": ddm_drift,
                 "ddm_warning": ddm_warning,
                 "any_drift": adwin_drift or ddm_drift,
-                "error_val": error_val
+                "error_val": error_val,
             }
 
             # Log drift events (FR-4.2)
@@ -87,13 +90,19 @@ class DriftMonitor:
                     "step_number": step_number,
                     "trans_id": trans_id,
                     "detector_type": "ADWIN",
-                    "error_rate": round(self.adwin.estimation, 4) if hasattr(self.adwin, "estimation") else None,
-                    "confidence_score": round(self.adwin.width, 1) if hasattr(self.adwin, "width") else 0.0,
+                    "error_rate": round(self.adwin.estimation, 4)
+                    if hasattr(self.adwin, "estimation")
+                    else None,
+                    "confidence_score": round(self.adwin.width, 1)
+                    if hasattr(self.adwin, "width")
+                    else 0.0,
                     "status": "DRIFT",
-                    "notes": f"ADWIN flagged distribution shift at step {step_number} in slice {slice_index + 1}"
+                    "notes": f"ADWIN flagged distribution shift at step {step_number} in slice {slice_index + 1}",
                 }
                 self.drift_events.append(event)
-                logger.info(f"[FR-4 DRIFT ALERT] ADWIN: Slice {slice_index + 1}, Step {step_number}")
+                logger.info(
+                    f"[FR-4 DRIFT ALERT] ADWIN: Slice {slice_index + 1}, Step {step_number}"
+                )
 
             if ddm_drift:
                 event = {
@@ -101,13 +110,19 @@ class DriftMonitor:
                     "step_number": step_number,
                     "trans_id": trans_id,
                     "detector_type": "DDM",
-                    "error_rate": round(self.total_errors_observed / max(1, self.total_samples_monitored), 4),
+                    "error_rate": round(
+                        self.total_errors_observed
+                        / max(1, self.total_samples_monitored),
+                        4,
+                    ),
                     "confidence_score": None,
                     "status": "DRIFT",
-                    "notes": f"DDM flagged drift level reached at step {step_number} in slice {slice_index + 1}"
+                    "notes": f"DDM flagged drift level reached at step {step_number} in slice {slice_index + 1}",
                 }
                 self.drift_events.append(event)
-                logger.info(f"[FR-4 DRIFT ALERT] DDM: Slice {slice_index + 1}, Step {step_number}")
+                logger.info(
+                    f"[FR-4 DRIFT ALERT] DDM: Slice {slice_index + 1}, Step {step_number}"
+                )
 
             return alert
 
@@ -118,7 +133,7 @@ class DriftMonitor:
             self.ddm = drift.binary.DDM(
                 warm_start=self.ddm_min_instances,
                 warning_threshold=self.ddm_warning_level,
-                drift_threshold=self.ddm_drift_level
+                drift_threshold=self.ddm_drift_level,
             )
             logger.info("Drift detectors reset following model adaptation.")
 

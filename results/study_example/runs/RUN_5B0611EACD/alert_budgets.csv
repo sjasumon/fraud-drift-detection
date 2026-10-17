@@ -1,0 +1,11 @@
+model,daily_budget,alerts,detected_fraud,precision,recall,interpretation
+adaptive,100,194,11,0.05670103092783505,1.0,retrospective daily ranking; requires batch review
+adaptive,500,194,11,0.05670103092783505,1.0,retrospective daily ranking; requires batch review
+periodic,100,194,11,0.05670103092783505,1.0,retrospective daily ranking; requires batch review
+periodic,500,194,11,0.05670103092783505,1.0,retrospective daily ranking; requires batch review
+sliding,100,194,11,0.05670103092783505,1.0,retrospective daily ranking; requires batch review
+sliding,500,194,11,0.05670103092783505,1.0,retrospective daily ranking; requires batch review
+static,100,194,11,0.05670103092783505,1.0,retrospective daily ranking; requires batch review
+static,500,194,11,0.05670103092783505,1.0,retrospective daily ranking; requires batch review
+weekly,100,194,11,0.05670103092783505,1.0,retrospective daily ranking; requires batch review
+weekly,500,194,11,0.05670103092783505,1.0,retrospective daily ranking; requires batch review

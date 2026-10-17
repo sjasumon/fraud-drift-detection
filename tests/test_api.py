@@ -1,325 +1,287 @@
-"""
-Unit and Integration Tests for the FastAPI Real-Time Scoring Microservice.
-Verifies sub-15ms inference endpoints, batch scoring, feedback ingestion,
-drift telemetry, and atomic model hot-swapping under concurrency.
-"""
+"""Serving regressions: no placeholder scoring, schema parity, durable original decisions."""
 
-import pytest
+import copy
+import json
 import numpy as np
-import xgboost as xgb
-from fastapi import HTTPException
+import pandas as pd
+import pytest
 from fastapi.testclient import TestClient
-
-from src.api import app, model_buffer, drift_monitor, verify_api_key, retrainer, training_store
+from src import api
+from src.artifacts import ModelBundle, save_bundle, load_bundle
+from src.static_model import StaticBaselineModel
+from src.preprocessing import Preprocessor
 from src.config import API_KEY
 
 
 @pytest.fixture
-def client():
-    return TestClient(app, headers={"X-API-Key": "dev-secret-key"})
+def serving(tmp_path, monkeypatch, synthetic_stream_df):
+    df = synthetic_stream_df.copy()
+    prep = Preprocessor().fit(df.iloc[:200])
+    model = StaticBaselineModel(
+        prep.feature_names, model_params={"n_estimators": 10}
+    ).fit(prep.transform(df.iloc[:200]))
+    # Explicit test fixture only; production exports retain actual data_kind.
+    bundle = ModelBundle(
+        model, prep, {"run_id": "test", "data_kind": "real", "version": "0.4.0"}
+    )
+    buffer = api.ModelDoubleBuffer()
+    buffer.atomic_swap(bundle)
+    monkeypatch.setattr(api, "model_buffer", buffer)
+    monkeypatch.setattr(
+        api, "ledger", api.PredictionStore(tmp_path / "predictions.sqlite")
+    )
+    from src.drift_detector import DriftMonitor
+
+    monkeypatch.setattr(api, "drift_monitor", DriftMonitor())
+    monkeypatch.setattr(api, "retrainer", api.BackgroundRetrainer())
+    client = TestClient(api.app, headers={"X-API-Key": API_KEY})
+    row = df.iloc[220][prep.required_input_columns].to_dict()
+    row = {k: None if pd.isna(v) else v for k, v in row.items()}
+    return client, bundle, row
 
 
-def test_health_check_endpoint(client):
-    """Verifies that /health returns operational telemetry, memory, and dummy/ready model state."""
-    response = client.get("/health")
+def test_no_model_or_synthetic_model_cannot_score(serving, monkeypatch):
+    client, bundle, row = serving
+    monkeypatch.setattr(api, "model_buffer", api.ModelDoubleBuffer())
+    assert client.get("/health").json()["is_ready"] is False
+    assert (
+        client.post("/v1/score", json={"trans_id": "a", "features": row}).status_code
+        == 503
+    )
+    bundle.metadata["data_kind"] = "synthetic"
+    api.model_buffer.atomic_swap(bundle)
+    assert (
+        client.post("/v1/score", json={"trans_id": "a", "features": row}).status_code
+        == 503
+    )
+
+
+def test_authentication(serving):
+    client, _, row = serving
+    response = TestClient(api.app).post(
+        "/v1/score", json={"trans_id": "x", "features": row}
+    )
+    assert response.status_code == 401
+    assert client.get("/health").status_code == 200
+
+
+def test_scoring_matches_bundle_and_roundtrip(serving, tmp_path):
+    client, bundle, row = serving
+    save_bundle(bundle, tmp_path / "model")
+    loaded = load_bundle(tmp_path / "model")
+    predicted, prob = loaded.predict([row])
+    response = client.post("/v1/score", json={"trans_id": "a", "features": row})
     assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "HEALTHY"
-    assert data["model_loaded"] is True
-    assert data["model_generation"] >= 1
-    assert "is_dummy" in data
-    assert "is_ready" in data
-    assert data["memory_rss_mb"] > 0
-    assert "cpu_percent" in data
+    assert response.json()["fraud_probability"] == pytest.approx(prob[0])
+    assert response.json()["is_fraud"] == bool(predicted[0])
 
 
-def test_single_transaction_score(client):
-    """Verifies real-time scoring with risk tier assignment and latency tracking."""
-    payload = {
-        "trans_id": "TX_TEST_001",
-        "features": {
-            "TransactionAmt": 249.99,
-            "card1": 10020.0,
-            "C1": 3.0,
-            "C2": 2.0,
-            "C5": 0.0,
-            "C13": 5.0,
-            "D1": 14.0
-        }
-    }
-    response = client.post("/v1/score", json=payload)
-    assert response.status_code == 200
-    data = response.json()
-    assert data["trans_id"] == "TX_TEST_001"
-    assert 0.0 <= data["fraud_probability"] <= 1.0
-    assert data["risk_tier"] in ("LOW", "MEDIUM", "HIGH")
-    assert data["inference_latency_ms"] >= 0.0
-    # Strict SLA check: single inference in memory should easily beat 50ms in pytest
-    assert data["inference_latency_ms"] < 50.0
+def test_missing_features_rejected(serving):
+    client, _, row = serving
+    row.pop(next(iter(row)))
+    assert (
+        client.post("/v1/score", json={"trans_id": "a", "features": row}).status_code
+        == 422
+    )
 
 
-def test_score_returns_503_when_not_ready(client):
-    """Verifies that /v1/score returns 503 Service Unavailable when model_buffer.is_ready is False."""
-    model_buffer.set_ready(False)
-    try:
-        payload = {
-            "trans_id": "TX_UNREADY_001",
-            "features": {"TransactionAmt": 100.0, "card1": 1000.0}
-        }
-        response = client.post("/v1/score", json=payload)
-        assert response.status_code == 503
-        assert "not ready" in response.json()["detail"].lower()
-
-        # Batch scoring should also return 503
-        batch_resp = client.post("/v1/batch-score", json={"transactions": [payload]})
-        assert batch_resp.status_code == 503
-        assert "not ready" in batch_resp.json()["detail"].lower()
-    finally:
-        model_buffer.set_ready(True)
+def test_duplicate_score_preserves_original(serving):
+    client, _, row = serving
+    assert (
+        client.post("/v1/score", json={"trans_id": "a", "features": row}).status_code
+        == 200
+    )
+    assert (
+        client.post("/v1/score", json={"trans_id": "a", "features": row}).status_code
+        == 409
+    )
 
 
-def test_batch_scoring(client):
-    """Verifies vectorized batch scoring with throughput calculation."""
-    batch_txs = [
+def test_feedback_idempotent_and_conflicting_labels_rejected(serving):
+    client, _, row = serving
+    client.post("/v1/score", json={"trans_id": "a", "features": row})
+    assert (
+        client.post("/v1/feedback", json={"trans_id": "a", "is_fraud": 1}).json()[
+            "status"
+        ]
+        == "RECORDED"
+    )
+    assert (
+        client.post("/v1/feedback", json={"trans_id": "a", "is_fraud": 1}).json()[
+            "status"
+        ]
+        == "ALREADY_RECORDED"
+    )
+    assert api.drift_monitor.total_samples_monitored == 1
+    assert (
+        client.post("/v1/feedback", json={"trans_id": "a", "is_fraud": 0}).status_code
+        == 409
+    )
+
+
+def test_feedback_unknown_rejected(serving):
+    client, _, _ = serving
+    assert (
+        client.post(
+            "/v1/feedback", json={"trans_id": "unknown", "is_fraud": 1}
+        ).status_code
+        == 404
+    )
+
+
+def test_old_generation_feedback_does_not_pollute_current_detector(serving):
+    client, bundle, row = serving
+    client.post("/v1/score", json={"trans_id": "a", "features": row})
+    api.model_buffer.atomic_swap(copy.deepcopy(bundle))
+    response = client.post("/v1/feedback", json={"trans_id": "a", "is_fraud": 1})
+    assert response.json()["monitored"] is False
+    assert api.drift_monitor.total_samples_monitored == 0
+
+
+def test_batch_is_atomic_and_reports_errors(serving):
+    client, _, row = serving
+    response = client.post(
+        "/v1/batch-score",
+        json={
+            "transactions": [{"trans_id": str(i), "features": row} for i in range(3)]
+        },
+    )
+    assert response.status_code == 200 and response.json()["total_processed"] == 3
+    assert (
+        client.post("/v1/batch-score", json={"transactions": []}).json()[
+            "total_processed"
+        ]
+        == 0
+    )
+
+
+def test_checksum_detects_changed_bundle(serving, tmp_path):
+    _, bundle, _ = serving
+    save_bundle(bundle, tmp_path / "model")
+    with (tmp_path / "model" / "bundle.joblib").open("ab") as f:
+        f.write(b"changed")
+    with pytest.raises(ValueError, match="checksum"):
+        load_bundle(tmp_path / "model")
+
+
+def test_retrain_needs_verified_data(serving):
+    client, _, _ = serving
+    assert (
+        client.post("/v1/retrain?sync=true").json()["status"]
+        == "SKIPPED_INSUFFICIENT_DATA"
+    )
+
+
+def test_ledger_survives_reopen(serving):
+    client, _, row = serving
+    client.post("/v1/score", json={"trans_id": "a", "features": row})
+    reopened = api.PredictionStore(api.ledger.path)
+    original, fresh = reopened.feedback("a", 1)
+    assert fresh and original[2] == 1
+
+
+def test_restart_cannot_treat_old_revision_as_current(serving, monkeypatch):
+    client, bundle, row = serving
+    bundle.metadata["model_revision"] = "old-revision"
+    client.post("/v1/score", json={"trans_id": "a", "features": row})
+    new = copy.deepcopy(bundle)
+    new.metadata["model_revision"] = "new-revision"
+    replacement = api.ModelDoubleBuffer()
+    replacement.atomic_swap(new)  # generation resets after restart
+    monkeypatch.setattr(api, "model_buffer", replacement)
+    response = client.post("/v1/feedback", json={"trans_id": "a", "is_fraud": 1})
+    assert not response.json()["monitored"]
+
+
+def test_background_candidate_promotes_only_after_holdout_gain(tmp_path, monkeypatch):
+    # Deliberately reversed relation creates a measurable adaptation requirement.
+    amount = np.tile([0.0, 100.0], 100)
+    original = pd.DataFrame(
         {
-            "trans_id": f"TX_BATCH_{i:03d}",
-            "features": {
-                "TransactionAmt": float(i * 15 + 10),
-                "card1": 5000.0 + i,
-                "C1": float(i % 5),
-                "C2": 1.0,
-                "C5": 0.0,
-                "C13": float(i % 10),
-                "D1": float(i)
+            "step": np.arange(1, 201),
+            "amount": amount,
+            "isFraud": (amount == 0).astype(int),
+        }
+    )
+    prep = Preprocessor().fit(original.iloc[:160])
+    model = StaticBaselineModel(
+        prep.feature_names, model_params={"n_estimators": 20}
+    ).fit(prep.transform(original))
+    bundle = ModelBundle(
+        model,
+        prep,
+        {
+            "run_id": "promotion-test",
+            "model": "adaptive",
+            "data_kind": "real",
+            "model_revision": "original",
+        },
+    )
+    buffer = api.ModelDoubleBuffer()
+    buffer.atomic_swap(bundle)
+    monkeypatch.setattr(api, "model_buffer", buffer)
+    monkeypatch.setattr(api, "ledger", api.PredictionStore(tmp_path / "ledger.sqlite"))
+    monkeypatch.setattr(api.settings, "model_output_dir", str(tmp_path / "models"))
+    rows = []
+    for i, a in enumerate(amount):
+        features = {"step": i + 201, "amount": float(a)}
+        rows.append(
+            (
+                str(i),
+                json.dumps(features),
+                0.1,
+                0,
+                1,
+                "original",
+                "promotion-test:adaptive",
+                i,
+            )
+        )
+    api.ledger.record(rows)
+    for i, a in enumerate(amount):
+        api.ledger.feedback(str(i), int(a > 0))
+    worker = api.BackgroundRetrainer()
+    assert worker.execute_retrain()
+    assert buffer.generation == 2
+    assert buffer.snapshot()[0].metadata["model_revision"] != "original"
+    assert len(list((tmp_path / "models").glob("generation-2-*/manifest.json"))) == 1
+    assert (tmp_path / "models" / "active.json").exists()
+
+
+def test_accepted_revision_is_restored_after_service_restart(
+    serving, tmp_path, monkeypatch
+):
+    client, bundle, _ = serving
+    initial = tmp_path / "initial"
+    save_bundle(bundle, initial)
+    accepted = copy.deepcopy(bundle)
+    accepted.metadata["model_revision"] = "accepted-after-retrain"
+    state = tmp_path / "state"
+    save_bundle(accepted, state / "generation-2-accepted")
+    (state / "active.json").write_text(
+        json.dumps(
+            {
+                "family_id": bundle.metadata["run_id"]
+                + ":"
+                + bundle.metadata.get("model", "default"),
+                "generation": 2,
+                "package": "generation-2-accepted",
             }
-        }
-        for i in range(25)
-    ]
-    response = client.post("/v1/batch-score", json={"transactions": batch_txs})
-    assert response.status_code == 200
-    data = response.json()
-    assert data["total_processed"] == 25
-    assert len(data["results"]) == 25
-    assert data["throughput_qps"] > 0.0
+        )
+    )
+    monkeypatch.setattr(api.settings, "model_bundle_path", str(initial))
+    monkeypatch.setattr(api.settings, "model_output_dir", str(state))
+    monkeypatch.setattr(api, "model_buffer", api.ModelDoubleBuffer())
+    api.initialize_app_model()
+    restored, generation = api.model_buffer.snapshot()
+    assert (
+        generation == 2
+        and restored.metadata["model_revision"] == "accepted-after-retrain"
+    )
 
 
-def test_feedback_ingestion_and_drift_telemetry(client):
-    """Verifies that chargeback feedback updates the drift monitor and telemetry endpoint."""
-    init_samples = drift_monitor.total_samples_monitored
-
-    # First score a transaction
-    client.post("/v1/score", json={
-        "trans_id": "TX_CHARGEBACK_01",
-        "features": {"TransactionAmt": 500.0, "card1": 1234.0, "C1": 10.0}
-    })
-
-    # Send feedback indicating actual chargeback / fraud
-    feedback_payload = {
-        "trans_id": "TX_CHARGEBACK_01",
-        "is_fraud": 1,
-        "dispute_reason": "UNAUTHORIZED_CARD_PRESENT"
-    }
-    fb_response = client.post("/v1/feedback", json=feedback_payload)
-    assert fb_response.status_code == 200
-    fb_data = fb_response.json()
-    assert fb_data["status"] == "RECORDED"
-    assert fb_data["monitored_samples_total"] == init_samples + 1
-
-    # Query /v1/drift-status
-    status_response = client.get("/v1/drift-status")
-    assert status_response.status_code == 200
-    status_data = status_response.json()
-    assert status_data["total_samples_monitored"] >= init_samples + 1
-    assert "adwin_drift_detected" in status_data
-    assert "ddm_drift_detected" in status_data
-
-
-def test_atomic_model_hot_swap(client):
-    """Verifies zero-downtime atomic model pointer replacement and is_ready state update."""
-    initial_gen = model_buffer.generation
-
-    # Create new genuine model
-    new_features = ["TransactionAmt", "card1", "C1", "C2", "C5", "C13", "D1", "extra_feat"]
-    X = np.random.randn(50, len(new_features)).astype(np.float32)
-    y = np.random.binomial(1, 0.1, size=50)
-    new_model = xgb.XGBClassifier(n_estimators=10, max_depth=2, tree_method="hist", device="cpu")
-    new_model.fit(X, y)
-
-    # Perform atomic swap marking model as genuine production model (is_dummy=False)
-    model_buffer.atomic_swap(new_model, new_features, is_dummy=False)
-
-    assert model_buffer.generation == initial_gen + 1
-    assert model_buffer.feature_names == new_features
-    assert model_buffer.is_dummy is False
-    assert model_buffer.is_ready is True
-
-    # Immediate scoring request after swap must succeed without interruption
-    score_resp = client.post("/v1/score", json={
-        "trans_id": "TX_POST_SWAP",
-        "features": {f: 1.0 for f in new_features}
-    })
-    assert score_resp.status_code == 200
-    assert score_resp.json()["model_generation"] == initial_gen + 1
-
-    # Health check reflects ready production model
-    health_resp = client.get("/health")
-    assert health_resp.status_code == 200
-    assert health_resp.json()["is_dummy"] is False
-    assert health_resp.json()["is_ready"] is True
-
-
-def test_unauthenticated_requests_rejected():
-    """Verifies that protected endpoints reject missing or invalid API keys with 401."""
-    unauth_client = TestClient(app)
-
-    # /health probe is public for container liveness/readiness
-    health_resp = unauth_client.get("/health")
-    assert health_resp.status_code == 200
-
-    # Protected endpoints require valid X-API-Key
-    score_resp = unauth_client.post("/v1/score", json={
-        "trans_id": "TX_NO_AUTH",
-        "features": {"TransactionAmt": 100.0}
-    })
-    assert score_resp.status_code == 401
-    assert "Invalid or missing API key" in score_resp.json()["detail"]
-
-    feedback_resp = unauth_client.post("/v1/feedback", json={
-        "trans_id": "TX_NO_AUTH",
-        "is_fraud": 0
-    })
-    assert feedback_resp.status_code == 401
-
-    drift_resp = unauth_client.get("/v1/drift-status")
-    assert drift_resp.status_code == 401
-
-    # Invalid API key rejected
-    bad_client = TestClient(app, headers={"X-API-Key": "malicious-unauthorized-key"})
-    bad_resp = bad_client.post("/v1/score", json={
-        "trans_id": "TX_BAD_AUTH",
-        "features": {"TransactionAmt": 100.0}
-    })
-    assert bad_resp.status_code == 401
-
-
-def test_feedback_unknown_transaction_raises_404(client):
-    """
-    Verifies that logging feedback for a transaction not in the prediction cache
-    raises 404 rather than silently fabricating a 0.0 probability.
-    """
-    # Without predicted_probability: must raise 404
-    resp = client.post("/v1/feedback", json={
-        "trans_id": "TX_COMPLETELY_UNKNOWN_999",
-        "is_fraud": 1
-    })
-    assert resp.status_code == 404
-    assert "not found in the recent prediction cache" in resp.json()["detail"]
-
-    # With explicit predicted_probability: succeeds
-    resp_with_prob = client.post("/v1/feedback", json={
-        "trans_id": "TX_COMPLETELY_UNKNOWN_999",
-        "is_fraud": 1,
-        "predicted_probability": 0.85
-    })
-    assert resp_with_prob.status_code == 200
-    assert resp_with_prob.json()["status"] == "RECORDED"
-
-
-def test_verify_api_key_constant_time():
-    """Asserts that verify_api_key validates keys using constant-time comparison."""
-    # Valid key returns the key
-    assert verify_api_key(API_KEY) == API_KEY
-
-    # Missing key raises 401
-    with pytest.raises(HTTPException) as exc_info:
-        verify_api_key(None)
-    assert exc_info.value.status_code == 401
-
-    # Invalid key raises 401
-    with pytest.raises(HTTPException) as exc_info:
-        verify_api_key("invalid-unauthorized-key")
-    assert exc_info.value.status_code == 401
-
-
-def test_manual_retrain_endpoint_synchronous(client):
-    """Verifies that POST /v1/retrain?sync=true executes shadow retrain and hot-swaps model."""
-    gen_before = model_buffer.generation
-    resp = client.post("/v1/retrain?sync=true")
-    assert resp.status_code == 200
-    data = resp.json()
-    assert data["status"] == "COMPLETED"
-    assert data["current_generation"] == gen_before + 1
-    assert data["is_retraining"] is False
-    assert data["total_retrains"] >= 1
-    assert model_buffer.generation == gen_before + 1
-    assert model_buffer.is_ready is True
-
-
-def test_automated_shadow_retraining_on_drift(client):
-    """Verifies that triggering concept drift on /v1/feedback executes shadow retrain and resets detectors."""
-    gen_before = model_buffer.generation
-    retrains_before = retrainer.total_retrains
-
-    # Feed transactions that cause drift in drift_monitor (e.g. 70 consecutive prediction errors)
-    for i in range(70):
-        tx_id = f"TX_DRIFT_STREAM_{i:03d}"
-        client.post("/v1/score", json={
-            "trans_id": tx_id,
-            "features": {"TransactionAmt": 150.0 + i, "card1": 2000.0, "C1": 1.0}
-        })
-        resp = client.post("/v1/feedback", json={
-            "trans_id": tx_id,
-            "is_fraud": 1,
-            "predicted_probability": 0.01
-        })
-        assert resp.status_code == 200
-
-    # Execute retrain to simulate background worker completion
-    retrainer.execute_retrain()
-
-    assert model_buffer.generation > gen_before
-    assert retrainer.total_retrains > retrains_before
-    # Detectors must have been reset following the retrain
-    assert drift_monitor.adwin.width == 0
-
-
-def test_concurrent_feedback_thread_safety(client):
-    """
-    Verifies that concurrent requests to /v1/feedback and /v1/drift-status
-    execute without data races, corruption, or exceptions on shared drift_monitor.
-    """
-    import concurrent.futures
-
-    initial_monitored = drift_monitor.total_samples_monitored
-    num_concurrent_requests = 40
-
-    def send_feedback(idx):
-        payload = {
-            "trans_id": f"TX_CONCURRENT_{idx:03d}",
-            "is_fraud": idx % 2,
-            "predicted_probability": 0.5
-        }
-        return client.post("/v1/feedback", json=payload)
-
-    def query_status():
-        return client.get("/v1/drift-status")
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-        fb_futures = [executor.submit(send_feedback, i) for i in range(num_concurrent_requests)]
-        status_futures = [executor.submit(query_status) for _ in range(10)]
-
-        for f in concurrent.futures.as_completed(fb_futures):
-            resp = f.result()
-            assert resp.status_code == 200
-            assert resp.json()["status"] == "RECORDED"
-
-        for f in concurrent.futures.as_completed(status_futures):
-            resp = f.result()
-            assert resp.status_code == 200
-            assert "total_samples_monitored" in resp.json()
-
-    assert drift_monitor.total_samples_monitored == initial_monitored + num_concurrent_requests
-
-
-
-
+def test_nested_feature_values_rejected_as_422(serving):
+    client, _, row = serving
+    row[next(iter(row))] = [1, 2]
+    response = client.post("/v1/score", json={"trans_id": "nested", "features": row})
+    assert response.status_code == 422

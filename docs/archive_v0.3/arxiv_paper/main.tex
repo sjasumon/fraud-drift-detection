@@ -1,0 +1,280 @@
+\documentclass[10pt,conference,compsoc]{IEEEtran}
+
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage{subcaption}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage[hidelinks]{hyperref}
+
+\begin{document}
+
+\title{Adaptive Fraud Detection Under Concept Drift:\\An Empirical Study on Verification Latency, Entity Generalization, and Statistical Rigor}
+
+\author{
+    \IEEEauthorblockN{Sheikh Joynal Abedin Sumon}
+    \IEEEauthorblockA{
+        School of Computer Science, The University of Auckland\\
+        Auckland, New Zealand\\
+        Email: me@sumon.me
+    }
+}
+
+\maketitle
+
+\begin{abstract}
+Financial fraud detection operates in a highly adversarial and non-stationary environment where perpetrators continually modify tactics to circumvent deployed controls—a phenomenon formalized in stream mining as concept drift. While supervised adaptive learning algorithms are frequently proposed, existing academic literature relies on two unrealistic assumptions: (1) \textit{the immediate verification fallacy}, which assumes labels arrive instantaneously rather than with realistic 30--90 day dispute lags; and (2) \textit{entity memorization}, wherein apparent adaptive improvements stem from memorizing repeating transaction identifiers rather than learning generalizable behavioral distributions. 
+
+In this work, we conduct a multi-domain empirical study across $7,953,160$ transactions spanning three benchmark environments: IEEE-CIS E-Commerce ($590$K transactions, $26$ weeks), Feedzai Bank Account Fraud (NeurIPS 2022 Benchmark, $1$M applications, $8$ months), and PaySim Mobile Money ($6.36$M transactions). We enforce strict temporal lookahead isolation and multi-seed statistical significance ($K=5$ seeds, $1{,}000$-sample non-parametric bootstrap confidence intervals, and paired two-tailed hypothesis tests). Under complete identifier blindness (raw card and address attributes excluded), our drift-adaptive system catches $+7.22\% \pm 1.31\%$ more frauds ($p = 0.000254 < 0.001$) on brand-new cardholders upon their first-ever arrival in the stream, conclusively disproving entity memorization. Conversely, we show that single-run micro-gains on saturated streams (PaySim $F1: 0.9955 \to 0.9978$) are not statistically significant ($p = 0.2871$), demonstrating the imperative for statistical rigor. Crucially, we quantify the operational cost of verification latency: standard 4-to-8 week chargeback lags degrade out-of-sample recall from $72.70\%$ down to $63.45\%$, converging toward static baselines and proving that unsupervised drift monitoring is essential during feedback delays. We release our benchmark suite, multi-seed evaluation harness, and sub-$10$ms production microservice.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Concept Drift, Fraud Detection, Data Stream Mining, Verification Latency, Entity Memorization, Statistical Rigor, Explainable AI.
+\end{IEEEkeywords}
+
+\section{Introduction}
+\label{sec:intro}
+
+Digital payments, account openings, and mobile remittances process billions of transactions daily under constant threat from organized financial crime. Machine learning models deployed in financial institutions operate under acute class imbalance (often $< 1\%$ fraud prevalence) and continuous non-stationarity. In data stream mining, changes in the underlying joint probability distribution $P(X, Y) = P(X)P(Y \mid X)$ over time are formalized as \textit{concept drift}~\cite{lu2018learning, gama2004learning}. Attackers adapt evasive vectors (shifting $P(Y \mid X)$), while macroeconomic trends and seasonal promotions alter consumer spending patterns (shifting $P(X)$).
+
+Despite the abundance of academic drift detection literature~\cite{bifet2007learning, gama2004learning}, current experimental evaluations in financial fraud literature suffer from two critical vulnerabilities that hinder translational impact:
+
+\begin{enumerate}
+    \item \textbf{The Immediate Verification Assumption:} Almost all streaming benchmark papers assume ground-truth labels $y_t$ are available immediately after prediction for model retraining~\cite{dalpozzolo2015credit}. In industrial reality, fraudulent transactions are confirmed only after cardholders notice unauthorized activity, initiate chargebacks, and endure banking investigation cycles, creating a $30$ to $90$-day verification latency~\cite{carcillo2018scarff}.
+    \item \textbf{Entity Memorization vs. Genuine Concept Adaptation:} When an adaptive model demonstrates superior performance over time, does it genuinely capture evolving behavioral patterns, or is it merely memorizing repeated card numbers, device tokens, and customer accounts that recur throughout the stream? Without isolating entity identifiers, reported adaptive gains may simply be trivial identity memorization.
+\end{enumerate}
+
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=0.98\textwidth]{figures/statistical_rigor_errorbars.png}
+    \caption{\textbf{Empirical Multi-Seed Statistical Rigor Benchmark ($K=5$ seeds, Mean $\pm$ Standard Deviation with 95\% Student's $t$ Error Bars and Paired Hypothesis Significance Testing).} Left: PaySim Mobile Money Out-of-Sample Stream F1-Score across Static ($0.9958 \pm 0.0002$), Periodic ($0.9966 \pm 0.0003$), Sliding ($0.9967 \pm 0.0003$), and Drift-Adaptive ($0.9964 \pm 0.0009$). The paired difference is within variance ($p = 0.2871$), exposing the risk of single-run claims. Right: IEEE-CIS Feature-Blind UID Audit across Card Cohorts. On Cohort 3 (Strict Stream-Unseen Cards evaluated on their first-ever arrival with all raw card/address identifiers stripped), the adaptive model captures $+7.22\% \pm 1.31\%$ more frauds ($76.62\%$ vs. $69.41\%$, $t = 12.2673$, $p = 0.000254 < 0.001$), definitively disproving entity memorization.}
+    \label{fig:errorbars}
+\end{figure*}
+
+To resolve these open questions, this paper establishes a comprehensive stream mining research platform and empirical benchmark across $7{,}953{,}160$ transactions:
+\begin{itemize}
+    \item \textbf{Multi-Seed Statistical Rigor ($K=5$):} We demonstrate through 5-seed replications, 1,000-replicate non-parametric bootstrap confidence intervals, and paired hypothesis tests that single-run F1 numbers on near-saturated benchmarks (PaySim $0.9955 \to 0.9978$) cannot be distinguished from noise ($p = 0.2871$), whereas adaptive recall advantages on complex multi-feature streams are rigorously verified ($p < 0.001$).
+    \item \textbf{Definitive Disproof of Entity Memorization:} We design a leak-free entity tracking methodology on IEEE-CIS data ($N=439{,}335$ out-of-sample). Even when all cardholder and address identifiers are completely removed from the feature space, the adaptive model achieves $+7.22\% \pm 1.31\%$ higher recall ($p < 0.001$) on brand-new cardholders upon their first appearance.
+    \item \textbf{Quantifying Verification Latency Degradation:} We model 4 operational delay regimes (immediate, 4-week, 8-week, and stochastic LogNormal). We quantify that an 8-week chargeback lag reduces out-of-sample recall from $72.70\%$ to $63.45\%$, virtually nullifying supervised adaptation advantages.
+    \item \textbf{Explainability and Microservice Artifacts:} We integrate a dual TreeSHAP $\times (1+\text{PSI})$ attribution engine to explain distribution shifts and release a sub-$10$ms production microservice with lock-free atomic double-buffering.
+\end{itemize}
+
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Concept Drift in Data Streams}
+Concept drift adaptation has been extensively studied in data streams~\cite{lu2018learning}. Statistical detectors typically monitor the classification error rate or underlying feature distributions. The Adaptive Windowing algorithm (ADWIN)~\cite{bifet2007learning} maintains a variable-length sliding window using Hoeffding bounds to guarantee bounded false-alarm rates without prior knowledge of drift velocity. The Drift Detection Method (DDM)~\cite{gama2004learning} monitors the binomial error distribution, establishing warning and drift levels based on sample standard deviations. In financial contexts, sporadic attack bursts necessitate immediate sensitivity combined with stability against false alarms~\cite{koh2005finding, koh2010rare}.
+
+\subsection{Fraud Benchmarks and Verification Latency}
+Financial fraud benchmarks differ fundamentally from standard tabular benchmarks. The IEEE-CIS Fraud Detection dataset ($590$K transactions)~\cite{ieeecis2019} spans 182 days with high feature dimensionality. The Feedzai Bank Account Fraud (BAF) suite~\cite{jesus2022turning}, accepted at NeurIPS 2022, introduced $1$M synthetic digital account openings across 8 months, reflecting temporal non-stationarity. PaySim~\cite{lopezrojas2016paysim} captures high-volume mobile money transfers.
+
+The critical disconnect between academic research and commercial fraud systems is \textit{verification latency}~\cite{dalpozzolo2015credit}. Dal Pozzolo et al.~\cite{dalpozzolo2015credit} first formulated the streaming verification process, noting that while legitimate transactions can be considered non-fraudulent after a dispute window, positive fraud labels arrive asynchronously. Carcillo et al.~\cite{carcillo2018scarff} developed the SCARFF architecture to process delayed feedback in credit card streams. Our work expands these foundations to multi-seed statistical significance and entity memorization audits.
+
+\subsection{Model Explainability Under Drift}
+Attributing concept drift to specific features remains a major challenge. While drift detectors indicate \textit{that} a distribution shift has occurred, they do not identify \textit{which} features drove the shift. TreeSHAP~\cite{lundberg2020local} calculates exact Shapley values for tree ensembles in polynomial time. By combining local Shapley feature sensitivity with the global Population Stability Index (PSI), our framework explains distributional divergence mechanistically.
+
+\section{Methodology \& System Formulation}
+\label{sec:methodology}
+
+\subsection{Mathematical Stream Formulation}
+We model a financial stream as a sequence of transactions arriving over continuous time:
+\begin{equation}
+    \mathcal{S} = \{(x_1, y_1, \tau_1), (x_2, y_2, \tau_2), \dots, (x_N, y_N, \tau_N)\}
+\end{equation}
+where $x_t \in \mathbb{R}^d$ is the feature vector, $y_t \in \{0, 1\}$ is the ground truth label ($1 = \text{fraud}$), and $\tau_t$ is the transaction timestamp. The stream is chronologically partitioned into sequential, non-overlapping time slices $S_1, S_2, \dots, S_T$. 
+
+To ensure zero temporal lookahead leakage, all preprocessing parameters (median imputation vectors, one-hot category vocabularies, and scale weights) are fitted strictly on the baseline training partition $\mathcal{D}_{base} = \bigcup_{k=1}^{n_{base}} S_k$ (the earliest $20\%$ of slices). Subsequent slices $S_k$ ($k > n_{base}$) are transformed strictly using this baseline pipeline.
+
+\subsection{Streaming Comparative Learning Baselines}
+We benchmark four learning paradigms under identical test-before-learn streaming conditions:
+\begin{enumerate}
+    \item \textbf{Static Baseline (Frozen):} Trained exclusively on $\mathcal{D}_{base}$ and permanently frozen across the remaining stream ($S_{n_{base}+1}, \dots, S_T$).
+    \item \textbf{Blind Periodic Retraining:} Retrained unconditionally every $K$ time slices (e.g., $K=4$ weeks) on all accumulated historical data without statistical drift awareness.
+    \item \textbf{Sliding Window Retraining:} Retrained every $K$ time slices strictly on the most recent $W$ time slices (e.g., $W=4$ weeks), intentionally purging older history to simulate memory-bounded streaming.
+    \item \textbf{Concept-Drift-Adaptive (Proposed):} Employs dual ADWIN ($\delta = 0.002$) and DDM detectors over the prediction error stream implemented via the River streaming framework~\cite{montiel2021river}. When drift is confirmed, a full retraining of an accelerated histogram-based gradient-boosted decision tree ensemble (XGBoost)~\cite{chen2016xgboost} is triggered across all matured streaming transactions on a GPU.
+\end{enumerate}
+
+\subsection{Simulating Asynchronous Verification Latency}
+In real banking, a transaction executed at time $\tau_{tx}$ is not confirmed as fraud until dispute resolution at time $\tau_{ver}$:
+\begin{equation}
+    \tau_{ver} = \tau_{tx} + \Delta t
+\end{equation}
+We model label arrival through an asynchronous priority queue $\mathcal{Q}_{delayed}$ parameterized by operational regimes:
+\begin{enumerate}
+    \item \textit{Immediate Feedback (0w):} $\Delta t = 0$ (Idealized theoretical baseline).
+    \item \textit{Fixed Delay (4w and 8w):} $\Delta t = 28$ days or $56$ days.
+    \item \textit{Stochastic LogNormal Delay:} $\Delta t \sim \text{LogNormal}(\mu=1.38, \sigma=0.45)$, matching empirical dispute distributions where median chargeback latency is $\approx 4$ weeks with heavy tails extending beyond 12 weeks.
+\end{enumerate}
+Under verification latency, when drift triggers at slice $k$, the adaptive model is trained strictly on transactions satisfying $\tau_{ver} \le \tau_{slice\_end}(k)$. Unverified transactions are quarantined from training to prevent temporal data leakage.
+
+\subsection{Entity Memorization Audit Formulation}
+To determine whether adaptation learns behavioral patterns or memorizes recurring entities, we extract unique identity keys $\text{UID} = \text{card1}\_\text{card2}\_\text{addr1}$ across IEEE-CIS. We establish two benchmark configurations:
+\begin{itemize}
+    \item \textbf{Standard Features:} Raw card and address identifiers included.
+    \item \textbf{Feature-Blind Protocol:} Identifiers `card1`, `card2`, `card3`, `card5`, `addr1`, and `addr2` are strictly removed from XGBoost's feature matrix.
+\end{itemize}
+Transactions in out-of-sample slices are segmented into three mutually exclusive cohorts:
+\begin{itemize}
+    \item \textbf{Cohort 1 (Seen Cards):} Transactions whose card UID was observed in baseline training slices ($\text{UID} \in \mathcal{U}_{base}$).
+    \item \textbf{Cohort 2 (Baseline-Unseen Cards):} Transactions whose card UID was not observed in baseline training slices ($\text{UID} \notin \mathcal{U}_{base}$).
+    \item \textbf{Cohort 3 (Strict Stream-Unseen / Zero-Memory Test):} The subset of Cohort 2 evaluated strictly upon their very first appearance in the stream ($\text{UID} \notin \mathcal{U}_{cum\_past}$). This isolates pure zero-memory generalization.
+\end{itemize}
+
+\subsection{Mechanistic Drift Attribution Engine}
+To provide actionable explainability when concept drift is flagged, we propose a multiplicative drift-attribution heuristic combining marginal TreeSHAP importance with the Population Stability Index (PSI) for feature $j$ in drifted slice $S_k$:
+\begin{equation}
+    \text{AttributionScore}_j = \frac{1}{|S_k|} \sum_{i \in S_k} |\phi_{ij}| \times (1 + \text{PSI}_j)
+\end{equation}
+where $\phi_{ij}$ is the local TreeSHAP value of feature $j$ for sample $i$, and $\text{PSI}_j$ is the Population Stability Index comparing feature $j$'s empirical distribution in $S_k$ against baseline $S_{base}$:
+\begin{equation}
+    \text{PSI}_j = \sum_{b=1}^{B} (p_{kb} - p_{0b}) \ln\left(\frac{p_{kb}}{p_{0b}}\right)
+\end{equation}
+This formulation modulates global predictive importance by the magnitude of observed distribution shift: when $\text{PSI}_j = 0$, attribution collapses to baseline TreeSHAP importance, while divergent covariates ($\text{PSI}_j > 0.25$) are amplified. This heuristic prevents benign covariate shift (high PSI, zero SHAP) and stationary predictive features (high SHAP, zero PSI) from dominating root-cause reports. A sensitivity check against non-parametric rank aggregation (Borda count over $\text{Rank}_{\text{SHAP}}$ and $\text{Rank}_{\text{PSI}}$) confirms concordant top-3 feature identification in $92\%$ of evaluated drift slices.
+
+\section{Empirical Evaluation \& Statistical Rigor}
+\label{sec:experiments}
+
+\begin{table*}[t]
+\centering
+\caption{\textbf{Multi-Seed Statistical Rigor Benchmark ($K=5$ seeds: 42, 101, 202, 303, 404).}\\Mean $\pm$ Standard Deviation ($\mu \pm \sigma$), 95\% Student's $t$ Confidence Intervals, Non-Parametric Bootstrap 95\% CIs, and Paired Two-Tailed Hypothesis Tests.}
+\label{tab:statistical_rigor}
+\small
+\begin{tabularx}{\textwidth}{l l c c c c c}
+\toprule
+\textbf{Benchmark Stream} & \textbf{Model / Cohort} & \textbf{Metric} & \textbf{Mean $\pm$ Std ($\mu \pm \sigma$)} & \textbf{Student's $t$ 95\% CI} & \textbf{Bootstrap 95\% CI} & \textbf{$p$-value (vs. Static)} \\
+\midrule
+\multirow{4}{*}{\shortstack[l]{\textbf{PaySim Mobile Money}\\\textit{(Out-of-Sample Stream)}\\$N=1{,}573{,}401$, $4{,}446$ Frauds}} 
+& Static Baseline (Frozen) & F1-Score & $0.9958 \pm 0.0002$ & $[0.9956, 0.9960]$ & $[0.9944, 0.9970]$ & Control Benchmark \\
+& Periodic Retrain ($K=2$) & F1-Score & $0.9966 \pm 0.0003$ & $[0.9962, 0.9970]$ & $[0.9959, 0.9979]$ & $p = 0.0125$ \\
+& Sliding Window ($W=2$) & F1-Score & $0.9967 \pm 0.0003$ & $[0.9963, 0.9970]$ & $[0.9960, 0.9980]$ & $p = 0.0068$ \\
+& \textbf{Drift-Adaptive (Proposed)} & F1-Score & $\mathbf{0.9964 \pm 0.0009}$ & $[0.9953, 0.9975]$ & $[0.9943, 0.9970]$ & $\mathbf{p = 0.2871\text{ (Noise)}}$ \\
+\midrule
+\multirow{6}{*}{\shortstack[l]{\textbf{IEEE-CIS UID Audit}\\\textit{(Feature-Blind Protocol)}\\$N=383{,}551$, $10{,}153$ Frauds}} 
+& Cohort 1: Seen Cards & Static Recall & $48.90\% \pm 0.48\%$ & $[48.31\%, 49.50\%]$ & --- & Control \\
+& Cohort 1: Seen Cards & \textbf{Adaptive Recall} & $\mathbf{61.39\% \pm 0.48\%}$ & $[60.80\%, 61.99\%]$ & --- & $\mathbf{p < 0.0001\text{ (***)}}$ \\
+\cmidrule{2-7}
+& Cohort 2: Unseen Cards & Static Recall & $66.30\% \pm 0.79\%$ & $[65.32\%, 67.28\%]$ & --- & Control \\
+& Cohort 2: Unseen Cards & \textbf{Adaptive Recall} & $\mathbf{73.79\% \pm 0.56\%}$ & $[73.10\%, 74.48\%]$ & --- & $\mathbf{p < 0.0001\text{ (***)}}$ \\
+\cmidrule{2-7}
+& \textbf{Cohort 3: Zero-Memory Test} & Static Recall & $69.41\% \pm 1.07\%$ & $[68.08\%, 70.74\%]$ & --- & Control \\
+& \textbf{Cohort 3: Zero-Memory Test} & \textbf{Adaptive Recall} & $\mathbf{76.62\% \pm 0.35\%}$ & $[76.19\%, 77.06\%]$ & --- & $\mathbf{p = 0.000254\text{ (***)}}$ \\
+& \textit{Cohort 3: Net Recall Gain} & $\Delta \text{Recall}$ & $\mathbf{+7.22\% \pm 1.31\%}$ & $[+5.59\%, +8.85\%]$ & --- & $\mathbf{t = 12.2673}$ \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\subsection{Multi-Dataset Benchmark Portfolio}
+Our experimental platform evaluates three standardized benchmarks on a GPU ($16$GB VRAM) and MySQL Server 9.7:
+\begin{enumerate}
+    \item \textbf{IEEE-CIS Fraud Detection:} $590{,}540$ transactions across 26 sequential weekly slices ($182$ days), $3.50\%$ fraud prevalence ($20{,}663$ frauds).
+    \item \textbf{Feedzai BAF (NeurIPS 2022 Benchmark):} $1{,}000{,}000$ digital account opening applications across 8 monthly slices ($34$ weeks), $1.10\%$ fraud prevalence ($11{,}029$ frauds).
+    \item \textbf{PaySim Mobile Money:} $6{,}362{,}620$ transactions across 5 weekly slices ($744$ hours), $0.129\%$ fraud prevalence ($8{,}213$ frauds).
+\end{enumerate}
+
+\subsection{Statistical Significance and Hypothesis Testing}
+Table~\ref{tab:statistical_rigor} and Fig.~\ref{fig:errorbars} present the multi-seed results across 5 random seeds ($s \in \{42, 101, 202, 303, 404\}$).
+
+\subsubsection{Deconstructing Single-Run Micro-Gains on PaySim}
+On PaySim, an initial single-run experiment suggested an F1 increase from $0.9955$ (Static) to $0.9978$ (Adaptive). However, multi-seed replication reveals that the static model achieves $0.9958 \pm 0.0002$ while the adaptive model yields $0.9964 \pm 0.0009$. A paired two-tailed $t$-test indicates $t = 1.2271, p = 0.2871$. Because $p > 0.05$, the apparent advantage is statistically indistinguishable from noise. 
+
+This outcome is scientifically instructive: in mobile money transfers, unauthorized cash depletion creates a direct accounting disparity ($\text{errorBalanceOrig} = \text{newbalanceOrig} + \text{amount} - \text{oldbalanceOrg}$). Once this feature is engineered, all models operate near ceiling ($F1 > 0.995$). Reporting this result underscores the danger of uncritically claiming algorithmic superiority from single-seed runs.
+
+\subsubsection{Definitive Disproof of Entity Memorization on IEEE-CIS}
+In contrast, on the complex IEEE-CIS stream where fraud vectors evolve across behavioral counting and timedelta dimensions ($C_1$--$C_{14}$, $D_1$--$D_4$), the adaptive advantages are robust and statistically significant across all cohorts:
+\begin{itemize}
+    \item In \textbf{Cohort 1 (Seen Cards)}, the adaptive model captures $61.39\% \pm 0.48\%$ of frauds vs. $48.90\% \pm 0.48\%$ for static ($+12.48\% \pm 0.35\%$ gain, $p < 0.0001$).
+    \item In \textbf{Cohort 2 (Unseen Cards)}, the adaptive model catches $73.79\% \pm 0.56\%$ vs. $66.30\% \pm 0.79\%$ ($+7.49\% \pm 0.56\%$ gain, $p < 0.0001$).
+    \item In \textbf{Cohort 3 (Strict Stream-Unseen Cards / Zero-Memory Arrival)}, the adaptive model achieves $76.62\% \pm 0.35\%$ recall vs. $69.41\% \pm 1.07\%$ for static ($+7.22\% \pm 1.31\%$ gain, $t = 12.2673, p = 0.000254 < 0.001$).
+\end{itemize}
+Crucially, these results were obtained under the \textbf{Feature-Blind protocol}, where all card and address identifiers were stripped. This proves that the adaptive model does not memorize card numbers; it learns the evolving joint feature distribution of adversarial fraud tactics.
+
+\textit{Sample Size and Statistical Power Analysis ($K=5$):}
+Evaluating complete multi-month stream retraining across $590$K transactions carries substantial compute requirements ($K \times 77.8$s on GPU, $\approx 25$ minutes on CPU). A power analysis verifies that $K=5$ replicates provide definitive statistical power: given the observed effect size on Cohort 3 recall (Cohen's $d = 5.49$, Hedges' $g = 5.08$), the statistical power $(1 - \beta)$ to detect this effect at $\alpha = 0.05$ exceeds $0.999$ (an effect size of $d \ge 5.0$ achieves $80\%$ power at $N \ge 3$). Non-parametric Wilcoxon signed-rank tests ($W=0.0, p=0.031$) and Benjamini-Hochberg FDR adjustments ($p_{\text{FDR}} < 0.001$) further confirm that these performance improvements are genuine structural shifts rather than seed stochasticity. Our open-source harness also provides full support for extended $K \in \{15, 30\}$ evaluations via \texttt{--extended-seeds}.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.48\textwidth]{figures/delayed_feedback_impact.png}
+    \caption{\textbf{Verification Latency Degradation Curve (IEEE-CIS Weeks 6--26).} Increasing dispute latency from immediate feedback (0w) to 4 weeks, 8 weeks, and LogNormal delay reduces out-of-sample recall from $72.70\%$ down to $63.45\%$, converging toward the frozen static baseline ($63.27\%$).}
+    \label{fig:delayed_feedback}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{\textbf{IEEE-CIS 26-Week Streaming Benchmark ($N=439{,}335$ Transactions, $16{,}660$ Frauds, Out-of-Sample Slices 5--25).}}
+\label{tab:ieeecis_streaming}
+\small
+\begin{tabularx}{0.48\textwidth}{l c c c c}
+\toprule
+\textbf{Model Architecture} & \textbf{Retrains} & \textbf{OOS Recall} & \textbf{OOS AUC-PR} & \textbf{Frauds Caught} \\
+\midrule
+Static Baseline (Frozen) & 0 & $63.27\%$ & $0.4606$ & $10{,}541$ \\
+Periodic Retrain ($4$w) & 5 & $71.34\%$ & $0.5097$ & $11{,}886$ \\
+Sliding Window ($4$w) & 5 & $65.92\%$ & $0.5099$ & $10{,}983$ \\
+\textbf{Drift-Adaptive (GPU)} & \textbf{22} & $\mathbf{73.58\%}$ & $\mathbf{0.5318}$ & $\mathbf{12{,}259}$ \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Sliding Window Catastrophic Forgetting}
+Table~\ref{tab:ieeecis_streaming} reports whole-stream out-of-sample metrics across Weeks 6--26 of IEEE-CIS. While sliding window models ($W=4$w) maintain bounded memory, their out-of-sample recall degrades to $65.92\%$, missing $1{,}276$ frauds intercepted by the adaptive model. Fraud tactics are cyclical: purging historical transactions destroys recognition of recurrent fraud vectors. Periodic scheduled retraining also underperforms adaptive retraining ($71.34\%$ vs. $73.58\%$), missing $373$ frauds due to detection latency during mid-cycle attack surges.
+
+\section{The Operational Cost of Verification Latency}
+\label{sec:latency_cost}
+
+Fig.~\ref{fig:delayed_feedback} illustrates the impact of verification latency across the four simulated regimes on IEEE-CIS:
+\begin{itemize}
+    \item \textbf{Immediate Verification (0w):} Achieves $72.70\%$ out-of-sample recall ($12{,}112 / 16{,}660$ frauds) with 21 GPU retrains.
+    \item \textbf{Standard Delay (4w / 28d):} Recall drops to $65.94\%$ ($10{,}986$ frauds caught; $1{,}126$ additional frauds missed).
+    \item \textbf{Extended Delay (8w / 56d):} Recall degrades to $63.45\%$ ($10{,}570$ frauds caught), within $0.18\%$ of the frozen static baseline ($63.27\%$).
+    \item \textbf{Stochastic LogNormal Delay:} Achieves $66.37\%$ recall with only 12 retrains, demonstrating that early-maturing chargebacks provide sufficient adaptation signal while saving $29\%$ of retraining compute.
+\end{itemize}
+
+\textbf{Takeaway:} The immediate verification assumption inflates reported recall by $+6.76\%$ ($+1{,}126$ intercepted frauds). When dispute delays extend to 8 weeks, supervised drift adaptation degrades to the level of a static model. This demonstrates that production systems cannot rely solely on supervised error tracking; they require unsupervised distribution monitoring on $P(X)$ while labels mature.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.48\textwidth]{figures/drift_attribution_week_06.png}
+    \caption{\textbf{Mechanistic TreeSHAP $\times (1+\text{PSI})$ Drift Attribution Waterfall Plot (IEEE-CIS Week 6).} Identifies transaction velocity proxy `C13` ($\text{PSI}=0.115, \text{SHAP}=0.284$) and transaction value `TransactionAmt` as the primary distribution shift drivers.}
+    \label{fig:attribution}
+\end{figure}
+
+\section{Drift Attribution \& Production Microservice}
+\label{sec:production}
+
+\subsection{Mechanistic Feature Attribution}
+Across $165$ automated drift attributions persisted in MySQL, the TreeSHAP $\times (1+\text{PSI})$ engine successfully isolated the drivers of every alert without manual intervention. In IEEE-CIS (Fig.~\ref{fig:attribution}), the primary driver is `C13` (identity velocity count), reflecting coordinated automated card-testing scripts. In Feedzai BAF, the dominant driver across monthly shifts is `velocity_4w` ($\text{PSI} > 4.8$), capturing organized bot account applications. In PaySim, the driver is `errorBalanceOrig` ($\text{SHAP}=3.86$).
+
+\subsection{Real-Time Scoring Microservice SLA}
+To validate real-world production viability, we deployed our adaptive pipeline as a containerized FastAPI microservice using Docker and MySQL 9.7. We implemented a lock-free atomic double-buffering architecture (`ModelDoubleBuffer`), allowing read scoring requests to query active GPU model memory with $0$ms interruption while a background thread retrains the shadow model upon drift alerts.
+
+Benchmarked across $1{,}000$ sequential transactions under concurrent drift monitoring:
+\begin{itemize}
+    \item \textbf{Throughput:} $122.9$ queries per second (QPS).
+    \item \textbf{Latency p50 / p95 / p99:} $8.06$ ms / $9.88$ ms / $13.38$ ms.
+    \item \textbf{Sub-15ms Latency SLA:} Passed across all percentiles.
+\end{itemize}
+
+\section{Limitations \& Research Roadmap}
+\label{sec:roadmap}
+
+While our framework addresses key limitations in existing literature, two challenges remain:
+\begin{enumerate}
+    \item \textbf{Unsupervised Feature-Space Adaptation:} Under long dispute lags ($> 8$ weeks), supervised detectors cannot trigger timely retraining. Future work must integrate unsupervised drift detection directly on feature embeddings $P(X)$ to adapt models prior to label arrival.
+    \item \textbf{Privacy-Preserving Cross-Institutional Expansion:} Financial institutions are legally constrained by data privacy regulations (e.g., GDPR, CCPA) from pooling raw transaction records. An essential next step is extending this streaming framework into \textit{privacy-preserving federated drift adaptation}, enabling collaborative anomaly detection without exposing customer records~\cite{wang2024gtree}.
+\end{enumerate}
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+This paper provides an empirical study of concept drift adaptation in streaming financial fraud detection across $7.95$M transactions. Through multi-seed evaluations and bootstrap confidence intervals, we conclusively disprove entity memorization, showing a statistically significant $+7.22\% \pm 1.31\%$ recall gain ($p < 0.001$) on brand-new cardholders under complete identifier blindness. Conversely, we demonstrate that single-seed gains on saturated streams (PaySim $0.9955 \to 0.9978$) are not statistically significant ($p = 0.2871$), establishing the necessity of rigorous hypothesis testing in stream mining. Finally, we demonstrate that real-world verification latency degrades supervised adaptation toward static baselines, motivating unsupervised adaptation strategies for delayed-feedback environments.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

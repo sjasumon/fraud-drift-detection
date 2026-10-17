@@ -1,0 +1,45 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.7.0
+rootdir: /workspace/scratch/eb86e47ab5e3/fraud-drift-detection-v0.4.1
+configfile: pytest.ini
+testpaths: tests
+plugins: cov-7.1.0, anyio-4.15.1
+collected 122 items
+
+tests/test_api.py ................                                       [ 13%]
+tests/test_bandit.py .....                                               [ 17%]
+tests/test_bandit_benchmark.py ..                                        [ 18%]
+tests/test_baselines.py ..                                               [ 20%]
+tests/test_config.py .........                                           [ 27%]
+tests/test_data_generator.py ...                                         [ 30%]
+tests/test_db_persistence.py .......                                     [ 36%]
+tests/test_deduplication.py ...                                          [ 38%]
+tests/test_delayed_feedback.py ......                                    [ 43%]
+tests/test_drift_explainer.py .....                                      [ 47%]
+tests/test_integration_orchestrators.py ....                             [ 50%]
+tests/test_key_figures.py ...                                            [ 53%]
+tests/test_leakage_invariants.py ....                                    [ 56%]
+tests/test_metrics_reconciliation.py ....                                [ 59%]
+tests/test_multi_dataset.py ........                                     [ 66%]
+tests/test_reaudit.py ................                                   [ 79%]
+tests/test_revision_regressions.py ..........                            [ 87%]
+tests/test_statistical_rigor.py ..........                               [ 95%]
+tests/test_uid_collision.py .....                                        [100%]
+
+=============================== warnings summary ===============================
+../test-deps/fastapi/testclient.py:1
+  /workspace/scratch/eb86e47ab5e3/test-deps/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+tests/test_bandit_benchmark.py::test_generate_bandit_plots_custom
+  /workspace/scratch/eb86e47ab5e3/fraud-drift-detection-v0.4.1/src/bandit/benchmark.py:374: UserWarning: Tight layout not applied. tight_layout cannot make Axes width small enough to accommodate all Axes decorations
+    plt.tight_layout()
+
+tests/test_reaudit.py::test_paired_summary_preserves_single_pair_difference_and_serializes_finitely
+tests/test_statistical_rigor.py::test_compute_paired_tests_significant
+  /workspace/scratch/eb86e47ab5e3/test-deps/scipy/stats/_axis_nan_policy.py:431: RuntimeWarning: Precision loss occurred in moment calculation due to catastrophic cancellation. This occurs when the data are nearly identical. Results may be unreliable.
+    return hypotest_fun_in(*args, **kwds)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+-- generated xml file: /workspace/scratch/eb86e47ab5e3/final-audit-tests.xml ---
+======================= 122 passed, 4 warnings in 24.31s =======================

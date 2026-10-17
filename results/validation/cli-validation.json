@@ -1,0 +1,175 @@
+{
+  "installed_source": "/workspace/scratch/eb86e47ab5e3/audit-wheel-env/lib/python3.12/site-packages/src/__init__.py",
+  "workspace": "/workspace/scratch/eb86e47ab5e3/final-audit-runtime",
+  "version": "0.4.1",
+  "checks": [
+    {
+      "command": "fraud-demo",
+      "args": [
+        "--help"
+      ],
+      "returncode": 0,
+      "seconds": 1.881
+    },
+    {
+      "command": "fraud-pipeline",
+      "args": [
+        "--help"
+      ],
+      "returncode": 0,
+      "seconds": 1.844
+    },
+    {
+      "command": "fraud-study",
+      "args": [
+        "--help"
+      ],
+      "returncode": 0,
+      "seconds": 1.882
+    },
+    {
+      "command": "fraud-audit",
+      "args": [
+        "--help"
+      ],
+      "returncode": 0,
+      "seconds": 1.16
+    },
+    {
+      "command": "fraud-latency-audit",
+      "args": [
+        "--help"
+      ],
+      "returncode": 0,
+      "seconds": 0.47
+    },
+    {
+      "command": "fraud-stats-rigor",
+      "args": [
+        "--help"
+      ],
+      "returncode": 0,
+      "seconds": 1.363
+    },
+    {
+      "command": "fraud-latency",
+      "args": [
+        "--help"
+      ],
+      "returncode": 0,
+      "seconds": 1.55
+    },
+    {
+      "command": "fraud-bandit",
+      "args": [
+        "--help"
+      ],
+      "returncode": 0,
+      "seconds": 1.648
+    },
+    {
+      "command": "fraud-demo",
+      "args": [
+        "--output-dir",
+        "example",
+        "--weeks",
+        "8",
+        "--transactions-per-week",
+        "100"
+      ],
+      "returncode": 0,
+      "seconds": 5.128
+    },
+    {
+      "command": "fraud-pipeline",
+      "args": [
+        "--dataset",
+        "synthetic_ieee.csv",
+        "--identity",
+        "synthetic_identity.csv",
+        "--all-features",
+        "--history-features",
+        "--explain",
+        "--synthetic",
+        "--output-dir",
+        "feature_run"
+      ],
+      "returncode": 0,
+      "seconds": 5.656
+    },
+    {
+      "command": "fraud-audit",
+      "args": [
+        "--dataset",
+        "synthetic_ieee.csv",
+        "--mode",
+        "both",
+        "--synthetic",
+        "--output-dir",
+        "cohort_run"
+      ],
+      "returncode": 0,
+      "seconds": 4.305
+    },
+    {
+      "command": "fraud-latency-audit",
+      "args": [
+        "--dataset",
+        "/workspace/scratch/eb86e47ab5e3/final-audit-runtime/example/synthetic_paysim.csv",
+        "--output-dir",
+        "delay_run",
+        "--delays",
+        "0",
+        "2",
+        "--synthetic"
+      ],
+      "returncode": 0,
+      "seconds": 8.207
+    },
+    {
+      "command": "fraud-study",
+      "args": [
+        "--dataset",
+        "/workspace/scratch/eb86e47ab5e3/final-audit-runtime/example/synthetic_paysim.csv",
+        "--output-dir",
+        "study",
+        "--seeds",
+        "42",
+        "101",
+        "--train-windows",
+        "2",
+        "5",
+        "--test-slices",
+        "2",
+        "--windows",
+        "2",
+        "--budgets",
+        "1",
+        "--delays",
+        "2",
+        "--synthetic"
+      ],
+      "returncode": 0,
+      "seconds": 9.356
+    },
+    {
+      "command": "fraud-stats-rigor",
+      "args": [
+        "--benchmark",
+        "paysim",
+        "--paysim-dataset",
+        "/workspace/scratch/eb86e47ab5e3/final-audit-runtime/example/synthetic_paysim.csv",
+        "--output-dir",
+        "statistics",
+        "--seeds",
+        "42",
+        "101",
+        "--n-bootstrap",
+        "20",
+        "--synthetic"
+      ],
+      "returncode": 0,
+      "seconds": 8.536
+    }
+  ]
+}

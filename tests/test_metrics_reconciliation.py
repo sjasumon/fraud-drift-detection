@@ -5,7 +5,6 @@ and that cohort decompositions reconcile exactly with global out-of-sample bench
 """
 
 import numpy as np
-import pytest
 
 from src.evaluate_uid_split import compute_metrics
 from src.evaluator import SliceEvaluator
@@ -26,7 +25,7 @@ def test_confusion_matrix_integer_reconciliation():
         "stat_p": y_pred.tolist(),
         "adapt_p": y_pred.tolist(),
         "stat_prob": y_prob.tolist(),
-        "adapt_prob": y_prob.tolist()
+        "adapt_prob": y_prob.tolist(),
     }
 
     metrics = compute_metrics(d)
@@ -67,7 +66,7 @@ def test_cohort_reconciliation_exact_sum():
         "stat_p": preds[cohort1_mask].tolist(),
         "adapt_p": preds[cohort1_mask].tolist(),
         "stat_prob": probs[cohort1_mask].tolist(),
-        "adapt_prob": probs[cohort1_mask].tolist()
+        "adapt_prob": probs[cohort1_mask].tolist(),
     }
     m_c1 = compute_metrics(d_c1)
 
@@ -77,7 +76,7 @@ def test_cohort_reconciliation_exact_sum():
         "stat_p": preds[cohort2_mask].tolist(),
         "adapt_p": preds[cohort2_mask].tolist(),
         "stat_prob": probs[cohort2_mask].tolist(),
-        "adapt_prob": probs[cohort2_mask].tolist()
+        "adapt_prob": probs[cohort2_mask].tolist(),
     }
     m_c2 = compute_metrics(d_c2)
 
@@ -87,7 +86,7 @@ def test_cohort_reconciliation_exact_sum():
         "stat_p": preds.tolist(),
         "adapt_p": preds.tolist(),
         "stat_prob": probs.tolist(),
-        "adapt_prob": probs.tolist()
+        "adapt_prob": probs.tolist(),
     }
     m_global = compute_metrics(d_global)
 
@@ -119,19 +118,13 @@ def test_metric_boundary_conditions():
         "stat_p": [0, 0, 0, 0, 0],
         "adapt_p": [0, 0, 0, 0, 0],
         "stat_prob": [0.1, 0.2, 0.1, 0.3, 0.05],
-        "adapt_prob": [0.1, 0.2, 0.1, 0.3, 0.05]
+        "adapt_prob": [0.1, 0.2, 0.1, 0.3, 0.05],
     }
     res = compute_metrics(d_zero_fraud)
-    assert res == {}, "Expected empty dict when fraud count is zero."
+    assert res["total_tx"] == 5 and res["fraud_tx"] == 0
 
     # Case 2: Empty lists
-    d_empty = {
-        "y": [],
-        "stat_p": [],
-        "adapt_p": [],
-        "stat_prob": [],
-        "adapt_prob": []
-    }
+    d_empty = {"y": [], "stat_p": [], "adapt_p": [], "stat_prob": [], "adapt_prob": []}
     res_empty = compute_metrics(d_empty)
     assert res_empty == {}, "Expected empty dict when stream is empty."
 
@@ -151,7 +144,7 @@ def test_evaluator_zero_fraud_and_single_class_edge_cases():
         y_prob=probs,
         slice_index=0,
         slice_name="ZeroFraudSlice",
-        model_type="static"
+        model_type="static",
     )
     assert slice_res["auc_pr"] == 0.0
     assert slice_res["f1_score"] == 0.0
@@ -163,7 +156,7 @@ def test_evaluator_zero_fraud_and_single_class_edge_cases():
         adaptive_preds=preds,
         adaptive_probs=probs,
         y_all=y_zero,
-        oos_mask=np.ones(n, dtype=bool)
+        oos_mask=np.ones(n, dtype=bool),
     )
     assert summary["static_model"]["overall_auc_pr"] == 0.0
     assert summary["adaptive_model"]["overall_auc_pr"] == 0.0
@@ -172,70 +165,7 @@ def test_evaluator_zero_fraud_and_single_class_edge_cases():
     assert "metric_disambiguation_note" in summary["static_model"]
     assert summary["out_of_sample_stream"]["static_model"]["overall_auc_pr"] == 0.0
     assert summary["out_of_sample_stream"]["adaptive_model"]["overall_auc_pr"] == 0.0
-    assert summary["out_of_sample_stream"]["static_model"]["is_pure_out_of_sample"] is True
-    assert "pure_oos_f1" in summary["out_of_sample_stream"]["static_model"]
-
-
-def test_operational_alert_budget_and_fpr_metrics():
-    """Verifies that compute_recall_at_fpr and compute_recall_at_alert_budget satisfy mathematical bounds."""
-    from src.evaluator import compute_recall_at_fpr, compute_recall_at_alert_budget
-
-    y_true = np.array([1, 1, 0, 0, 0, 0, 0, 0, 0, 0])
-    y_prob = np.array([0.9, 0.8, 0.7, 0.4, 0.3, 0.2, 0.1, 0.05, 0.02, 0.01])
-
-    # Top 20% alert budget (2 alerts out of 10)
-    budget_20 = compute_recall_at_alert_budget(y_true, y_prob, budget_ratio=0.20)
-    assert budget_20["alert_count"] == 2
-    assert budget_20["recall"] == 1.0  # Caught both frauds
-    assert budget_20["precision"] == 1.0
-
-    # Top 10% alert budget (1 alert out of 10)
-    budget_10 = compute_recall_at_alert_budget(y_true, y_prob, budget_ratio=0.10)
-    assert budget_10["alert_count"] == 1
-    assert budget_10["recall"] == 0.5  # Caught 1 of 2 frauds
-    assert budget_10["precision"] == 1.0
-
-    # Recall at FPR <= 15% (8 negatives * 0.15 = 1.2 -> at most 1 FP allowed)
-    fpr_res = compute_recall_at_fpr(y_true, y_prob, target_fpr=0.15)
-    assert fpr_res["actual_fpr"] <= 0.15
-    assert 0.0 <= fpr_res["recall"] <= 1.0
-    assert 0.0 <= fpr_res["precision"] <= 1.0
-
-
-def test_cost_weighted_dollar_recall_metrics():
-    """Verifies that compute_cost_weighted_metrics accurately weights losses by TransactionAmt."""
-    from src.evaluator import compute_cost_weighted_metrics, SliceEvaluator
-
-    y_true = np.array([1, 1, 0, 0])
-    y_pred = np.array([1, 0, 1, 0])  # Caught fraud 0, missed fraud 1, 1 false alarm
-    amounts = np.array([10000.0, 50.0, 20.0, 10.0])  # Caught $10k fraud, missed $50 fraud
-
-    # Dollar recall: 10000 / (10000 + 50) = 10000 / 10050 = 0.9950
-    # Standard unweighted recall: 1 / 2 = 0.50
-    cost_m = compute_cost_weighted_metrics(y_true, y_pred, amounts, cost_per_investigation=10.0)
-    assert cost_m["dollar_recall"] == round(10000.0 / 10050.0, 4)
-    assert cost_m["total_fraud_dollars"] == 10050.0
-    assert cost_m["intercepted_fraud_dollars"] == 10000.0
-    assert cost_m["missed_fraud_dollars"] == 50.0
-    assert cost_m["total_alerts"] == 2
-    assert cost_m["investigation_cost"] == 20.0
-    assert cost_m["net_financial_savings"] == 9980.0
-
-    # Test integrated evaluate_slice with amounts
-    evaluator = SliceEvaluator()
-    entry = evaluator.evaluate_slice(
-        y_true=y_true,
-        y_pred=y_pred,
-        y_prob=np.array([0.9, 0.4, 0.6, 0.1]),
-        slice_index=0,
-        slice_name="CostSlice",
-        model_type="adaptive",
-        amounts=amounts
+    assert (
+        summary["out_of_sample_stream"]["static_model"]["is_pure_out_of_sample"] is True
     )
-    assert "dollar_recall" in entry
-    assert "intercepted_fraud_dollars" in entry
-    assert "net_financial_savings" in entry
-    assert "recall_at_alert_budget_1pct" in entry
-    assert "recall_at_fpr_1pct" in entry
-
-
+    assert "pure_oos_f1" in summary["out_of_sample_stream"]["static_model"]

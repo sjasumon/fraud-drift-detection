@@ -1,0 +1,48 @@
+{
+  "run_id": "RUN_B58AED0D2B",
+  "model": "static",
+  "data_kind": "unverified",
+  "version": "0.4.1",
+  "model_revision": "16566cdf2a214395abb4bd530a024f7a",
+  "format_version": 2,
+  "sha256": "155c9e710beae7dbb54c56c88d0ed03d2ea0ca881a14b02953fcd6c7a3016f72",
+  "input_features": [
+    "TransactionAmt",
+    "amount",
+    "ProductCD",
+    "C1",
+    "D1",
+    "step"
+  ],
+  "transformed_features": [
+    "TransactionAmt",
+    "amount",
+    "C1",
+    "D1",
+    "hour_of_day",
+    "day_of_week",
+    "is_overnight",
+    "log_amount",
+    "amt_decimal",
+    "TransactionAmt__missing",
+    "amount__missing",
+    "C1__missing",
+    "D1__missing",
+    "hour_of_day__missing",
+    "day_of_week__missing",
+    "is_overnight__missing",
+    "log_amount__missing",
+    "amt_decimal__missing",
+    "ProductCD_C",
+    "ProductCD_H",
+    "ProductCD_W"
+  ],
+  "threshold": 0.030116615816950798,
+  "fit_metadata": {
+    "fit_rows": 48,
+    "validation_rows": 12,
+    "calibration": "disabled_or_insufficient_validation_classes",
+    "threshold": 0.030116615816950798,
+    "threshold_objective": "validation_f1"
+  }
+}

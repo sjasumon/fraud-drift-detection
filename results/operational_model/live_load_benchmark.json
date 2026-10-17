@@ -1,0 +1,15 @@
+{
+  "total_requests": 200,
+  "concurrency": 4,
+  "successful_requests": 200,
+  "failed_requests": 0,
+  "error_rate_pct": 0.0,
+  "total_time_seconds": 4.83,
+  "throughput_qps": 41.4,
+  "latency_p50_ms": 88.36,
+  "latency_p95_ms": 159.49,
+  "latency_p99_ms": 199.07,
+  "latency_mean_ms": 95.89,
+  "client_cpu_percent": 8.5,
+  "client_memory_rss_mb": 30.34
+}

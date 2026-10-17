@@ -5,6 +5,7 @@ validation rules, and deterministic directory structure management.
 """
 
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 from pydantic import Field, field_validator, model_validator
@@ -13,7 +14,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 logger = logging.getLogger("fraud_drift.config")
 
 # Base Directory Resolution
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(os.environ.get("FRAUD_WORKSPACE", Path.cwd())).expanduser().resolve()
 
 
 class Settings(BaseSettings):
@@ -21,61 +22,95 @@ class Settings(BaseSettings):
     Validated configuration settings loaded from environment variables and .env file.
     Enforces type constraints, valid port ranges, and probability bounds.
     """
+
     model_config = SettingsConfigDict(
-        env_file=str(BASE_DIR / ".env"),
-        env_file_encoding="utf-8",
-        extra="ignore"
+        env_file=str(BASE_DIR / ".env"), env_file_encoding="utf-8", extra="ignore"
     )
+
+    model_bundle_path: Optional[str] = None
+    prediction_db: Optional[str] = None
+    model_output_dir: Optional[str] = None
 
     # Runtime Environment
     app_env: str = Field(
         default="development",
-        description="Deployment environment ('development', 'staging', 'production')"
+        description="Deployment environment ('development', 'staging', 'production')",
     )
 
-    # Database Configuration (MySQL 8.4 LTS)
-    db_host: str = Field(default="127.0.0.1", description="Database host IP or hostname")
-    db_port: int = Field(default=3306, ge=1024, le=65535, description="Database port number")
+    # Database Configuration (MySQL Server 9.7)
+    enable_mysql: bool = False
+    db_host: str = Field(
+        default="127.0.0.1", description="Database host IP or hostname"
+    )
+    db_port: int = Field(
+        default=3306, ge=1024, le=65535, description="Database port number"
+    )
     db_user: str = Field(default="root", description="Database username")
     db_password: str = Field(default="", description="Database password")
-    db_name: str = Field(default="fraud_drift_db", description="Target database schema name")
+    db_name: str = Field(
+        default="fraud_drift_db", description="Target database schema name"
+    )
 
     # API Authentication & Security
-    api_key: str = Field(default="dev-secret-key", description="Master API Key for microservice endpoints")
+    api_key: str = Field(
+        default="dev-secret-key",
+        description="Master API Key for microservice endpoints",
+    )
 
     # Hardware Acceleration Configuration (GPU / CUDA)
-    use_gpu: bool = Field(default=True, description="Enable CUDA acceleration for XGBoost")
+    use_gpu: bool = Field(
+        default=False, description="Enable CUDA acceleration for XGBoost"
+    )
     gpu_device: str = Field(default="cuda", description="Target GPU device string")
 
     # Experiment Reproducibility
-    random_seed: int = Field(default=42, ge=0, description="Master deterministic random seed")
+    random_seed: int = Field(
+        default=42, ge=0, description="Master deterministic random seed"
+    )
 
     # Temporal Slicing & Window Configuration
-    default_hours_per_week: int = Field(default=168, gt=0, description="Hours per temporal slice")
-    total_simulation_weeks: int = Field(default=26, gt=0, description="Default stream slice count")
+    default_hours_per_week: int = Field(
+        default=168, gt=0, description="Hours per temporal slice"
+    )
+    total_simulation_weeks: int = Field(
+        default=24, gt=0, description="Default stream slice count"
+    )
     training_window_ratio: float = Field(
-        default=0.20, gt=0.0, lt=1.0,
-        description="Fraction of initial stream reserved for baseline training (e.g. 0.20 = Weeks 1-5)"
+        default=0.20,
+        gt=0.0,
+        lt=1.0,
+        description="Fraction of initial stream reserved for baseline training (e.g. 0.20 = Weeks 1-5)",
     )
 
     # Drift Detector Hyperparameters
-    adwin_delta: float = Field(default=0.002, gt=0.0, lt=0.1, description="ADWIN confidence delta")
-    ddm_min_instances: int = Field(default=30, ge=5, description="DDM minimum sample warmup count")
-    ddm_warning_level: float = Field(default=2.0, gt=1.0, description="DDM warning threshold (std)")
-    ddm_drift_level: float = Field(default=3.0, gt=2.0, description="DDM drift trigger threshold (std)")
+    adwin_delta: float = Field(
+        default=0.002, gt=0.0, lt=0.1, description="ADWIN confidence delta"
+    )
+    ddm_min_instances: int = Field(
+        default=30, ge=5, description="DDM minimum sample warmup count"
+    )
+    ddm_warning_level: float = Field(
+        default=2.0, gt=1.0, description="DDM warning threshold (std)"
+    )
+    ddm_drift_level: float = Field(
+        default=3.0, gt=2.0, description="DDM drift trigger threshold (std)"
+    )
 
     @field_validator("ddm_drift_level")
     @classmethod
     def validate_ddm_levels(cls, v: float, info) -> float:
         warning_level = info.data.get("ddm_warning_level", 2.0)
         if v <= warning_level:
-            raise ValueError(f"ddm_drift_level ({v}) must be strictly greater than ddm_warning_level ({warning_level})")
+            raise ValueError(
+                f"ddm_drift_level ({v}) must be strictly greater than ddm_warning_level ({warning_level})"
+            )
         return v
 
     @field_validator("db_name")
     @classmethod
     def validate_db_name(cls, v: str) -> str:
         import re
+
         if not re.match(r"^[a-zA-Z0-9_]+$", v):
             raise ValueError(f"Insecure or invalid database name identifier: {v!r}")
         return v
@@ -93,7 +128,7 @@ class Settings(BaseSettings):
                     f"Insecure API key configured in '{self.app_env}' environment. "
                     "Must set a non-default API_KEY of at least 16 characters in production/staging."
                 )
-            if not self.db_password:
+            if self.enable_mysql and not self.db_password:
                 raise ValueError(
                     f"Empty database password configured in '{self.app_env}' environment. "
                     "Must set DB_PASSWORD for production/staging database connectivity."
@@ -105,7 +140,9 @@ class Settings(BaseSettings):
 settings = Settings()
 
 if settings.app_env.lower() == "development" and settings.api_key == "dev-secret-key":
-    logger.info("Configuration: Running in development mode with default API_KEY. Set API_KEY for production.")
+    logger.info(
+        "Configuration: Running in development mode with default API_KEY. Set API_KEY for production."
+    )
 
 # Directory Paths Management
 DATA_DIR = BASE_DIR / "data"
@@ -116,11 +153,16 @@ FIGURES_DIR = RESULTS_DIR / "figures"
 METRICS_DIR = RESULTS_DIR / "metrics"
 LOGS_DIR = RESULTS_DIR / "logs"
 
-
-def ensure_directories_exist() -> None:
-    """Lazily creates required data and result directories when invoked by runtime tasks."""
-    for d in [DATA_DIR, RAW_DATA_DIR, PROCESSED_DATA_DIR, RESULTS_DIR, FIGURES_DIR, METRICS_DIR, LOGS_DIR]:
-        d.mkdir(parents=True, exist_ok=True)
+for d in [
+    DATA_DIR,
+    RAW_DATA_DIR,
+    PROCESSED_DATA_DIR,
+    RESULTS_DIR,
+    FIGURES_DIR,
+    METRICS_DIR,
+    LOGS_DIR,
+]:
+    d.mkdir(parents=True, exist_ok=True)
 
 # Backward-Compatible Module-Level Constants
 APP_ENV = settings.app_env

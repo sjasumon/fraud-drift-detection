@@ -14,52 +14,58 @@ Evaluates:
 - High-resolution publication visualization with change-point annotations
 """
 
-import sys
 import json
 import time
 import logging
 import argparse
 from pathlib import Path
-from typing import Dict, List, Any, Tuple
+from typing import Dict, List, Any
 import numpy as np
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy import stats
 
-from src.config import RESULTS_DIR, METRICS_DIR, FIGURES_DIR
+from src.config import METRICS_DIR, FIGURES_DIR
 from src.bandit.environment import NonStationaryBanditEnv
 from src.bandit.agents import (
     StandardUCBAgent,
     SlidingWindowUCBAgent,
     DiscountedUCBAgent,
-    AdwinUCBAgent
+    AdwinUCBAgent,
 )
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
 logger = logging.getLogger("fraud_drift.bandit")
 
 DEFAULT_SEEDS = [42, 101, 202, 303, 404]
 
 
 def run_bandit_simulation(
-    seeds: List[int] = DEFAULT_SEEDS,
-    total_steps: int = 10000,
-    n_arms: int = 5
+    seeds: List[int] = DEFAULT_SEEDS, total_steps: int = 10000, n_arms: int = 5
 ) -> Dict[str, Any]:
     """
     Runs multi-seed simulation across all 4 bandit agents on NonStationaryBanditEnv.
     """
     logger.info("=" * 80)
-    logger.info(f"STARTING NON-STATIONARY BANDIT BENCHMARK ({len(seeds)} Seeds, {total_steps} Steps)")
-    logger.info("Agents: Standard UCB1 vs Sliding-Window UCB vs Discounted UCB vs ADWIN-UCB")
+    logger.info(
+        f"STARTING NON-STATIONARY BANDIT BENCHMARK ({len(seeds)} Seeds, {total_steps} Steps)"
+    )
+    logger.info(
+        "Agents: Standard UCB1 vs Sliding-Window UCB vs Discounted UCB vs ADWIN-UCB"
+    )
     logger.info("=" * 80)
 
     agent_factories = {
         "standard_ucb": lambda: StandardUCBAgent(n_arms=n_arms, c=1.0),
-        "sliding_window_ucb": lambda: SlidingWindowUCBAgent(n_arms=n_arms, window_size=1000, c=0.6),
+        "sliding_window_ucb": lambda: SlidingWindowUCBAgent(
+            n_arms=n_arms, window_size=1000, c=0.6
+        ),
         "discounted_ucb": lambda: DiscountedUCBAgent(n_arms=n_arms, gamma=0.999, c=0.5),
-        "adwin_ucb": lambda: AdwinUCBAgent(n_arms=n_arms, delta=0.002, c=1.0)
+        "adwin_ucb": lambda: AdwinUCBAgent(n_arms=n_arms, delta=0.002, c=1.0),
     }
 
     # Tracking containers: agent -> metric -> list of arrays across seeds
@@ -72,7 +78,9 @@ def run_bandit_simulation(
     change_points = []
 
     for seed_idx, seed in enumerate(seeds):
-        logger.info(f"\n--- [Bandit Run {seed_idx + 1}/{len(seeds)}] Initializing with seed={seed} ---")
+        logger.info(
+            f"\n--- [Bandit Run {seed_idx + 1}/{len(seeds)}] Initializing with seed={seed} ---"
+        )
         t0 = time.time()
 
         for agent_key, factory in agent_factories.items():
@@ -101,7 +109,9 @@ def run_bandit_simulation(
 
             all_regrets[agent_key].append(cum_regret)
             all_rewards[agent_key].append(round(total_rew, 1))
-            all_optimal_pct[agent_key].append(round((optimal_pulls / total_steps) * 100, 2))
+            all_optimal_pct[agent_key].append(
+                round((optimal_pulls / total_steps) * 100, 2)
+            )
             all_final_regret[agent_key].append(round(running_regret, 2))
 
             drift_count = len(getattr(agent, "drift_events", []))
@@ -122,10 +132,10 @@ def run_bandit_simulation(
             "seeds": seeds,
             "total_steps": total_steps,
             "n_arms": n_arms,
-            "change_points": change_points
+            "change_points": change_points,
         },
         "agents": {},
-        "paired_tests": {}
+        "paired_tests": {},
     }
 
     for k in agent_factories:
@@ -138,32 +148,62 @@ def run_bandit_simulation(
                 "mean": round(float(np.mean(reg_arr)), 2),
                 "std": round(float(np.std(reg_arr, ddof=1)), 2),
                 "ci_95": [
-                    round(float(np.mean(reg_arr) - 2.776 * np.std(reg_arr, ddof=1) / np.sqrt(len(seeds))), 2),
-                    round(float(np.mean(reg_arr) + 2.776 * np.std(reg_arr, ddof=1) / np.sqrt(len(seeds))), 2)
+                    round(
+                        float(
+                            np.mean(reg_arr)
+                            - 2.776 * np.std(reg_arr, ddof=1) / np.sqrt(len(seeds))
+                        ),
+                        2,
+                    ),
+                    round(
+                        float(
+                            np.mean(reg_arr)
+                            + 2.776 * np.std(reg_arr, ddof=1) / np.sqrt(len(seeds))
+                        ),
+                        2,
+                    ),
                 ],
-                "raw": all_final_regret[k]
+                "raw": all_final_regret[k],
             },
             "total_reward": {
                 "mean": round(float(np.mean(rew_arr)), 2),
-                "std": round(float(np.std(rew_arr, ddof=1)), 2)
+                "std": round(float(np.std(rew_arr, ddof=1)), 2),
             },
             "optimal_arm_pct": {
                 "mean": round(float(np.mean(opt_arr)), 2),
-                "std": round(float(np.std(opt_arr, ddof=1)), 2)
+                "std": round(float(np.std(opt_arr, ddof=1)), 2),
             },
-            "mean_drift_events": round(float(np.mean(all_drift_counts[k])), 1)
+            "mean_drift_events": round(float(np.mean(all_drift_counts[k])), 1),
         }
 
     # Hypothesis Testing (ADWIN-UCB vs Baselines)
     for baseline in ["standard_ucb", "sliding_window_ucb", "discounted_ucb"]:
-        t_res = stats.ttest_rel(all_final_regret["adwin_ucb"], all_final_regret[baseline])
+        t_res = stats.ttest_rel(
+            all_final_regret["adwin_ucb"], all_final_regret[baseline]
+        )
         p_val = float(t_res.pvalue)
         summary["paired_tests"][f"adwin_vs_{baseline}"] = {
-            "mean_regret_reduction": round(float(np.mean(all_final_regret[baseline]) - np.mean(all_final_regret["adwin_ucb"])), 2),
-            "pct_regret_reduction": round(float((np.mean(all_final_regret[baseline]) - np.mean(all_final_regret["adwin_ucb"])) / np.mean(all_final_regret[baseline]) * 100), 2),
+            "mean_regret_reduction": round(
+                float(
+                    np.mean(all_final_regret[baseline])
+                    - np.mean(all_final_regret["adwin_ucb"])
+                ),
+                2,
+            ),
+            "pct_regret_reduction": round(
+                float(
+                    (
+                        np.mean(all_final_regret[baseline])
+                        - np.mean(all_final_regret["adwin_ucb"])
+                    )
+                    / np.mean(all_final_regret[baseline])
+                    * 100
+                ),
+                2,
+            ),
             "t_stat": round(float(t_res.statistic), 4),
             "p_value": float(f"{p_val:.6e}"),
-            "significant_001": bool(p_val < 0.001)
+            "significant_001": bool(p_val < 0.001),
         }
 
     logger.info("\n" + "=" * 80)
@@ -199,7 +239,7 @@ def generate_bandit_plots(
     summary: Dict[str, Any],
     change_points: List[int],
     total_steps: int,
-    output_filename: str = "bandit_cumulative_regret.png"
+    output_filename: str = "bandit_cumulative_regret.png",
 ) -> Path:
     """
     Generates high-resolution publication plot with regret curves and error bars.
@@ -208,16 +248,16 @@ def generate_bandit_plots(
 
     # Color palette
     colors = {
-        "standard_ucb": "#d62728",        # Red (fails under drift)
+        "standard_ucb": "#d62728",  # Red (fails under drift)
         "sliding_window_ucb": "#1f77b4",  # Blue (M-UCB)
-        "discounted_ucb": "#ff7f0e",      # Orange (D-UCB)
-        "adwin_ucb": "#2ca02c"            # Green (ADWIN-UCB proposed)
+        "discounted_ucb": "#ff7f0e",  # Orange (D-UCB)
+        "adwin_ucb": "#2ca02c",  # Green (ADWIN-UCB proposed)
     }
     labels = {
         "standard_ucb": "Standard UCB1 (Stationary Control)",
         "sliding_window_ucb": "Sliding-Window UCB (M-UCB, W=1000, c=0.6)",
         "discounted_ucb": "Discounted UCB (D-UCB, γ=0.999, c=0.5)",
-        "adwin_ucb": "ADWIN-UCB (Drift-Adaptive Proposed)"
+        "adwin_ucb": "ADWIN-UCB (Drift-Adaptive Proposed)",
     }
 
     t_axis = np.arange(1, total_steps + 1)
@@ -229,16 +269,29 @@ def generate_bandit_plots(
         std_reg = np.std(arrs, axis=0)
 
         ax1.plot(t_axis, mean_reg, label=labels[k], color=colors[k], lw=2.2)
-        ax1.fill_between(t_axis, mean_reg - std_reg, mean_reg + std_reg, color=colors[k], alpha=0.15)
+        ax1.fill_between(
+            t_axis, mean_reg - std_reg, mean_reg + std_reg, color=colors[k], alpha=0.15
+        )
 
     # Annotate Concept Drift Change Points
     for cp in change_points:
         ax1.axvline(x=cp, color="#555555", linestyle=":", lw=1.5, alpha=0.85)
-        ax1.text(cp + 60, ax1.get_ylim()[1] * 0.05 if ax1.get_ylim()[1] > 0 else 50,
-                 f"Drift Shock\n(t={cp:,})", rotation=90, fontsize=8.5, color="#333333", fontweight="bold")
+        ax1.text(
+            cp + 60,
+            ax1.get_ylim()[1] * 0.05 if ax1.get_ylim()[1] > 0 else 50,
+            f"Drift Shock\n(t={cp:,})",
+            rotation=90,
+            fontsize=8.5,
+            color="#333333",
+            fontweight="bold",
+        )
 
-    ax1.set_title("Non-Stationary Multi-Armed Bandit Pseudo-Regret\n(Mean ± Std across 5 Random Seeds)",
-                  fontsize=12, fontweight="bold", pad=12)
+    ax1.set_title(
+        "Non-Stationary Multi-Armed Bandit Pseudo-Regret\n(Mean ± Std across 5 Random Seeds)",
+        fontsize=12,
+        fontweight="bold",
+        pad=12,
+    )
     ax1.set_xlabel("Time Step (t)", fontsize=11, fontweight="bold")
     ax1.set_ylabel("Cumulative Pseudo-Regret", fontsize=11, fontweight="bold")
     ax1.legend(loc="upper left", frameon=True, fontsize=9.5)
@@ -246,14 +299,33 @@ def generate_bandit_plots(
 
     # 2. Right Subplot: Final Cumulative Regret Comparison with Significance
     agent_order = ["standard_ucb", "sliding_window_ucb", "discounted_ucb", "adwin_ucb"]
-    bar_labels = ["Standard\nUCB1", "Sliding-Window\n(M-UCB)", "Discounted\n(D-UCB)", "ADWIN-UCB\n(Proposed)"]
+    bar_labels = [
+        "Standard\nUCB1",
+        "Sliding-Window\n(M-UCB)",
+        "Discounted\n(D-UCB)",
+        "ADWIN-UCB\n(Proposed)",
+    ]
     bar_colors = [colors[k] for k in agent_order]
 
     means = [summary["agents"][k]["final_regret"]["mean"] for k in agent_order]
     stds = [summary["agents"][k]["final_regret"]["std"] for k in agent_order]
 
-    bars = ax2.bar(bar_labels, means, yerr=stds, capsize=6, color=bar_colors, alpha=0.88, edgecolor="black", width=0.55)
-    ax2.set_title("Final Cumulative Regret at t=10,000\n(Lower is Better)", fontsize=12, fontweight="bold", pad=12)
+    bars = ax2.bar(
+        bar_labels,
+        means,
+        yerr=stds,
+        capsize=6,
+        color=bar_colors,
+        alpha=0.88,
+        edgecolor="black",
+        width=0.55,
+    )
+    ax2.set_title(
+        "Final Cumulative Regret at t=10,000\n(Lower is Better)",
+        fontsize=12,
+        fontweight="bold",
+        pad=12,
+    )
     ax2.set_ylabel("Total Cumulative Regret", fontsize=11, fontweight="bold")
     ax2.grid(axis="y", linestyle="--", alpha=0.4)
 
@@ -263,19 +335,41 @@ def generate_bandit_plots(
         ax2.annotate(
             f"{m:.1f}\n(±{s:.1f})",
             xy=(bar.get_x() + bar.get_width() / 2, h + 20),
-            xytext=(0, 3), textcoords="offset points",
-            ha="center", va="bottom", fontsize=9, fontweight="bold"
+            xytext=(0, 3),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+            fontweight="bold",
         )
 
     # Bracket showing ADWIN-UCB vs Standard UCB1 reduction
     p_ucb = summary["paired_tests"]["adwin_vs_standard_ucb"]["p_value"]
     pct_red = summary["paired_tests"]["adwin_vs_standard_ucb"]["pct_regret_reduction"]
-    sig_text = f"-{pct_red:.1f}% Regret\n*** p < 0.001" if p_ucb < 0.001 else f"p = {p_ucb:.4f}"
+    sig_text = (
+        f"-{pct_red:.1f}% Regret\n*** p < 0.001"
+        if p_ucb < 0.001
+        else f"p = {p_ucb:.4f}"
+    )
 
     max_h = max(means)
     ax2.set_ylim(0, max_h * 1.30)
-    ax2.plot([0, 0, 3, 3], [max_h * 1.05, max_h * 1.15, max_h * 1.15, means[3] + 60], lw=1.3, c="k")
-    ax2.text(1.5, max_h * 1.17, sig_text, ha="center", va="bottom", color="#d62728", fontsize=9.5, fontweight="bold")
+    ax2.plot(
+        [0, 0, 3, 3],
+        [max_h * 1.05, max_h * 1.15, max_h * 1.15, means[3] + 60],
+        lw=1.3,
+        c="k",
+    )
+    ax2.text(
+        1.5,
+        max_h * 1.17,
+        sig_text,
+        ha="center",
+        va="bottom",
+        color="#d62728",
+        fontsize=9.5,
+        fontweight="bold",
+    )
 
     plt.tight_layout()
     chart_path = FIGURES_DIR / output_filename
@@ -285,9 +379,15 @@ def generate_bandit_plots(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Non-Stationary Multi-Armed Bandit Benchmark")
-    parser.add_argument("--seeds", nargs="+", type=int, default=DEFAULT_SEEDS, help="Random seeds")
-    parser.add_argument("--steps", type=int, default=10000, help="Total simulation steps")
+    parser = argparse.ArgumentParser(
+        description="Non-Stationary Multi-Armed Bandit Benchmark"
+    )
+    parser.add_argument(
+        "--seeds", nargs="+", type=int, default=DEFAULT_SEEDS, help="Random seeds"
+    )
+    parser.add_argument(
+        "--steps", type=int, default=10000, help="Total simulation steps"
+    )
     parser.add_argument("--arms", type=int, default=5, help="Number of bandit arms")
     args = parser.parse_args()
 
