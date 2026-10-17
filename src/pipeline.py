@@ -27,6 +27,7 @@ from src.config import (
 from src.db import DatabaseManager
 from src.ingestion import DatasetIngestion
 from src.preprocessing import Preprocessor
+from src.base_model import is_cuda_available
 from src.static_model import StaticBaselineModel
 from src.periodic_model import PeriodicRetrainModel
 from src.sliding_model import SlidingWindowModel
@@ -44,8 +45,13 @@ logger = logging.getLogger("fraud_drift.pipeline")
 
 
 def setup_pipeline_logging(log_file: Optional[Path] = None) -> Path:
-    """Configures file logging lazily when pipeline is executed directly."""
+    """Configures file and console logging lazily when pipeline is executed directly."""
     ensure_directories_exist()
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    )
+    logger.setLevel(logging.INFO)
     if log_file is None:
         log_file = LOGS_DIR / f"pipeline_run_{int(time.time())}.log"
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
@@ -82,11 +88,15 @@ def run_pipeline(
     else:
         db_backend_name = db.backend_name
 
+    cuda_active = USE_GPU and is_cuda_available()
+    hw_str = f"NVIDIA GPU ({GPU_DEVICE})" if cuda_active else "CPU Multi-Core (eGPU disconnected)"
+    adapt_str = "FULL RETRAINING ON GPU" if cuda_active else "FULL RETRAINING ON CPU"
+
     logger.info("=" * 80)
     logger.info(f"STARTING CONCEPT-DRIFT-AWARE FRAUD DETECTION PIPELINE [{run_id}]")
-    logger.info(f"Hardware: GPU Acceleration = {USE_GPU} ({GPU_DEVICE})")
+    logger.info(f"Hardware Acceleration: {hw_str}")
     logger.info(f"Database Backend: {db_backend_name}")
-    logger.info(f"Adaptation Strategy: FULL RETRAINING ON GPU")
+    logger.info(f"Adaptation Strategy: {adapt_str}")
     logger.info(f"Reproducibility Seed: {RANDOM_SEED}")
     logger.info("=" * 80)
 
@@ -514,7 +524,7 @@ def run_pipeline(
     logger.info("=" * 96)
     logger.info(f"Dataset: {dataset_path.name} ({len(df_raw):,} transactions across {len(time_slices)} weeks)")
     logger.info(f"Dataset Slug: {dataset_slug}")
-    logger.info(f"Hardware Acceleration: {static_model.device_used} (GPU)")
+    logger.info(f"Hardware Acceleration: {static_model.device_used}")
     logger.info(f"Database Logged: {db_backend_name}")
     logger.info(f"Total Drift Alerts: {len(drift_monitor.drift_events)}")
     logger.info("-" * 108)

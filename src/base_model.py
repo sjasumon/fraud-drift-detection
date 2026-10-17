@@ -25,6 +25,28 @@ DEFAULT_XGB_HYPERPARAMS: Dict[str, Any] = {
 }
 
 
+def is_cuda_available() -> bool:
+    """
+    Probes whether a functional CUDA driver and at least one active CUDA GPU are present.
+    Prevents XGBoost C++ fallback warnings and inaccurate device reporting when eGPU is disconnected.
+    """
+    try:
+        import ctypes
+        import sys
+        if sys.platform == "win32":
+            cuda = ctypes.CDLL("nvcuda.dll")
+        else:
+            cuda = ctypes.CDLL("libcuda.so")
+        if cuda.cuInit(0) != 0:
+            return False
+        count = ctypes.c_int()
+        if cuda.cuDeviceGetCount(ctypes.byref(count)) != 0 or count.value <= 0:
+            return False
+        return True
+    except Exception:
+        return False
+
+
 def fit_xgb_with_fallback(
     X: np.ndarray,
     y: np.ndarray,
@@ -32,12 +54,13 @@ def fit_xgb_with_fallback(
     model_name: str = "Model"
 ) -> Tuple[xgb.XGBClassifier, str, float]:
     """
-    Fits an XGBoost classifier using GPU acceleration (tree_method='hist') if enabled,
-    gracefully falling back to CPU histogram gradient boosting upon any failure.
+    Fits an XGBoost classifier using GPU acceleration (tree_method='hist') if enabled
+    and a functional CUDA device is present, gracefully falling back to CPU histogram
+    gradient boosting upon any failure or when running on CPU/Intel Arc environments.
     Returns:
         (fitted_model, device_used, duration_seconds)
     """
-    if USE_GPU:
+    if USE_GPU and is_cuda_available():
         try:
             model = xgb.XGBClassifier(
                 **xgb_params,
@@ -52,6 +75,8 @@ def fit_xgb_with_fallback(
             return model, device_used, duration
         except Exception as e:
             logger.warning(f"GPU fitting failed for {model_name} ({e}). Falling back to CPU.")
+    elif USE_GPU:
+        logger.debug(f"{model_name}: GPU acceleration enabled in config ({GPU_DEVICE}), but no active CUDA device is detected (eGPU disconnected). Running on CPU.")
 
     model = xgb.XGBClassifier(**xgb_params, tree_method="hist", device="cpu")
     t0 = time.time()

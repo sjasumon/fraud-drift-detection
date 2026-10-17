@@ -35,6 +35,7 @@ from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field, field_validator
 
 from src.config import USE_GPU, GPU_DEVICE, RANDOM_SEED, ADWIN_DELTA, API_KEY, APP_ENV
+from src.base_model import is_cuda_available
 from src.drift_detector import DriftMonitor
 
 logger = logging.getLogger("fraud_drift.api")
@@ -496,8 +497,8 @@ def health_check():
         model_generation=model_buffer.generation,
         is_dummy=model_buffer.is_dummy,
         is_ready=model_buffer.is_ready,
-        gpu_enabled=USE_GPU,
-        gpu_device=GPU_DEVICE if USE_GPU else "cpu",
+        gpu_enabled=bool(USE_GPU and is_cuda_available()),
+        gpu_device=GPU_DEVICE if (USE_GPU and is_cuda_available()) else "cpu",
         memory_rss_mb=round(mem_rss, 2),
         cpu_percent=round(cpu_pct, 2),
         is_retraining=retrainer.is_retraining,
