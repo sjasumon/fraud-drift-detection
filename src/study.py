@@ -31,6 +31,8 @@ def run_study(
     latency_mode="fixed",
     lognormal_mu=1.38,
     lognormal_sigma=0.45,
+    threshold_objective="validation_f1",
+    operational_daily_budget=None,
 ):
     if not seeds or len(set(seeds)) != len(seeds):
         raise ValueError("Seeds must be nonempty and unique")
@@ -68,6 +70,8 @@ def run_study(
                 history_features=history_features,
                 exclude_card_identifiers=exclude_card_identifiers,
                 latency_mode=latency_mode,
+                threshold_objective=threshold_objective,
+                operational_daily_budget=operational_daily_budget,
                 lognormal_mu=lognormal_mu,
                 lognormal_sigma=lognormal_sigma,
             )
@@ -175,6 +179,18 @@ def main():
     p.add_argument("--latency-mode", choices=["fixed", "lognormal"], default="fixed")
     p.add_argument("--lognormal-mu", type=float, default=1.38)
     p.add_argument("--lognormal-sigma", type=float, default=0.45)
+    p.add_argument(
+        "--threshold-objective",
+        choices=["validation_f1", "review_budget_recall"],
+        default="validation_f1",
+        help="Decision threshold optimization policy ('validation_f1' or 'review_budget_recall')",
+    )
+    p.add_argument(
+        "--operational-daily-budget",
+        type=int,
+        default=None,
+        help="Target daily alert capacity for review budget thresholding",
+    )
     p.add_argument("--synthetic", action="store_true")
     a = p.parse_args()
     run_study(
@@ -196,6 +212,8 @@ def main():
         latency_mode=a.latency_mode,
         lognormal_mu=a.lognormal_mu,
         lognormal_sigma=a.lognormal_sigma,
+        threshold_objective=a.threshold_objective,
+        operational_daily_budget=a.operational_daily_budget,
     )
 
 

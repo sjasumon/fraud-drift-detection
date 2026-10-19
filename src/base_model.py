@@ -11,9 +11,9 @@ from src.config import USE_GPU, GPU_DEVICE, RANDOM_SEED
 logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL_PARAMS = dict(
-    n_estimators=150,
+    n_estimators=100,
     max_depth=6,
-    learning_rate=0.08,
+    learning_rate=0.1,
     subsample=0.85,
     colsample_bytree=0.85,
     eval_metric="logloss",
@@ -124,7 +124,16 @@ class BaseFraudModel:
                 max_alerts = int(self.operational_daily_budget * days)
                 if max_alerts < len(probs):
                     sorted_probs = np.sort(probs)
-                    self.threshold = float(sorted_probs[-max_alerts])
+                    cand = float(sorted_probs[-max_alerts])
+                    # Guard against score ties causing alert inflation above target budget
+                    if np.sum(probs >= cand) > max_alerts:
+                        higher_distinct = sorted_probs[sorted_probs > cand]
+                        if len(higher_distinct) > 0:
+                            self.threshold = float(higher_distinct[0])
+                        else:
+                            self.threshold = cand
+                    else:
+                        self.threshold = cand
                 else:
                     self.threshold = float(np.min(probs))
             else:

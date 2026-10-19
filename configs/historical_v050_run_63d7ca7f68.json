@@ -1,0 +1,34 @@
+{
+  "protocol_version": "0.5.0-historical",
+  "description": "Historical frozen configuration reproducing RUN_63D7CA7F68 reported in BENCHMARK_REPORT.md",
+  "dataset": "data/ieee/train_transaction.csv",
+  "identity": null,
+  "seed": 42,
+  "train_slices": 8,
+  "evaluation_slices": 10,
+  "threshold_objective": "validation_f1",
+  "operational_daily_budget": null,
+  "delay_slices": 0,
+  "latency_mode": "fixed",
+  "history_features": false,
+  "all_features": false,
+  "pre_transaction_only": false,
+  "exclude_card_identifiers": false,
+  "strategies": [
+    "static",
+    "periodic",
+    "weekly",
+    "sliding",
+    "adaptive"
+  ],
+  "model_params": {
+    "n_estimators": 150,
+    "max_depth": 6,
+    "learning_rate": 0.08,
+    "subsample": 0.85,
+    "colsample_bytree": 0.85,
+    "eval_metric": "logloss",
+    "n_jobs": 2
+  },
+  "notes": "Exact parameter configuration that produced RUN_63D7CA7F68. Retained for deterministic historical evidence reconciliation."
+}

@@ -20,9 +20,18 @@ def serving(tmp_path, monkeypatch, synthetic_stream_df):
     model = StaticBaselineModel(
         prep.feature_names, model_params={"n_estimators": 10}
     ).fit(prep.transform(df.iloc[:200]))
-    # Explicit test fixture only; production exports retain actual data_kind.
+    # Explicit test fixture double with verified mock provenance
+    from src.provenance import create_verified_test_double_provenance
     bundle = ModelBundle(
-        model, prep, {"run_id": "test", "data_kind": "real", "version": "0.4.0"}
+        model,
+        prep,
+        {
+            "run_id": "test",
+            "model": "static",
+            "data_kind": "real",
+            "version": "0.6.0",
+            "provenance": create_verified_test_double_provenance("test_api"),
+        },
     )
     buffer = api.ModelDoubleBuffer()
     buffer.atomic_swap(bundle)
@@ -207,6 +216,7 @@ def test_background_candidate_promotes_only_after_holdout_gain(tmp_path, monkeyp
     model = StaticBaselineModel(
         prep.feature_names, model_params={"n_estimators": 20}
     ).fit(prep.transform(original))
+    from src.provenance import create_verified_test_double_provenance
     bundle = ModelBundle(
         model,
         prep,
@@ -215,6 +225,7 @@ def test_background_candidate_promotes_only_after_holdout_gain(tmp_path, monkeyp
             "model": "adaptive",
             "data_kind": "real",
             "model_revision": "original",
+            "provenance": create_verified_test_double_provenance("promotion_test"),
         },
     )
     buffer = api.ModelDoubleBuffer()

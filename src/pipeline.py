@@ -54,6 +54,8 @@ def run_pipeline(
     strategies=("static", "periodic", "weekly", "sliding", "adaptive"),
     threshold_objective="validation_f1",
     operational_daily_budget=None,
+    protocol_version="1.0.0",
+    resolved_config=None,
 ):
     started = time.perf_counter()
     if adaptive_window is not None and adaptive_window < 1:
@@ -68,6 +70,17 @@ def run_pipeline(
         raise ValueError("n_train_slices must be positive")
     if data_kind not in {"real", "synthetic", "unverified"}:
         raise ValueError("data_kind must be real or synthetic")
+    if threshold_objective not in {"validation_f1", "review_budget_recall"}:
+        raise ValueError(
+            f"Unsupported threshold_objective: '{threshold_objective}'. "
+            "Supported objectives: 'validation_f1', 'review_budget_recall'"
+        )
+    if operational_daily_budget is not None and operational_daily_budget <= 0:
+        raise ValueError("operational_daily_budget must be a positive integer")
+    if threshold_objective == "review_budget_recall" and not operational_daily_budget:
+        raise ValueError(
+            "operational_daily_budget must be specified when threshold_objective is 'review_budget_recall'"
+        )
     dataset_path = Path(dataset_path or "data/ieee/train_transaction.csv")
     ingestor = DatasetIngestion(
         dataset_path, identity_path=identity_path, all_features=all_features
@@ -297,9 +310,21 @@ def run_pipeline(
         from src.provenance import get_dataset_provenance
         prov = get_dataset_provenance(ingestor.dataset_type, dataset_path, identity_path)
 
+    try:
+        import subprocess
+
+        git_rev = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], text=True
+        ).strip()
+    except Exception:
+        git_rev = None
+
     manifest = dict(
         run_id=run_id,
-        version="0.5.0",
+        version="0.6.0",
+        protocol_version=protocol_version or "1.0.0",
+        git_revision=git_rev,
+        resolved_configuration=resolved_config,
         source_sha256=source_digest.hexdigest(),
         data_kind=data_kind,
         dataset=dataset_path.name,
@@ -381,7 +406,7 @@ def run_pipeline(
                     model=name,
                     data_kind=data_kind,
                     provenance=prov,
-                    version="0.5.0",
+                    version="0.6.0",
                     model_revision=uuid.uuid4().hex,
                 ),
             ),
@@ -439,46 +464,104 @@ def run_pipeline(
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--dataset", required=True)
-    p.add_argument("--identity")
-    p.add_argument("--output-dir")
-    p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--train-slices", type=int)
-    p.add_argument("--evaluation-slices", type=int)
-    p.add_argument("--adaptive-window", type=int)
-    p.add_argument("--half-life-slices", type=float)
-    p.add_argument("--max-retrains", type=int)
-    p.add_argument("--delay-slices", type=int, default=0)
-    p.add_argument("--latency-mode", choices=["fixed", "lognormal"], default="fixed")
+    p.add_argument("--config", help="Path to versioned JSON experiment configuration file")
+    p.add_argument("--dataset", help="Path to transaction CSV dataset")
+    p.add_argument("--identity", help="Path to identity CSV dataset")
+    p.add_argument("--output-dir", help="Directory for experiment run output artifacts")
+    p.add_argument("--seed", type=int, default=42, help="Deterministic random seed")
+    p.add_argument("--train-slices", type=int, help="Number of baseline training slices")
+    p.add_argument("--evaluation-slices", type=int, help="Number of evaluation slices")
+    p.add_argument("--adaptive-window", type=int, help="Sliding window size for adaptive model")
+    p.add_argument("--half-life-slices", type=float, help="Exponential decay half-life in slices")
+    p.add_argument("--max-retrains", type=int, help="Maximum permitted retraining budget")
+    p.add_argument("--delay-slices", type=int, default=0, help="Dispute label arrival delay in slices")
+    p.add_argument("--latency-mode", choices=["fixed", "lognormal"], default="fixed", help="Label feedback delay mode")
     p.add_argument("--lognormal-mu", type=float, default=1.38)
     p.add_argument("--lognormal-sigma", type=float, default=0.45)
-    p.add_argument("--all-features", action="store_true")
-    p.add_argument("--history-features", action="store_true")
-    p.add_argument("--pre-transaction-only", action="store_true")
-    p.add_argument("--exclude-identifiers", action="store_true")
-    p.add_argument("--synthetic", action="store_true")
-    p.add_argument("--explain", action="store_true")
+    p.add_argument(
+        "--threshold-objective",
+        choices=["validation_f1", "review_budget_recall"],
+        default="validation_f1",
+        help="Decision threshold optimization policy ('validation_f1' or 'review_budget_recall')",
+    )
+    p.add_argument(
+        "--operational-daily-budget",
+        type=int,
+        default=None,
+        help="Target daily alert capacity (e.g. 5, 100, 500) for review budget thresholding",
+    )
+    p.add_argument(
+        "--n-estimators",
+        type=int,
+        default=100,
+        help="Number of gradient boosted trees (protocol default: 100)",
+    )
+    p.add_argument(
+        "--learning-rate",
+        type=float,
+        default=0.1,
+        help="XGBoost learning rate (protocol default: 0.1)",
+    )
+    p.add_argument("--all-features", action="store_true", help="Include all raw dataset features")
+    p.add_argument("--history-features", action="store_true", help="Include behavioral history features")
+    p.add_argument("--pre-transaction-only", action="store_true", help="Exclude post-transaction balance leakage")
+    p.add_argument("--exclude-identifiers", action="store_true", help="Exclude high-cardinality card/entity IDs")
+    p.add_argument("--synthetic", action="store_true", help="Mark dataset as synthetic software test fixture")
+    p.add_argument("--explain", action="store_true", help="Generate SHAP/attribution explanations")
     a = p.parse_args()
+
+    # Load versioned configuration file if supplied
+    cfg = {}
+    if a.config:
+        cfg_path = Path(a.config)
+        if not cfg_path.exists():
+            p.error(f"Configuration file not found: {a.config}")
+        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+
+    dataset = a.dataset or cfg.get("dataset")
+    if not dataset:
+        p.error("Either --dataset or a --config defining 'dataset' must be provided")
+
+    # Merge model hyperparameter settings
+    model_params = dict(cfg.get("model_params", {}))
+    if a.n_estimators is not None:
+        model_params["n_estimators"] = a.n_estimators
+    if a.learning_rate is not None:
+        model_params["learning_rate"] = a.learning_rate
+
+    # Validate operational review budget
+    budget = a.operational_daily_budget if a.operational_daily_budget is not None else cfg.get("operational_daily_budget")
+    if budget is not None and budget <= 0:
+        p.error("--operational-daily-budget must be a positive integer")
+
+    thresh_obj = a.threshold_objective if a.threshold_objective != "validation_f1" else cfg.get("threshold_objective", a.threshold_objective)
+    if thresh_obj == "review_budget_recall" and not budget:
+        p.error("--operational-daily-budget must be provided when threshold_objective is 'review_budget_recall'")
+
     r = run_pipeline(
-        a.dataset,
-        exclude_card_identifiers=a.exclude_identifiers,
-        output_dir=a.output_dir,
-        seed=a.seed,
-        n_train_slices=a.train_slices,
-        evaluation_slices=a.evaluation_slices,
-        adaptive_window=a.adaptive_window,
-        half_life_slices=a.half_life_slices,
-        max_retrains=a.max_retrains,
-        delay_slices=a.delay_slices,
-        latency_mode=a.latency_mode,
-        identity_path=a.identity,
-        all_features=a.all_features,
-        history_features=a.history_features,
-        pre_transaction_only=a.pre_transaction_only,
-        data_kind="synthetic" if a.synthetic else "real",
-        explain=a.explain,
-        lognormal_mu=a.lognormal_mu,
-        lognormal_sigma=a.lognormal_sigma,
+        dataset,
+        exclude_card_identifiers=a.exclude_identifiers or cfg.get("exclude_card_identifiers", False),
+        output_dir=a.output_dir or cfg.get("output_dir"),
+        seed=a.seed if a.seed != 42 else cfg.get("seed", 42),
+        n_train_slices=a.train_slices or cfg.get("train_slices"),
+        evaluation_slices=a.evaluation_slices or cfg.get("evaluation_slices"),
+        adaptive_window=a.adaptive_window if a.adaptive_window is not None else cfg.get("adaptive_window"),
+        half_life_slices=a.half_life_slices if a.half_life_slices is not None else cfg.get("half_life_slices"),
+        max_retrains=a.max_retrains if a.max_retrains is not None else cfg.get("max_retrains"),
+        delay_slices=a.delay_slices if a.delay_slices != 0 else cfg.get("delay_slices", 0),
+        latency_mode=a.latency_mode if a.latency_mode != "fixed" else cfg.get("latency_mode", "fixed"),
+        identity_path=a.identity or cfg.get("identity"),
+        all_features=a.all_features or cfg.get("all_features", False),
+        history_features=a.history_features or cfg.get("history_features", False),
+        pre_transaction_only=a.pre_transaction_only or cfg.get("pre_transaction_only", False),
+        data_kind="synthetic" if (a.synthetic or cfg.get("data_kind") == "synthetic") else "real",
+        model_params=model_params or None,
+        explain=a.explain or cfg.get("explain", False),
+        lognormal_mu=a.lognormal_mu if a.lognormal_mu != 1.38 else cfg.get("lognormal_mu", 1.38),
+        lognormal_sigma=a.lognormal_sigma if a.lognormal_sigma != 0.45 else cfg.get("lognormal_sigma", 0.45),
+        threshold_objective=thresh_obj,
+        operational_daily_budget=budget,
+        resolved_config=dict(cfg, **{k: v for k, v in vars(a).items() if v is not None}),
     )
     print(r["run_dir"] / "report.html")
 

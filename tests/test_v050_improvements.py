@@ -28,10 +28,19 @@ from src.api import BackgroundRetrainer
 
 
 def test_provenance_classification_rules():
-    prov_ieee = get_dataset_provenance("IEEE-CIS")
-    assert prov_ieee["classification"] == GENUINE_OBSERVED
-    assert prov_ieee["acceptable_for_proposal_benchmark"] is True
-    assert prov_ieee["verification_status"] == "VERIFIED_RESEARCH_DATA"
+    from src.provenance import create_verified_test_double_provenance
+
+    # Calling IEEE-CIS without a verified file strictly returns UNVERIFIED per R01
+    prov_ieee_nofile = get_dataset_provenance("IEEE-CIS")
+    assert prov_ieee_nofile["classification"] == UNVERIFIED
+    assert prov_ieee_nofile["acceptable_for_proposal_benchmark"] is False
+    assert prov_ieee_nofile["verification_status"] == "UNVERIFIED"
+
+    # Explicit verified test double produces verified record
+    prov_test_double = create_verified_test_double_provenance("test_run")
+    assert prov_test_double["classification"] == GENUINE_OBSERVED
+    assert prov_test_double["acceptable_for_proposal_benchmark"] is True
+    assert prov_test_double["verification_status"] == "VERIFIED_RESEARCH_DATA"
 
     prov_paysim = get_dataset_provenance("PaySim")
     assert prov_paysim["classification"] == SIMULATOR_GENERATED
@@ -48,14 +57,16 @@ def test_provenance_classification_rules():
 
 
 def test_model_bundle_ready_enforces_provenance():
+    from src.provenance import create_verified_test_double_provenance
+
     mock_model = MagicMock()
     mock_model.trained = True
     mock_prep = MagicMock()
 
-    # Valid genuine bundle
+    # Valid genuine bundle using verified test double
     meta_genuine = {
         "data_kind": "real",
-        "provenance": get_dataset_provenance("IEEE-CIS"),
+        "provenance": create_verified_test_double_provenance("unit_test"),
     }
     bundle_genuine = ModelBundle(mock_model, mock_prep, meta_genuine)
     assert bundle_genuine.ready is True
@@ -75,6 +86,21 @@ def test_model_bundle_ready_enforces_provenance():
     }
     bundle_synthetic = ModelBundle(mock_model, mock_prep, meta_synthetic)
     assert bundle_synthetic.ready is False
+
+    # Contradictory synthetic bundle carrying IEEE metadata must NOT be ready
+    meta_contradictory = {
+        "data_kind": "synthetic",
+        "provenance": create_verified_test_double_provenance("unit_test"),
+    }
+    bundle_contradictory = ModelBundle(mock_model, mock_prep, meta_contradictory)
+    assert bundle_contradictory.ready is False
+
+    # Missing provenance must NOT be ready (no permissive fallback)
+    meta_no_prov = {
+        "data_kind": "real",
+    }
+    bundle_no_prov = ModelBundle(mock_model, mock_prep, meta_no_prov)
+    assert bundle_no_prov.ready is False
 
     # Untrained model is not ready
     mock_untrained = MagicMock()

@@ -1,0 +1,28 @@
+{
+  "protocol_version": "dev-smoke",
+  "description": "Fast development configuration for CI and smoke testing",
+  "dataset": "results/validation/synthetic_ieee.csv",
+  "identity": "results/validation/synthetic_identity.csv",
+  "seed": 42,
+  "train_slices": 2,
+  "evaluation_slices": 2,
+  "threshold_objective": "validation_f1",
+  "operational_daily_budget": null,
+  "delay_slices": 0,
+  "latency_mode": "fixed",
+  "history_features": false,
+  "all_features": false,
+  "pre_transaction_only": false,
+  "exclude_card_identifiers": false,
+  "data_kind": "synthetic",
+  "strategies": [
+    "static",
+    "adaptive"
+  ],
+  "model_params": {
+    "n_estimators": 5,
+    "max_depth": 3,
+    "learning_rate": 0.1,
+    "n_jobs": 1
+  }
+}

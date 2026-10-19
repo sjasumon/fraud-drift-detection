@@ -1,0 +1,33 @@
+{
+  "protocol_version": "1.0.0",
+  "description": "Research Protocol v1.0.0 Operational Review Budget K=100 alerts/day",
+  "dataset": "data/ieee/train_transaction.csv",
+  "identity": "data/ieee/train_identity.csv",
+  "seed": 42,
+  "train_slices": 8,
+  "evaluation_slices": 10,
+  "threshold_objective": "review_budget_recall",
+  "operational_daily_budget": 100,
+  "delay_slices": 0,
+  "latency_mode": "fixed",
+  "history_features": false,
+  "all_features": false,
+  "pre_transaction_only": false,
+  "exclude_card_identifiers": false,
+  "strategies": [
+    "static",
+    "periodic",
+    "weekly",
+    "sliding",
+    "adaptive"
+  ],
+  "model_params": {
+    "n_estimators": 100,
+    "max_depth": 6,
+    "learning_rate": 0.1,
+    "subsample": 0.85,
+    "colsample_bytree": 0.85,
+    "eval_metric": "logloss",
+    "n_jobs": 2
+  }
+}

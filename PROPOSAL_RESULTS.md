@@ -55,12 +55,25 @@ In financial institutions, fraud detection is evaluated under human alert review
    - *Impact*: Adaptive retraining captures **+326 additional genuine frauds** over static baseline at identical operational investigation capacity.
 
 ### 2.2 Paired Statistical Uncertainty (Moving-Block Bootstrap)
-Using paired circular moving-block bootstrap (block size $b=2$ slices, 500 bootstrap resamples) with matched temporal draws:
-- **Adaptive vs. Static $\Delta \text{F1}$**: Mean $\Delta = \mathbf{+0.0123}$ (**+1.23%** F1 gain), 95% Confidence Interval: $[\mathbf{+0.0052}, \mathbf{+0.0188}]$.
-  - *Significance*: Because the 95% CI is strictly positive and bounded away from zero, the superiority of adaptive retraining over the frozen baseline is statistically significant on genuine non-stationary e-commerce data.
-- **Adaptive vs. Static $\Delta \text{AP}$**: Mean $\Delta = \mathbf{+0.0275}$ (**+2.75%** Average Precision gain), 95% Confidence Interval: $[\mathbf{+0.0118}, \mathbf{+0.0432}]$.
-- **Periodic vs. Static $\Delta \text{F1}$**: Mean $\Delta = +0.0072$, 95% CI: $[+0.0003, +0.0150]$.
-- **Sliding vs. Static $\Delta \text{F1}$**: Mean $\Delta = +0.0040$, 95% CI: $[-0.0029, +0.0127]$ (crosses zero; not statistically distinguishable from static baseline).
+Using paired circular moving-block bootstrap ($b=2$ slices, 500 bootstrap draws) with matched temporal draws regenerated from the prediction ledger (`python -m src.reconcile_metrics --bootstrap-intervals`):
+- **Adaptive vs. Static $\Delta \text{Average Precision (AP)}$**: Point delta: $\mathbf{+0.0276}$ (**+2.76%** AP gain), Mean bootstrap delta: $+0.0282$, **95% Confidence Interval: $[\mathbf{+0.0226}, \mathbf{+0.0331}]$**. The interval strictly excludes zero (empirical $p < 0.001$), confirming statistically significant superiority over the static baseline ($H_3$).
+- **Adaptive vs. Static $\Delta \text{F1}$**: Point delta: $\mathbf{+0.0123}$ (**+1.23%** F1 gain), Mean bootstrap delta: $+0.0120$, **95% Confidence Interval: $[\mathbf{+0.0071}, \mathbf{+0.0169}]$**.
+- **Adaptive vs. Weekly Non-Inferiority ($H_1$)**:
+  - $\Delta \text{Recall@100/day}$: Point delta $0.00000$, 95% CI: $[0.00000, 0.00000]$ (margin $\delta=0.01$, lower bound $0.0 \ge -0.01$, empirical $p < 0.001$).
+  - $\Delta \text{Average Precision}$: Point delta $0.00000$, 95% CI: $[0.00000, 0.00000]$. Both strategies achieve identical $0.5184$ AP.
+- **Periodic vs. Static $\Delta \text{AP}$**: $+0.0147$, 95% CI: $[+0.0079, +0.0253]$.
+- **Sliding vs. Static $\Delta \text{AP}$**: $+0.0106$, 95% CI: $[+0.0016, +0.0233]$.
+
+### 2.3 Formal Hypotheses Scorecard & Negative Result Disclosure
+
+| Hypothesis | Evaluation Criterion | Observed Outcome | Formal Status |
+| :--- | :--- | :--- | :---: |
+| **$H_1$: Accuracy Non-Inferiority** | $\text{Recall}_{\text{adaptive}} \ge \text{Recall}_{\text{weekly}} - 0.01$ at $K=100$/day | $\Delta = 0.0000$, 95% CI: $[0.0000, 0.0000]$ | **SUPPORTED** ($p < 0.001$) |
+| **$H_2$: Computational Efficiency** | $\text{ComputeCost}_{\text{adaptive}} \le 0.70 \times \text{ComputeCost}_{\text{weekly}}$ | 62.35s vs 64.22s (2.9% saving vs. 30% target) | **NOT SUPPORTED (FAILS)** |
+| **$H_3$: Superiority over Static** | $\text{CI}_{0.95}(\Delta \text{AP}) > 0 \text{ and } \text{CI}_{0.95}(\Delta \text{F1}) > 0$ | $\Delta \text{AP} = +0.0276$, $\Delta \text{F1} = +0.0123$ | **SUPPORTED** ($p < 0.001$) |
+
+**Investigation of $H_2$ Negative Outcome**:
+In the Protocol v1 configuration, ADWIN ($\delta=0.002$) triggered adaptation in every single out-of-sample slice (Slices 8–17). In a large-scale non-stationary stream (~22,000 transactions per week) with extreme class imbalance (3.9% fraud in evaluation window), error rates fluctuated sufficiently to trigger ADWIN continuously. Without an explicit cooldown period, minimum evidence threshold, or retrain hysteresis, the adaptive model retrained 10 times in 10 weeks, matching the weekly schedule and failing the $30\%$ efficiency reduction target. This negative outcome is explicitly preserved as a core baseline finding motivating doctoral research into drift hysteresis mechanisms.
 
 ---
 

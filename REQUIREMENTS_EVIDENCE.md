@@ -45,10 +45,11 @@
 - **Finding**: **PASS**
 
 ### Section 3: Define Research Contribution Before Evaluation
-- **Audit Requirement**: Prepare a focused research protocol around: *Can a retraining policy that accounts for available labels and their delay maintain fraud recall at a fixed review workload while reducing computational cost compared with periodic retraining?* Review primary literature (Carminati et al. 2015, Dal Pozzolo et al.).
+- **Audit Requirement**: Prepare a focused research protocol around: *Can a retraining policy that accounts for available labels and their delay maintain fraud recall at a fixed review workload while reducing computational cost compared with periodic retraining?* Review primary literature (Carminati et al. 2015 BankSealer; Dal Pozzolo et al. 2014, 2018 [Handle 11311/1044896]).
 - **Evidence**:
-  - `RESEARCH_PROTOCOL.md` authored, versioned (1.0.0), and timestamped prior to final evaluation.
-  - Formulates falsifiable hypotheses $H_1$, $H_2$, $H_3$ with practical non-inferiority margins ($\delta \le 0.01$).
+  - `RESEARCH_PROTOCOL.md` authored, versioned (1.0.0), and timestamped prior to final evaluation. Corrected citations: Dal Pozzolo et al. (handle 11311/1044896) and Carminati et al. (BankSealer).
+  - Formulates falsifiable hypotheses $H_1$, $H_2$, $H_3$ with practical non-inferiority margins ($\delta = 0.01$).
+  - Verified outcomes: $H_1$ (Accuracy Non-Inferiority) is **SUPPORTED** ($p < 0.001$), $H_2$ (Computational Efficiency) is **NOT SUPPORTED (FAILS)** due to continuous ADWIN triggers in IEEE-CIS stream (2.9% saving vs 30% target), $H_3$ (Gain over Static) is **SUPPORTED** ($p < 0.001$).
   - Primary metric selected: Recall@Budget (100 and 500 reviews/day) and Average Precision (AP).
 - **Finding**: **PASS**
 

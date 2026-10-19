@@ -123,7 +123,16 @@ class Settings(BaseSettings):
         """
         is_prod = self.app_env.lower() in ("production", "prod", "staging")
         if is_prod:
-            if self.api_key == "dev-secret-key" or len(self.api_key) < 16:
+            insecure_defaults = {
+                "dev-secret-key",
+                "test-key-123",
+                "admin-key-123",
+                "secret",
+                "changeme",
+                "default",
+                "password",
+            }
+            if self.api_key.lower() in insecure_defaults or len(self.api_key) < 16:
                 raise ValueError(
                     f"Insecure API key configured in '{self.app_env}' environment. "
                     "Must set a non-default API_KEY of at least 16 characters in production/staging."

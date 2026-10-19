@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fraud-drift-detection"
-version = "0.5.0"
+version = "0.6.0"
 description = "Concept-Drift-Aware Fraud Detection Platform under Streaming Financial Distributions"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -58,6 +58,7 @@ fraud-stats-rigor = "src.benchmark_statistical_rigor:run"
 fraud-bandit = "src.bandit.benchmark:main"
 fraud-study = "src.study:main"
 fraud-demo = "src.demo:main"
+fraud-reconcile = "src.reconcile_metrics:main"
 fraud-latency = "src.benchmark_latency:main"
 
 [tool.setuptools.packages.find]

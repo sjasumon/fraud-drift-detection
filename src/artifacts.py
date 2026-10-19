@@ -42,12 +42,15 @@ class ModelBundle:
     def ready(self):
         if not getattr(self.model, "trained", False):
             return False
+        # Strictly reject any bundle declaring non-genuine data_kind
+        if self.metadata.get("data_kind") in {"synthetic", "simulator", "unverified"}:
+            return False
         prov = self.metadata.get("provenance")
-        if prov:
-            from src.provenance import verify_bundle_provenance
-            is_verified, _ = verify_bundle_provenance(self.metadata)
-            return is_verified
-        return bool(self.metadata.get("data_kind") == "real")
+        if not prov or not isinstance(prov, dict):
+            return False
+        from src.provenance import verify_bundle_provenance
+        is_verified, _ = verify_bundle_provenance(self.metadata)
+        return is_verified
 
 
 def save_bundle(bundle, directory):
@@ -72,7 +75,7 @@ def save_bundle(bundle, directory):
             input_features=serving.preprocessor.required_input_columns,
             transformed_features=serving.model.feature_names,
             threshold=serving.model.threshold,
-            fit_metadata=serving.model.fit_metadata,
+            fit_metadata=getattr(serving.model, "fit_metadata", {}),
         )
         (staging / "manifest.json").write_text(
             json.dumps(manifest, indent=2, allow_nan=False), encoding="utf-8"

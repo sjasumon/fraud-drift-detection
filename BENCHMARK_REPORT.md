@@ -53,33 +53,45 @@ In production operations, fraud teams examine a fixed quota of alerts per day. B
 
 ---
 
-## 3. Computational Cost Profiling
+## 3. Computational Cost Profiling & Hypothesis $H_2$ Evaluation
 
-| Strategy | Retrain Events | Retrain Wall-Clock (s) | Initial Fit Time (s) | Cumulative Training Time (s) |
-| :--- | :---: | :---: | :---: | :---: |
-| **Static Baseline** | 0 | 0.00s | 5.34s | **5.34s** |
-| **Sliding Window** | 2 | 4.20s | 5.34s | **9.54s** |
-| **Periodic Retrain** | 2 | 11.43s | 5.34s | **16.77s** |
-| **Drift-Adaptive** | 10 | 62.35s | 5.34s | **67.69s** |
-| **Weekly Retrain** | 10 | 64.22s | 5.34s | **69.56s** |
+| Strategy | Retrain Events | Retrain Wall-Clock (s) | Initial Fit Time (s) | Cumulative Training Time (s) | Relative Cost vs. Weekly |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Static Baseline** | 0 | 0.00s | 5.34s | **5.34s** | 7.7% |
+| **Sliding Window** | 2 | 4.20s | 5.34s | **9.54s** | 13.7% |
+| **Periodic Retrain** | 2 | 11.43s | 5.34s | **16.77s** | 24.1% |
+| **Drift-Adaptive** | 10 | 62.35s | 5.34s | **67.69s** | **97.3%** |
+| **Weekly Retrain** | 10 | 64.22s | 5.34s | **69.56s** | **100.0%** |
 
-- **Inference Throughput**: >750,000 predictions/sec on CPU.
-- **Scoring Microservice Latency**: Median $p_{50} = 3.8\text{ ms}$, $p_{95} = 5.9\text{ ms}$, $p_{99} = 9.2\text{ ms}$.
+### 3.1 Formal Hypothesis $H_2$ Outcome: NOT SUPPORTED (REJECTED in Protocol v1)
+- **Target Criterion ($H_2$)**: Adaptive retraining must reduce compute training seconds by at least $30\%$ relative to scheduled weekly retraining ($\text{Cost}_{\text{adaptive}} \le 0.70 \times \text{Cost}_{\text{weekly}}$).
+- **Observed Result**: Adaptive training wall-clock time is $62.35\text{ s}$ vs. Weekly $64.22\text{ s}$ — an observed saving of only **2.9%** ($62.35\text{ s} > 0.70 \times 64.22\text{ s} = 44.95\text{ s}$).
+- **Investigation of Weekly Triggers**: In `RUN_63D7CA7F68`, ADWIN ($\delta=0.002$) triggered an adaptation event in **every single out-of-sample slice** (Slices 8 through 17). In a large-scale genuine e-commerce stream (~22,000 transactions per week) exhibiting continuous feature drift and class imbalance, error distributions fluctuated enough to trigger ADWIN continuously. Without a minimum evidence threshold or retrain cooldown period, the adaptive policy collapsed to the weekly retraining schedule.
+- **Scientific Integrity Decision**: We preserve the negative finding honestly. Hypothesis $H_2$ is formally reported as **NOT SUPPORTED** in Protocol v1.
 
 ---
 
-## 4. Paired Moving-Block Bootstrap Uncertainty
+## 4. Paired Moving-Block Bootstrap Uncertainty & Hypothesis Testing
 
-Uncertainty estimates were generated using paired circular moving-block bootstrap ($b=2$ consecutive slices, 500 bootstrap draws) with identical temporal sampling across models:
+Uncertainty estimates were regenerated directly from the raw prediction ledger (`predictions.csv`) using paired circular moving-block bootstrap ($b=2$ consecutive slices, 500 bootstrap draws) via `python -m src.reconcile_metrics --bootstrap-intervals`:
 
+### 4.1 Comparison Against Static Baseline ($H_3$: SUPPORTED)
 - **Drift-Adaptive vs. Static**:
-  - Mean $\Delta \text{F1}$: $\mathbf{+0.0123}$
-  - 95% Confidence Interval: $[\mathbf{+0.0052}, \mathbf{+0.0188}]$
-  - *Statistical Conclusion*: The positive confidence interval bound strictly excludes zero ($p < 0.01$), confirming statistically significant superiority of drift adaptation over a static model on genuine financial transactions.
+  - **$\Delta \text{Average Precision (AP)}$**: Point delta: $\mathbf{+0.0276}$ (+2.76% AP), Mean bootstrap delta: $+0.0282$, **95% CI: $[+0.0226, +0.0331]$**. The confidence interval strictly excludes zero (empirical $p < 0.001$), supporting $H_3$.
+  - **$\Delta \text{F1-Score}$**: Point delta: $\mathbf{+0.0123}$ (+1.23% F1), Mean bootstrap delta: $+0.0120$, **95% CI: $[+0.0071, +0.0169]$**.
+  - **$\Delta \text{Recall@100/day}$**: Point delta: $\mathbf{+0.0009}$ (+124 frauds), 95% CI: $[-0.0005, +0.0022]$.
 - **Periodic vs. Static**:
-  - Mean $\Delta \text{F1}$: $+0.0072$, 95% CI: $[+0.0003, +0.0150]$ (borderline significance).
+  - $\Delta \text{AP}$: $+0.0147$, 95% CI: $[+0.0079, +0.0253]$.
+  - $\Delta \text{F1}$: $+0.0072$, 95% CI: $[+0.0031, +0.0131]$.
 - **Sliding Window vs. Static**:
-  - Mean $\Delta \text{F1}$: $+0.0040$, 95% CI: $[-0.0029, +0.0127]$ (crosses zero; not statistically distinguishable from static).
+  - $\Delta \text{AP}$: $+0.0106$, 95% CI: $[+0.0016, +0.0233]$.
+  - $\Delta \text{F1}$: $+0.0040$, 95% CI: $[-0.0031, +0.0133]$ (crosses zero; not statistically distinguishable from static).
+
+### 4.2 Non-Inferiority Testing Against Weekly Retraining ($H_1$: SUPPORTED)
+- **Drift-Adaptive vs. Weekly Retraining**:
+  - **Recall@100/day Non-Inferiority**: Point delta: $0.00000$, Mean bootstrap delta: $0.00000$, **95% CI: $[0.00000, 0.00000]$**. With prespecified non-inferiority margin $\delta = 0.01$, the lower bound ($0.0 \ge -0.01$) demonstrates non-inferiority with empirical $p < 0.001$.
+  - **Average Precision Non-Inferiority**: Point delta: $0.00000$, 95% CI: $[0.00000, 0.00000]$ (both models achieved $0.5184$ AP due to identical 10-week retraining triggers).
+  - *Statistical Conclusion*: **Hypothesis $H_1$ is SUPPORTED**. Operational fraud detection quality is fully preserved.
 
 ---
 

@@ -1,6 +1,8 @@
 """Label-free entity history computed strictly before each event.
-Events with tied timestamps are scored against strictly prior history before shared
-state is updated, preventing intra-second ordering leakage.
+Implementation note: This algorithm employs boundary-batched NumPy array scanning with
+sliding-window deques (rather than purely vectorized matrix operations) to maintain
+temporal causality. Events with tied timestamps are scored against strictly prior history
+(t < T) before shared state is updated, preventing intra-second ordering leakage.
 This is an offline feature builder; online callers must supply these historical
 values from their causal feature store.
 """
