@@ -1,0 +1,627 @@
+FRAUD DRIFT DETECTION — INDEPENDENT v0.6.0 FOLLOW-UP REVIEW
+Review date: 19 October 2026
+Purpose: assess the supplied update against R01–R11 and PhD proposal readiness.
+
+DECISION
+
+Meaningful improvements are present, but the claim that all R01–R11 items are resolved is not supported by the supplied delivery or independent checks. This version is not yet ready to substantiate the reported research conclusions. Continue development; do not present the reported H1/H3 statistics or production-readiness claims as independently verified.
+
+This assessment concerns the supplied ZIP. It does not establish what may exist in a separate repository, release, or deployment. Missing evidence does not prove that historical results were fabricated. It means those results cannot be checked from this delivery.
+
+1. MATERIAL REVIEWED AND VERIFICATION SCOPE
+
+Supplied files: Pasted text(5).txt and fraud-drift-detection(1).zip.
+Archive: 8,769,264 bytes; 266 entries; ZIP CRC check passed.
+SHA-256: a2f4ef592f814be4e846aabcf75684ee44482e143f23f1cb965eed7b1ed33ee7
+
+The agent describes a 190,255,203-byte, 1,105-file package containing restored historical evidence. The supplied ZIP is a different-sized delivery and contains no results/ benchmark evidence, prediction ledgers, run manifests, or REMEDIATION_CHECKLIST.md. These discrepancies must be reconciled before claiming delivery completion.
+
+Verification performed:
+* Full supplied pytest suite against the extracted current source: 176 passed, 1 failed, 0 skipped, 4 warnings; 194.36 seconds in this environment.
+* Failure: tests/test_remediation_r02_r04.py::test_reconcile_metrics_on_run_63d7ca7f68. The required results/benchmark_runs/RUN_63D7CA7F68 directory is absent.
+* The documented historical reconciliation command also exits with an error because that run directory is absent.
+* The v0.6 wheel was installed without dependencies into a separate target directory and imported from outside the source directory. Its version is 0.6.0. All nine console entry points passed --help checks. This is packaging smoke coverage, not an end-to-end benchmark or deployment test.
+* All 35 packaged Python source files matched the corresponding supplied v0.6 wheel source bytes.
+* Default API startup was exercised and returned NOT_READY rather than crashing on the absent configured model.
+* Independent focused reproductions exercised provenance, configuration resolution, statistics, reconciliation, quotas, restart behavior, retraining concurrency, and timeout behavior.
+
+The Python environment was reused from the previous review with the pinned dependencies available; it was not a newly provisioned operating-system/container environment. Current-source imports were explicitly selected. No live deployment, GitHub commit/tag, full real-data retraining, or independent rerun of historical H1–H3 was verified. Small generated records and dummy models used below are labelled software fixtures only, never research evidence.
+
+2. IMPROVEMENTS THAT DESERVE CREDIT
+
+* Missing source files and mismatched raw-file hashes are rejected by the ordinary provenance path. A bundle lacking provenance is not ready, and contradictory synthetic metadata no longer passes the old readiness path.
+* Missing-model API startup is handled gracefully.
+* New metric/bootstrap support and configuration files exist, although important correctness gaps remain below.
+* The new batch ranking allocator selects exactly five records from a 50-record tied-score fixture with budget five.
+* Authenticated activation and rollback endpoints, SQLite-backed promotion history, and persistent feedback handling are substantial improvements over the earlier volatile implementation.
+* The revised report explicitly says H2 is NOT SUPPORTED: the reported 2.9% saving with 10 versus 10 retrains does not support the desired efficiency claim. Honest negative results are acceptable research outcomes; do not tune reporting to manufacture a positive result.
+* The current wheel imports and console scripts start successfully.
+
+3. R01–R11 DISPOSITION AND REQUIRED CLOSURE
+
+R01 — PARTIAL: ordinary hash verification improved; derived provenance remains unsound.
+
+Observed: create_derived_subset_manifest accepts a known parent digest, an arbitrary child file, and a claimed transformation. It does not read the actual parent or verify that applying the transformation produces the child. A file containing 'not real transaction records' was consequently classified GENUINE_OBSERVED / VERIFIED_RESEARCH_DATA and acceptable for the proposal benchmark. An incorrect identity file supplied on this derived path did not cause rejection. The shipped create_verified_test_double_provenance helper can also produce provenance accepted by ModelBundle.ready.
+
+Fix: derive subsets from verified parent bytes in a controlled, reproducible transformation, retaining source hashes, transformation/version, selection criteria, row identities, and output hashes. Verify any identity input actually used. Separate a self-declared lineage manifest from verified lineage. Keep test-only provenance out of the production acceptance path; production must reject its marker. A digest of an arbitrary child proves integrity of those bytes, not genuine transaction origin.
+
+Acceptance: independently created arbitrary child files and test-double markers cannot become proposal-acceptable or serving-ready. A real verified-parent transformation succeeds and can be replayed to the same child hash. Missing or incorrect required identity inputs fail.
+
+R02 — BLOCKED / PARTIAL: historical evidence absent; reconciliation can return a false success.
+
+Observed: the reconciler accepted recorded confusion counts of 999999 when the fixture ledger had only one true positive per model. It also accepted a recorded retrain count/cost of 999999 despite an empty retrain-event list. Removing comparison metric/cost files still produced is_reconciled=true. An empty prediction ledger with headers produced a successful result with zero records and no models.
+
+Fix: provide the actual historical manifest, prediction ledger, retrain events, timing records, configuration, provenance, and reported tables. Make strict reconciliation require the expected nonempty artifacts and strategies; validate row keys, labels, pairing, and temporal coverage. Recompute and compare all counts, totals, applicable metrics, retrain counts, and cost components. Missing data must be an incomplete/error outcome. Distinguish arithmetic reconciliation from provenance acceptance.
+
+Acceptance: deliberately corrupt each reported count, metric, and cost independently and confirm failure. Missing artifacts and an empty run must fail. The delivered historical run must reconcile from original evidence without regenerating a replacement ledger to fit the report.
+
+R03 — REPORTING CORRECTED; EMPIRICAL AUDIT INCOMPLETE.
+
+H2 is now explicitly reported as unsupported. Retain that conclusion unless a new, separately versioned experiment changes the evidence. The claimed numerical results and explanation for retraining behavior remain unverified without original events and ledgers. Do not overwrite historical results with newly tuned runs.
+
+Acceptance: trace each conclusion to delivered run IDs, event records, calculations, and prespecified hypothesis criteria; distinguish original experiments from later amendments.
+
+R04 — PARTIAL: config files and flags exist, but actual execution differs.
+
+Observed: invoking the pipeline with the historical config requests 150 trees and learning_rate=0.08, but the arguments passed to run_pipeline contain 100 trees and 0.1. CLI defaults overwrite configured parameters. The historical protocol_version is not forwarded and falls back to 1.0.0. Configured strategies are not forwarded. The saved resolved configuration contains conflicting nested and flattened parameters. The study CLI has no --config option, contrary to the agent's statement.
+
+Fix: distinguish explicitly supplied CLI arguments from parser defaults. Merge defaults, file configuration, and explicit overrides once into one validated canonical configuration; execute and record that same object. Forward protocol version and strategies. Implement the promised study config support or correct the documented interface.
+
+Acceptance: spy/integration tests assert actual estimator parameters, strategies, protocol, seed, and explicit false/default-valued overrides. Running the historical config must execute its historical parameters. Help-text checks alone are insufficient.
+
+R05 — PARTIAL: statistical calculations have a reproduced correctness error.
+
+Observed: the equality shortcut uses np.allclose with default relative tolerance. In a two-record software fixture, candidate probabilities [0.5000001, 0.5] and baseline [0.5, 0.5000001], with labels [1, 0], yield AP 1.0 versus 0.5. The function instead returns delta 0, confidence interval [0, 0], and empirical_p_value=0. Approximate score equality does not imply equal rankings or equal AP.
+
+The returned tail fraction is also compared with a negative non-inferiority margin, including AP calls. That is not automatically a valid superiority p-value for a zero-null H3 claim. Identical predictions hardcode p=0. Report generation uses 200 bootstrap resamples; observing zero tails is not sufficient to report p<0.001. These issues require statistical review before relying on H1/H3 claims.
+
+Fix: remove inappropriate approximate-equality shortcuts and recompute the requested metric. Prespecify metric, estimand, pairing, temporal blocks, margin, and hypothesis-specific inference. Validate the method against independent reference calculations and suitable null cases. State finite-resample and short-stream limitations; never convert zero sampled tails into proof of p=0.
+
+Acceptance: the ranking fixture returns AP delta 0.5; identical, null, inferior, and clearly superior cases produce justified results. A qualified methods review confirms how confidence intervals and any p-values support each hypothesis. Recompute affected reports after correction.
+
+R06 — PARTIAL: new quota helper works in one case; complete budget enforcement does not.
+
+Observed: the old BaseFraudModel all-tied fixture still returns 40 alerts for budget five. The new batch helper correctly returns five. The scoring API does not apply the quota helper: eight fixture transactions returned eight REVIEW decisions despite budget-five metadata. Metadata alone is not an implemented serving quota.
+
+Persistent online quota defects were also reproduced: after restart, replaying an admitted ID consumes another slot; a new unique ID is then denied. Returning to an earlier event day can admit two day-zero records under quota one. step=24 maps to day one in the helper but day zero in the pipeline.
+
+Fix: define separately the classifier threshold, batch selection budget, and any promised serving admission quota. Wire the operational policy into the relevant workflow. Persist idempotency decisions and counts transactionally, use one day-boundary convention, and specify late-event handling. Ensure concurrency cannot exceed a strict quota.
+
+Acceptance: tied scores, retries, restart, parallel requests, late events, and day boundaries all satisfy the documented policy. Research recall-at-budget must use the same declared selection semantics used in its evaluation.
+
+R07 — PARTIAL: model controls exist; activation/promotion can lose the intended active model.
+
+Observed: activating model family B while the configured base is A succeeds with HTTP 200, but restart restores family A. A separate controlled concurrency probe started a slow retrain from A, manually activated B, then completed the old retrain; the old job promoted A and overwrote B. Promotion did not confirm that its original active-model snapshot was still current.
+
+Fix: use one durable authoritative activation record and explicit cross-family activation policy. Restore the accepted active model on restart. Before promotion, use a compare-and-swap check against a monotonic activation revision/epoch; reject a stale candidate. Do not rely solely on a generation number that rollback can reuse. Clearly distinguish authoritative state from best-effort aliases.
+
+Acceptance: an accepted activation survives restart. Activation/rollback while training is in flight prevents stale promotion. Inject persistence failures and verify coherent recovery.
+
+R08 — LARGELY CORRECTED FOR THE PREVIOUS STARTUP DEFECT; CLEANUP REMAINS.
+
+The absent-model startup crash is fixed. The previously nonempty database password is now empty. The release still contains a .env with a default development API key and machine-local paths. This does not establish that a live deployment uses insecure settings, but it is unsuitable release hygiene.
+
+Fix/acceptance: ship a documented .env.example, exclude runtime .env and local paths, and verify production configuration validation and readiness on the intended deployment. Startup without a model should remain NOT_READY; a verified valid model should become ready.
+
+R09 — PARTIAL: persistent feedback improves durability; the claimed training deadline is not strict.
+
+Observed: ThreadPoolExecutor.result(timeout=...) raises on deadline, but returning through the executor context waits for the running thread. With a 0.01-second limit and an approximately 0.08-second fit, the call returned after 0.086 seconds while recording only 0.0116 seconds and REJECTED_TRAINING_TIMEOUT. Candidate rejection works; cancellation and accurate occupied duration do not.
+
+Fix: use an actually terminable isolated worker or a proven cooperative cancellation mechanism if a strict resource deadline is required. Otherwise describe the behavior honestly as rejecting an overrun after completion, and record actual wall time/resource use. Keep the persistent feedback improvements, and document holdout reuse and evaluation contamination controls.
+
+Acceptance: a deliberately long fit cannot keep occupying the protected training worker beyond the defined termination grace period. Logged elapsed duration reflects reality. Durable feedback and stale-promotion tests remain green.
+
+R10 — PARTIAL: documentation is clearer but does not establish research validity.
+
+Corrected citations and the negative H2 statement are useful. H1/H3 numbers remain unaudited, and the statistics defect above affects confidence in generated conclusions. A research protocol containing already-known outcomes is not evidence of prospective preregistration.
+
+Fix/acceptance: distinguish frozen protocol, dated amendments, exploratory analyses, and final results. Every numerical claim must trace to validated evidence. Separate observed transaction data from synthetic software fixtures everywhere. Discuss dataset limitations and avoid causal or generalization claims beyond the design.
+
+R11 — PARTIAL: packaging smoke checks pass; production performance/release evidence incomplete.
+
+The latency modes still use FastAPI TestClient in process. They do not measure actual network-service latency or establish behavior under concurrent background training. No current raw performance evidence in this delivery establishes the reported deployment numbers.
+
+The ZIP includes old wheels, build output, and bytecode. README, deployment/test reports, and newer v0.6 claims mix versions and counts; the promised checklist is absent. Some documented test module names do not match delivered modules. GitHub tag/commit and production deployment claims were not independently verified in this review.
+
+Fix/acceptance: create a clean reproducible release with one version, locked dependencies, manifest, checksum, current generated test report, and rollback instructions tested against that release. Benchmark a real running service with documented hardware, data shape, batch size, warm-up, concurrency, repetitions, p50/p95/p99 latency, throughput, errors, peak memory, and retraining contention. Preserve raw measurements and commands. Do not label in-process TestClient timings as network or production latency.
+
+4. NEXT DEVELOPMENT ORDER AND DELIVERY CONTRACT
+
+First, reconcile the package discrepancy and supply the actual claimed evidence package/checklist, linked to the exact source revision and checksum. Packaging alone will not fix the independently reproduced source defects.
+
+Then address: (1) provenance acceptance and strict reconciliation; (2) configuration and statistics; (3) serving/batch quota semantics; (4) durable model lifecycle, stale-job rejection, and real deadline behavior; (5) real-service performance and release consistency.
+
+For every R01–R11 item, require the agent to provide: current status, changed paths, relevant commit, before/after reproduction, executed test command and machine-readable result, evidence location, and remaining limitations. An item is not complete merely because a helper exists or a new test passes. It must satisfy the original requirement through the actual application/research workflow.
+
+Keep original historical evidence immutable. If a historical run cannot be recovered, mark it unavailable and its claims unverified. Generate any new experiments under new run IDs after code/configuration corrections, using verified observed data, chronological evaluation, leakage controls, and appropriately specified analysis. Synthetic fixtures may test software behavior but must never fill missing empirical results.
+
+Before proposal submission, require: no failing required tests; all material reproductions closed; strict reconciliation of delivered evidence; traceable genuine-data lineage; independently checked statistics; consistent release documentation; and realistic performance measurements. A proposal may honestly present the system as a research prototype with limitations. It should not claim validated production readiness or established hypothesis support prematurely.
+
+APPENDIX: INDEPENDENT MACHINE-READABLE RESULTS AND REPRODUCTION SOURCES
+
+The following fixtures demonstrate software behavior only. Paths refer to the review workspace and should be adjusted when rerunning. Reproduction scripts write local fixture state and should be run in an isolated test workspace, never against a production database or artifact registry.
+
+
+----- reproductions.json -----
+
+{
+  "old_provenance_paths_now_rejected": {
+    "missing_file_status": "UNVERIFIED",
+    "mismatched_file_status": "EXCLUDED_HASH_MISMATCH",
+    "missing_provenance_ready": false,
+    "contradictory_synthetic_ready": false
+  },
+  "arbitrary_derived_subset_verified": {
+    "file_contains": "not real transaction records",
+    "classification": "GENUINE_OBSERVED",
+    "status": "VERIFIED_RESEARCH_DATA",
+    "acceptable": true,
+    "supplied_wrong_identity_rejected": false
+  },
+  "production_accepts_exported_test_helper": true,
+  "historical_config_resolution": {
+    "requested_model_params": {
+      "n_estimators": 150,
+      "max_depth": 6,
+      "learning_rate": 0.08,
+      "subsample": 0.85,
+      "colsample_bytree": 0.85,
+      "eval_metric": "logloss",
+      "n_jobs": 2
+    },
+    "actual_model_params": {
+      "n_estimators": 100,
+      "max_depth": 6,
+      "learning_rate": 0.1,
+      "subsample": 0.85,
+      "colsample_bytree": 0.85,
+      "eval_metric": "logloss",
+      "n_jobs": 2
+    },
+    "requested_protocol": "0.5.0-historical",
+    "protocol_forwarded": "NOT FORWARDED; defaults to 1.0.0",
+    "recorded_configuration": {
+      "protocol_version": "0.5.0-historical",
+      "description": "Historical frozen configuration reproducing RUN_63D7CA7F68 reported in BENCHMARK_REPORT.md",
+      "dataset": "data/ieee/train_transaction.csv",
+      "identity": null,
+      "seed": 42,
+      "train_slices": 8,
+      "evaluation_slices": 10,
+      "threshold_objective": "validation_f1",
+      "operational_daily_budget": null,
+      "delay_slices": 0,
+      "latency_mode": "fixed",
+      "history_features": false,
+      "all_features": false,
+      "pre_transaction_only": false,
+      "exclude_card_identifiers": false,
+      "strategies": [
+        "static",
+        "periodic",
+        "weekly",
+        "sliding",
+        "adaptive"
+      ],
+      "model_params": {
+        "n_estimators": 150,
+        "max_depth": 6,
+        "learning_rate": 0.08,
+        "subsample": 0.85,
+        "colsample_bytree": 0.85,
+        "eval_metric": "logloss",
+        "n_jobs": 2
+      },
+      "notes": "Exact parameter configuration that produced RUN_63D7CA7F68. Retained for deterministic historical evidence reconciliation.",
+      "config": "/workspace/scratch/eb86e47ab5e3/review_v060_20261019/configs/historical_v050_run_63d7ca7f68.json",
+      "lognormal_mu": 1.38,
+      "lognormal_sigma": 0.45,
+      "n_estimators": 100,
+      "learning_rate": 0.1,
+      "exclude_identifiers": false,
+      "synthetic": false,
+      "explain": false
+    }
+  },
+  "old_budget_tie_case": {
+    "budget": 5,
+    "alerts": 40,
+    "threshold": 0.5
+  },
+  "new_batch_quota_helper": {
+    "budget": 5,
+    "selected": 5
+  },
+  "quota_restart_replay": {
+    "first_a": true,
+    "replayed_a": true,
+    "new_b": false,
+    "alerts_count_after_duplicate": 2,
+    "expected_unique_ids_capacity": 2
+  },
+  "out_of_order_day_quota": {
+    "decisions": [
+      true,
+      false,
+      true
+    ],
+    "day0_admissions": 2,
+    "budget": 1
+  },
+  "step_day_boundary": {
+    "step_23_day": 0,
+    "step_24_day": 1,
+    "main_pipeline_day_for_24": 0
+  },
+  "approximate_equality_erases_AP_gain": {
+    "expected_AP_delta": 0.5,
+    "reported": {
+      "candidate_model": "adaptive",
+      "baseline_model": "static",
+      "metric": "average_precision",
+      "point_estimate": 0.0,
+      "mean_delta": 0.0,
+      "mean_bootstrap_delta": 0.0,
+      "ci_95": [
+        0.0,
+        0.0
+      ],
+      "ci_99": [
+        0.0,
+        0.0
+      ],
+      "non_inferiority_margin": 0.01,
+      "empirical_p_value": 0.0,
+      "is_non_inferior": true,
+      "n_bootstrap": 20,
+      "n_seeds": 1,
+      "temporal_blocks": 1,
+      "block_length_slices": 2,
+      "daily_budget": null,
+      "capacity_policy": null,
+      "method": "paired circular moving-block bootstrap; metric=average_precision; shared time draws across seeds",
+      "status": "exploratory_short_stream",
+      "limitation": "Conditional on supplied periods; seeds do not add independent transaction populations."
+    }
+  },
+  "reconciler_accepts_wrong_counts_and_cost": {
+    "is_reconciled": true,
+    "discrepancies": [],
+    "recorded_TP": 999999,
+    "actual_TP_per_model": 1,
+    "recorded_retrains": 999999,
+    "actual_events": 0,
+    "accepted_data_kind": "unverified"
+  },
+  "reconciler_accepts_missing_comparison_files": {
+    "is_reconciled": true,
+    "discrepancies": []
+  },
+  "reconciler_accepts_empty_run": {
+    "is_reconciled": true,
+    "records": 0,
+    "models": []
+  },
+  "thread_timeout_still_waits_for_fit": {
+    "deadline": 0.01,
+    "actual_return_seconds": 0.08595281900488771,
+    "logged_duration": 0.01155966499936767,
+    "status": "REJECTED_TRAINING_TIMEOUT",
+    "accepted": false
+  },
+  "scoring_API_has_no_quota": {
+    "budget_on_model": 5,
+    "transactions": 8,
+    "review_decisions": 8,
+    "status": 200
+  },
+  "cross_family_activation_lost_on_restart": {
+    "activation_status": 200,
+    "family_after_activation": "family_B",
+    "family_after_restart": "family_A"
+  },
+  "documented_reconciliation_command": {
+    "returncode": 1,
+    "stderr": "Error: Run directory not found: results/benchmark_runs/RUN_63D7CA7F68\n"
+  }
+}
+
+
+----- concurrency_probe.json -----
+
+{
+  "manual_activation_status": 200,
+  "family_immediately_after_manual_activation": "race_B",
+  "retrain_return": true,
+  "thread_finished": true,
+  "final_family": "race_A",
+  "final_generation": 1,
+  "retrain_status": "SUCCESS"
+}
+
+
+----- wheel_smoke.json -----
+
+{
+  "isolated_import": {
+    "returncode": 0,
+    "stdout": "/workspace/scratch/eb86e47ab5e3/audit_v060_wheel/src/__init__.py\n0.6.0\n",
+    "stderr": ""
+  },
+  "entrypoints": [
+    {
+      "command": "fraud-pipeline --help",
+      "returncode": 0,
+      "stderr": ""
+    },
+    {
+      "command": "fraud-study --help",
+      "returncode": 0,
+      "stderr": ""
+    },
+    {
+      "command": "fraud-reconcile --help",
+      "returncode": 0,
+      "stderr": ""
+    },
+    {
+      "command": "fraud-latency --help",
+      "returncode": 0,
+      "stderr": "/workspace/scratch/eb86e47ab5e3/audit_v050_env/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n  from starlette.testclient import TestClient as TestClient  # noqa\n"
+    },
+    {
+      "command": "fraud-audit --help",
+      "returncode": 0,
+      "stderr": ""
+    },
+    {
+      "command": "fraud-latency-audit --help",
+      "returncode": 0,
+      "stderr": ""
+    },
+    {
+      "command": "fraud-stats-rigor --help",
+      "returncode": 0,
+      "stderr": ""
+    },
+    {
+      "command": "fraud-bandit --help",
+      "returncode": 0,
+      "stderr": ""
+    },
+    {
+      "command": "fraud-demo --help",
+      "returncode": 0,
+      "stderr": ""
+    }
+  ]
+}
+
+
+----- reproduce_v060.py -----
+
+"""v0.6.0 independent review probes. Generated rows are software fixtures only."""
+import sys, json, time, subprocess, hashlib
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
+import numpy as np
+import pandas as pd
+
+PROJECT=Path("/workspace/scratch/eb86e47ab5e3/review_v060_20261019")
+OUT=Path("/workspace/scratch/eb86e47ab5e3/audit_v060_evidence")
+sys.path.insert(0,str(PROJECT))
+from src.provenance import (get_dataset_provenance,create_derived_subset_manifest,
+ create_verified_test_double_provenance,DATASET_REGISTRY)
+from src.artifacts import ModelBundle,save_bundle
+from src.capacity_policy import OnlineDailyQuotaAllocator,allocate_batch_ranking
+from src.base_model import BaseFraudModel
+from src.reporting import block_bootstrap_metric_delta
+from src.reconcile_metrics import reconcile_run_directory
+from src import api,pipeline
+from fastapi.testclient import TestClient
+
+results={}
+bad=OUT/"NOT_GENUINE.csv";bad.write_text("not real transaction records\n")
+results["old_provenance_paths_now_rejected"]={
+ "missing_file_status":get_dataset_provenance("IEEE-CIS")["verification_status"],
+ "mismatched_file_status":get_dataset_provenance("IEEE-CIS",bad)["verification_status"],
+ "missing_provenance_ready":ModelBundle(SimpleNamespace(trained=True),None,{"data_kind":"real"}).ready,
+ "contradictory_synthetic_ready":ModelBundle(SimpleNamespace(trained=True),None,
+   {"data_kind":"synthetic","provenance":create_verified_test_double_provenance()}).ready,
+}
+parent=DATASET_REGISTRY["IEEE-CIS"]["reference_sha256"]["train_transaction.csv"]
+dm=create_derived_subset_manifest(parent,bad,{"claim":"I am a genuine subset"})
+wrong_id=OUT/"NOT_GENUINE_IDENTITY.csv";wrong_id.write_text("also not real\n")
+prov=get_dataset_provenance("IEEE-CIS",bad,identity_path=wrong_id,derived_manifest=dm)
+results["arbitrary_derived_subset_verified"]={
+ "file_contains":bad.read_text().strip(),"classification":prov["classification"],
+ "status":prov["verification_status"],"acceptable":prov["acceptable_for_proposal_benchmark"],
+ "supplied_wrong_identity_rejected":not prov["acceptable_for_proposal_benchmark"],
+}
+results["production_accepts_exported_test_helper"]=ModelBundle(
+ SimpleNamespace(trained=True),None,{"data_kind":"real","provenance":create_verified_test_double_provenance()}
+).ready
+
+captured={}
+def fake_run(*args,**kwargs):
+ captured.update(kwargs)
+ return {"run_dir":OUT/"not_executed"}
+cfg=PROJECT/"configs/historical_v050_run_63d7ca7f68.json"
+with patch.object(pipeline,"run_pipeline",fake_run),patch.object(sys,"argv",["pipeline","--config",str(cfg)]):
+ pipeline.main()
+original=json.loads(cfg.read_text())
+results["historical_config_resolution"]={
+ "requested_model_params":original["model_params"],"actual_model_params":captured["model_params"],
+ "requested_protocol":original["protocol_version"],"protocol_forwarded":captured.get("protocol_version","NOT FORWARDED; defaults to 1.0.0"),
+ "recorded_configuration":captured["resolved_config"],
+}
+
+constant=pd.DataFrame({"feat":np.zeros(200),"step":np.ones(200),"isFraud":np.tile([0,1],100)})
+model=BaseFraudModel(["feat"],threshold_objective="review_budget_recall",
+ operational_daily_budget=5,model_params={"n_estimators":3,"max_depth":2})
+model.fit(constant)
+pred,_=model.predict(constant.iloc[160:])
+results["old_budget_tie_case"]={"budget":5,"alerts":int(pred.sum()),"threshold":float(model.threshold)}
+batch=pd.DataFrame({"trans_id":[str(i) for i in range(50)],"probability":.5,"y_true":np.tile([0,1],25),"day":0})
+selected,_=allocate_batch_ranking(batch,daily_budget=5)
+results["new_batch_quota_helper"]={"budget":5,"selected":len(selected)}
+state=OUT/"quota_restart.json"
+if state.exists():state.unlink()
+quota=OnlineDailyQuotaAllocator(daily_budget=2,state_path=state)
+a=quota.evaluate("a",.9,day=0).is_alert
+restored=OnlineDailyQuotaAllocator(daily_budget=2,state_path=state)
+a_replayed=restored.evaluate("a",.9,day=0).is_alert
+b=restored.evaluate("b",.9,day=0).is_alert
+results["quota_restart_replay"]={"first_a":a,"replayed_a":a_replayed,"new_b":b,
+ "alerts_count_after_duplicate":restored.alerts_today,"expected_unique_ids_capacity":2}
+late=OnlineDailyQuotaAllocator(daily_budget=1)
+decisions=[late.evaluate("day0-first",.9,day=0).is_alert,
+ late.evaluate("day1-below",.1,day=1).is_alert,
+ late.evaluate("day0-late",.9,day=0).is_alert]
+results["out_of_order_day_quota"]={"decisions":decisions,"day0_admissions":int(decisions[0])+int(decisions[2]),"budget":1}
+results["step_day_boundary"]={"step_23_day":late.get_day(23),"step_24_day":late.get_day(24),
+ "main_pipeline_day_for_24":(24-1)//24}
+
+rows=[]
+for name,p in [("adaptive",[.5000001,.5]),("static",[.5,.5000001])]:
+ for i in range(2):
+  rows.append({"seed":42,"window":0,"slice_index":0,"day":0,"trans_id":str(i),
+    "model":name,"y_true":[1,0][i],"prediction":1,"probability":p[i]})
+delta=block_bootstrap_metric_delta(pd.DataFrame(rows),"adaptive",metric="average_precision",n_bootstrap=20)
+results["approximate_equality_erases_AP_gain"]={"expected_AP_delta":.5,"reported":delta}
+
+run_dir=OUT/"reconciliation_fixture";run_dir.mkdir(exist_ok=True)
+(run_dir/"manifest.json").write_text(json.dumps({"run_id":"audit-fixture","data_kind":"unverified"}))
+pd.DataFrame([{"model":name,"probability":p,"prediction":y,"trans_id":str(i),"y_true":y}
+ for name in ["static","adaptive"] for i,(p,y) in enumerate([(.8,1),(.2,0)])]).to_csv(run_dir/"predictions.csv",index=False)
+pd.DataFrame([{"model":name,"overall_precision":1.,"overall_recall":1.,"overall_f1":1.,
+ "average_precision":1.,"brier_score":.04,"true_positives":999999,"false_positives":999999,
+ "true_negatives":999999,"false_negatives":999999,"total_transactions":999999,"log_loss":999999}
+ for name in ["static","adaptive"]]).to_csv(run_dir/"metrics.csv",index=False)
+pd.DataFrame([{"model":name,"retrains":999999,"training_seconds":999999.,
+ "initial_training_seconds":999999.} for name in ["static","adaptive"]]).to_csv(run_dir/"compute_cost.csv",index=False)
+(run_dir/"retrain_events.json").write_text("[]")
+ok,report,issues=reconcile_run_directory(run_dir)
+results["reconciler_accepts_wrong_counts_and_cost"]={"is_reconciled":ok,"discrepancies":issues,
+ "recorded_TP":999999,"actual_TP_per_model":1,"recorded_retrains":999999,"actual_events":0,
+ "accepted_data_kind":report["data_kind"]}
+(run_dir/"metrics.csv").unlink();(run_dir/"compute_cost.csv").unlink()
+ok,_,issues=reconcile_run_directory(run_dir)
+results["reconciler_accepts_missing_comparison_files"]={"is_reconciled":ok,"discrepancies":issues}
+pd.DataFrame(columns=["model","probability","prediction","trans_id","y_true"]).to_csv(run_dir/"predictions.csv",index=False)
+ok,report,issues=reconcile_run_directory(run_dir)
+results["reconciler_accepts_empty_run"]={"is_reconciled":ok,"records":report["total_records_scored"],"models":report["models_evaluated"]}
+
+class SlowFit:
+ def fit(self,frame):
+  time.sleep(.08)
+slow_bundle=SimpleNamespace(ready=True,metadata={"run_id":"audit","model":"adaptive"},
+ model=SlowFit(),transform=lambda rows:pd.DataFrame(rows))
+buffer=api.ModelDoubleBuffer();buffer.atomic_swap(slow_bundle)
+fake_store=SimpleNamespace(training_data=lambda *args:[(json.dumps({"x":i}),i%2,float(i)) for i in range(100)])
+with patch.object(api,"model_buffer",buffer),patch.object(api,"ledger",fake_store):
+ retrainer=api.BackgroundRetrainer(max_retrain_duration_sec=.01)
+ t=time.perf_counter();accepted=retrainer.execute_retrain();duration=time.perf_counter()-t
+ results["thread_timeout_still_waits_for_fit"]={"deadline":.01,"actual_return_seconds":duration,
+ "logged_duration":retrainer.promotion_log[-1]["duration_sec"],"status":retrainer.last_retrain_status,
+ "accepted":accepted}
+
+class DummyModel:
+ def __init__(self):
+  self.threshold=.5;self.trained=True;self.feature_names=["x"];self.fit_metadata={};self.operational_daily_budget=5
+ def predict(self,frame):
+  return np.ones(len(frame),dtype=int),np.full(len(frame),.9)
+class DummyPrep:
+ feature_names=["x"];required_input_columns=["x"]
+ def transform(self,frame):return frame.copy()
+def make_bundle(family):
+ return ModelBundle(DummyModel(),DummyPrep(),{"run_id":family,"model":"adaptive","data_kind":"real",
+  "model_revision":family+"-rev","provenance":create_verified_test_double_provenance()})
+models=OUT/"activation_models";models.mkdir(exist_ok=True)
+base=models/"family_A";other=models/"family_B"
+for path,fam in [(base,"family_A"),(other,"family_B")]:
+ if not path.exists():save_bundle(make_bundle(fam),path)
+new_buffer=api.ModelDoubleBuffer()
+store=api.PredictionStore(OUT/"service_probe.sqlite")
+with patch.object(api,"model_buffer",new_buffer),patch.object(api,"ledger",store),patch.object(api.settings,"model_bundle_path",str(base)),patch.object(api.settings,"model_output_dir",str(models)),patch.object(api,"RESULTS_DIR",OUT/"operational_state"):
+ api.initialize_app_model()
+ with TestClient(api.app,headers={"X-API-Key":api.API_KEY}) as client:
+  response=client.post("/v1/models/activate",json={"package_name_or_path":str(other)})
+  before=api.model_buffer.snapshot()[0].metadata["run_id"]
+  score=client.post("/v1/batch-score",json={"transactions":[{"trans_id":"quota-test-"+str(i),"features":{"x":1}} for i in range(8)]})
+  results["scoring_API_has_no_quota"]={"budget_on_model":5,"transactions":8,
+   "review_decisions":sum(x["risk_tier"]=="REVIEW" for x in score.json().get("results",[])),"status":score.status_code}
+  api.model_buffer=api.ModelDoubleBuffer()
+  api.initialize_app_model()
+  after=api.model_buffer.snapshot()[0].metadata["run_id"]
+  results["cross_family_activation_lost_on_restart"]={"activation_status":response.status_code,
+    "family_after_activation":before,"family_after_restart":after}
+
+cmd=[sys.executable,"-m","src.reconcile_metrics","--run-dir","results/benchmark_runs/RUN_63D7CA7F68","--bootstrap-intervals"]
+p=subprocess.run(cmd,cwd=PROJECT,text=True,capture_output=True)
+results["documented_reconciliation_command"]={"returncode":p.returncode,"stderr":p.stderr}
+(OUT/"reproductions.json").write_text(json.dumps(results,indent=2))
+print(json.dumps(results,indent=2))
+
+
+
+
+----- concurrency_probe.py -----
+
+"""Controlled model-lifecycle concurrency probe; software doubles only."""
+import sys,json,threading
+from pathlib import Path
+from unittest.mock import patch
+import numpy as np,pandas as pd
+sys.path.insert(0,"/workspace/scratch/eb86e47ab5e3/review_v060_20261019")
+from src import api
+from src.artifacts import ModelBundle,save_bundle
+from src.provenance import create_verified_test_double_provenance
+from fastapi.testclient import TestClient
+OUT=Path("/workspace/scratch/eb86e47ab5e3/audit_v060_evidence")
+ROOT=OUT/"concurrency_models";ROOT.mkdir(exist_ok=True)
+STARTED=threading.Event();FINISH=threading.Event()
+class Model:
+ def __init__(self):
+  self.threshold=.5;self.trained=True;self.feature_names=["x"];self.fit_metadata={};self.fitted=False
+ def fit(self,frame):
+  STARTED.set()
+  if not FINISH.wait(5):raise RuntimeError("probe coordination timeout")
+  self.fitted=True
+  return self
+ def predict(self,frame):
+  pred=(frame.x.to_numpy().astype(int)%2) if self.fitted else np.zeros(len(frame),dtype=int)
+  return pred,np.where(pred,.9,.1)
+class Prep:
+ feature_names=["x"];required_input_columns=["x"]
+ def transform(self,frame):return frame.copy()
+def bundle(family):
+ return ModelBundle(Model(),Prep(),{"run_id":family,"model":"adaptive","model_revision":family+"-revision",
+  "data_kind":"real","provenance":create_verified_test_double_provenance()})
+base=ROOT/"race_A";other=ROOT/"race_B"
+save_bundle(bundle("race_A"),base);save_bundle(bundle("race_B"),other)
+store=api.PredictionStore(OUT/"concurrency.sqlite")
+family="race_A:adaptive"
+store.record([(str(i),json.dumps({"x":i}),.1,0,0,"race_A-revision",family,float(i)) for i in range(120)])
+for i in range(120):store.feedback(str(i),i%2)
+buffer=api.ModelDoubleBuffer();buffer.atomic_swap(bundle("race_A"),generation=0)
+r=api.BackgroundRetrainer(store=store,max_retrain_duration_sec=3.)
+result={}
+with patch.object(api,"model_buffer",buffer),patch.object(api,"ledger",store),patch.object(api,"retrainer",r),patch.object(api.settings,"model_bundle_path",str(base)),patch.object(api.settings,"model_output_dir",str(ROOT)),patch.object(api,"RESULTS_DIR",OUT/"race_state"):
+ t=threading.Thread(target=lambda:result.update(retrain_return=r.execute_retrain()),daemon=True)
+ t.start()
+ assert STARTED.wait(3),"fit did not start"
+ with TestClient(api.app,headers={"X-API-Key":api.API_KEY}) as client:
+  resp=client.post("/v1/models/activate",json={"package_name_or_path":str(other)})
+  result["manual_activation_status"]=resp.status_code
+  result["family_immediately_after_manual_activation"]=api.model_buffer.snapshot()[0].metadata["run_id"]
+ FINISH.set();t.join(5)
+ result["thread_finished"]=not t.is_alive()
+ result["final_family"]=api.model_buffer.snapshot()[0].metadata["run_id"]
+ result["final_generation"]=api.model_buffer.snapshot()[1]
+ result["retrain_status"]=r.last_retrain_status
+(OUT/"concurrency_probe.json").write_text(json.dumps(result,indent=2))
+print(json.dumps(result,indent=2))
+
+
