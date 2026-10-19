@@ -46,7 +46,26 @@ def reconcile_run_directory(
     # 1. Load predictions ledger
     pred_df = pd.read_csv(predictions_path)
     total_rows = len(pred_df)
-    models_present = sorted(pred_df["model"].unique())
+    models_present = sorted(pred_df["model"].unique()) if "model" in pred_df.columns else []
+
+    if total_rows == 0 or len(models_present) == 0:
+        discrepancies.append("predictions.csv is empty; cannot reconcile empty prediction ledger")
+        return False, {
+            "is_reconciled": False,
+            "discrepancies": discrepancies,
+            "discrepancies_count": len(discrepancies),
+            "run_id": run_id,
+            "total_records_scored": 0,
+            "models_evaluated": [],
+            "data_kind": manifest.get("data_kind", "unknown"),
+            "provenance_status": manifest.get("provenance", {}).get("verification_status", "UNVERIFIED") if manifest.get("provenance") else "UNVERIFIED",
+        }, discrepancies
+
+    # Check required comparison files
+    if not metrics_path.exists():
+        discrepancies.append(f"Missing required comparison file: {metrics_path.name}")
+    if not compute_cost_path.exists():
+        discrepancies.append(f"Missing required comparison file: {compute_cost_path.name}")
 
     # Detect ground truth column: 'y_true', 'is_fraud', or 'isFraud'
     label_col = None
@@ -87,11 +106,12 @@ def reconcile_run_directory(
     recomputed_metrics: Dict[str, Dict[str, Any]] = {}
     recorded_metrics: Dict[str, Dict[str, Any]] = {}
 
-    if metrics_path.exists():
+    if not metrics_path.exists():
+        discrepancies.append(f"metrics.csv is missing from run directory: {run_dir}")
+    else:
         rec_metrics_df = pd.read_csv(metrics_path)
         for _, r in rec_metrics_df.iterrows():
             m_name = r["model"]
-            # Clean model name (strip _model suffix if present for uniform comparison)
             clean_name = m_name.replace("_model", "")
             recorded_metrics[clean_name] = r.to_dict()
 
@@ -145,6 +165,22 @@ def reconcile_run_directory(
         # Compare against recorded metrics if available
         if clean_m in recorded_metrics:
             rec = recorded_metrics[clean_m]
+            # Strictly compare recorded confusion counts
+            for count_key, calc_val in [
+                ("true_positives", tp),
+                ("false_positives", fp),
+                ("false_negatives", fn),
+                ("true_negatives", tn),
+                ("total_transactions", n),
+                ("total_frauds", n_fraud),
+            ]:
+                if count_key in rec and not pd.isna(rec[count_key]):
+                    rec_count = int(rec[count_key])
+                    if rec_count != calc_val:
+                        discrepancies.append(
+                            f"Model {clean_m} {count_key} mismatch: recorded {rec_count} vs computed {calc_val}"
+                        )
+
             for metric_key in ["overall_precision", "overall_recall", "overall_f1", "average_precision", "brier_score"]:
                 if metric_key in rec and not pd.isna(rec[metric_key]):
                     rec_val = float(rec[metric_key])
@@ -164,7 +200,7 @@ def reconcile_run_directory(
         budget_df = eval_df.copy()
         if "day" not in budget_df.columns:
             if "step" in budget_df.columns:
-                budget_df["day"] = budget_df["step"] // 24
+                budget_df["day"] = (budget_df["step"] - 1).clip(lower=0) // 24
             else:
                 budget_df["day"] = 0
 
@@ -211,18 +247,40 @@ def reconcile_run_directory(
                             f"Budget {k}/day detected fraud mismatch for {clean_m}: recorded {rec_b['detected_fraud']} vs recomputed {tp_k}"
                         )
 
-    # 4. Reconcile Compute Cost
+    # 4. Reconcile Compute Cost & Retrains against retrain_events.json
     recomputed_cost: List[Dict[str, Any]] = []
-    if compute_cost_path.exists():
+    retrain_events_path = run_dir / "retrain_events.json"
+    actual_events_by_model: Dict[str, int] = {}
+    if retrain_events_path.exists():
+        try:
+            events_data = json.loads(retrain_events_path.read_text(encoding="utf-8"))
+            if isinstance(events_data, list):
+                for ev in events_data:
+                    ev_model = str(ev.get("model", "")).replace("_model", "")
+                    actual_events_by_model[ev_model] = actual_events_by_model.get(ev_model, 0) + 1
+        except Exception:
+            pass
+
+    if not compute_cost_path.exists():
+        discrepancies.append(f"compute_cost.csv is missing from run directory: {run_dir}")
+    else:
         rec_cost_df = pd.read_csv(compute_cost_path)
         for _, r in rec_cost_df.iterrows():
-            m_clean = r["model"].replace("_model", "")
+            m_clean = str(r["model"]).replace("_model", "")
+            rec_retrains = int(r["retrains"])
+            actual_retrains = actual_events_by_model.get(m_clean, 0)
+            if rec_retrains != actual_retrains:
+                discrepancies.append(
+                    f"Model {m_clean} retrains mismatch: recorded {rec_retrains} in compute_cost.csv vs {actual_retrains} events in retrain_events.json"
+                )
             recomputed_cost.append({
                 "model": m_clean,
-                "recorded_retrains": int(r["retrains"]),
+                "recorded_retrains": rec_retrains,
+                "actual_retrains": actual_retrains,
                 "recorded_training_seconds": float(r["training_seconds"]),
                 "recorded_initial_seconds": float(r.get("initial_training_seconds", 0.0)),
             })
+
 
     is_reconciled = len(discrepancies) == 0
 

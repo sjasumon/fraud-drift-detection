@@ -64,26 +64,41 @@ class OnlineDailyQuotaAllocator:
 
         # Causal state variables
         self.current_day: Optional[int] = None
-        self.alerts_today: int = 0
         self.total_alerts_emitted: int = 0
         self.total_evaluations: int = 0
         self.total_excess_demand: int = 0
-        self.day_seen_decisions: Dict[str, Tuple[bool, str]] = {}
+        self.per_day_alerts: Dict[int, int] = {}
+        self.per_day_seen: Dict[int, Dict[str, Tuple[bool, str]]] = {}
 
         if self.state_path and self.state_path.exists():
             self._load_state()
 
     @property
+    def alerts_today(self) -> int:
+        d = self.current_day if self.current_day is not None else 0
+        return self.per_day_alerts.get(d, 0)
+
+    @alerts_today.setter
+    def alerts_today(self, value: int):
+        d = self.current_day if self.current_day is not None else 0
+        self.per_day_alerts[d] = value
+
+    @property
     def daily_remaining(self) -> int:
         return max(0, self.daily_budget - self.alerts_today)
+
+    def remaining_for_day(self, day: int) -> int:
+        return max(0, self.daily_budget - self.per_day_alerts.get(day, 0))
 
     @property
     def day_allocated(self) -> int:
         return self.alerts_today
 
     def get_day(self, step: float) -> int:
-        """Determines discrete day index from step/hour causal timestamp."""
-        return int(math.floor(step / self.hours_per_day))
+        """Determines discrete day index from step/hour causal timestamp (1-indexed hour stream)."""
+        if step <= 0:
+            return 0
+        return int(math.floor((step - 1) / self.hours_per_day))
 
     def evaluate(
         self,
@@ -94,37 +109,39 @@ class OnlineDailyQuotaAllocator:
     ) -> QuotaResult:
         """
         Evaluates a single incoming transaction causally against the daily review quota.
+        Maintains per-day state to handle out-of-order/late events and persistent replay idempotency.
         Returns QuotaResult(is_alert, reason, remaining_quota, day).
         """
         self.total_evaluations += 1
         if day is None:
             day = self.get_day(step if step is not None else 0.0)
 
-        # Advance day boundary
+        # Track latest day seen
         if self.current_day is None or day > self.current_day:
             self.current_day = day
-            self.alerts_today = 0
-            self.day_seen_decisions.clear()
 
-        # Check for duplicate trans_id within current day (idempotent replay)
-        if trans_id in self.day_seen_decisions:
-            prior_alert, _ = self.day_seen_decisions[trans_id]
+        day_seen = self.per_day_seen.setdefault(day, {})
+        day_alerts = self.per_day_alerts.get(day, 0)
+
+        # Check for duplicate trans_id within this event's day (idempotent replay)
+        if trans_id in day_seen:
+            prior_alert, _ = day_seen[trans_id]
             reason = "admitted_prior" if prior_alert else "rejected_prior"
-            return QuotaResult(prior_alert, reason, self.daily_remaining, day)
+            return QuotaResult(prior_alert, reason, self.remaining_for_day(day), day)
 
         above_threshold = bool(probability >= self.decision_threshold)
         if not above_threshold:
-            self.day_seen_decisions[trans_id] = (False, "below_threshold")
-            res = QuotaResult(False, "below_threshold", self.daily_remaining, day)
-        elif self.alerts_today < self.daily_budget:
-            self.alerts_today += 1
+            day_seen[trans_id] = (False, "below_threshold")
+            res = QuotaResult(False, "below_threshold", self.remaining_for_day(day), day)
+        elif day_alerts < self.daily_budget:
+            self.per_day_alerts[day] = day_alerts + 1
             self.total_alerts_emitted += 1
-            self.day_seen_decisions[trans_id] = (True, "admitted")
-            res = QuotaResult(True, "admitted", self.daily_remaining, day)
+            day_seen[trans_id] = (True, "admitted")
+            res = QuotaResult(True, "admitted", self.remaining_for_day(day), day)
         else:
             self.total_excess_demand += 1
-            self.day_seen_decisions[trans_id] = (False, "quota_exhausted")
-            res = QuotaResult(False, "quota_exhausted", self.daily_remaining, day)
+            day_seen[trans_id] = (False, "quota_exhausted")
+            res = QuotaResult(False, "quota_exhausted", self.remaining_for_day(day), day)
 
         if self.state_path:
             self._save_state()
@@ -152,10 +169,18 @@ class OnlineDailyQuotaAllocator:
             self.hours_per_day = data.get("hours_per_day", self.hours_per_day)
             self.decision_threshold = data.get("decision_threshold", self.decision_threshold)
             self.current_day = data.get("current_day")
-            self.alerts_today = data.get("alerts_today", 0)
             self.total_alerts_emitted = data.get("total_alerts_emitted", 0)
             self.total_evaluations = data.get("total_evaluations", 0)
             self.total_excess_demand = data.get("total_excess_demand", 0)
+            if "per_day_alerts" in data:
+                self.per_day_alerts = {int(k): v for k, v in data["per_day_alerts"].items()}
+            elif "alerts_today" in data and self.current_day is not None:
+                self.per_day_alerts = {self.current_day: data["alerts_today"]}
+            if "per_day_seen" in data:
+                self.per_day_seen = {
+                    int(d): {tid: (dec[0], dec[1]) for tid, dec in seen.items()}
+                    for d, seen in data["per_day_seen"].items()
+                }
 
     def to_dict(self) -> Dict[str, Any]:
         """Serializes causal quota state for restart persistence."""
@@ -168,6 +193,11 @@ class OnlineDailyQuotaAllocator:
             "total_alerts_emitted": self.total_alerts_emitted,
             "total_evaluations": self.total_evaluations,
             "total_excess_demand": self.total_excess_demand,
+            "per_day_alerts": {str(k): v for k, v in self.per_day_alerts.items()},
+            "per_day_seen": {
+                str(d): {tid: list(decision) for tid, decision in seen.items()}
+                for d, seen in self.per_day_seen.items()
+            },
         }
 
     @classmethod
@@ -179,11 +209,20 @@ class OnlineDailyQuotaAllocator:
             decision_threshold=data["decision_threshold"],
         )
         alloc.current_day = data.get("current_day")
-        alloc.alerts_today = data.get("alerts_today", 0)
         alloc.total_alerts_emitted = data.get("total_alerts_emitted", 0)
         alloc.total_evaluations = data.get("total_evaluations", 0)
         alloc.total_excess_demand = data.get("total_excess_demand", 0)
+        if "per_day_alerts" in data:
+            alloc.per_day_alerts = {int(k): v for k, v in data["per_day_alerts"].items()}
+        elif "alerts_today" in data and alloc.current_day is not None:
+            alloc.per_day_alerts = {alloc.current_day: data["alerts_today"]}
+        if "per_day_seen" in data:
+            alloc.per_day_seen = {
+                int(d): {tid: (dec[0], dec[1]) for tid, dec in seen.items()}
+                for d, seen in data["per_day_seen"].items()
+            }
         return alloc
+
 
 
 def allocate_batch_ranking(

@@ -172,4 +172,20 @@ class BaseFraudModel:
         probs = self.model.predict_proba(df[self.feature_names].to_numpy())[:, 1]
         if self.calibrator is not None:
             probs = self.calibrator.predict_proba(self._logit(probs))[:, 1]
-        return (probs >= self.threshold).astype(int), probs
+
+        preds = (probs >= self.threshold).astype(int)
+        # Operational review budget enforcement and score tie alert inflation guard (R06)
+        if self.threshold_objective == "review_budget_recall" and self.operational_daily_budget:
+            valid_hours = len(df)
+            if "step" in df:
+                valid_hours = max(1.0, float(df["step"].max() - df["step"].min() + 1))
+            days = max(1.0, valid_hours / 24.0)
+            max_alerts = int(self.operational_daily_budget * days)
+            if preds.sum() > max_alerts:
+                preds = np.zeros(len(df), dtype=int)
+                sorted_idx = np.argsort(-probs, kind="stable")
+                eligible = [idx for idx in sorted_idx if probs[idx] >= self.threshold]
+                preds[eligible[:max_alerts]] = 1
+
+        return preds, probs
+

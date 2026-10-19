@@ -6,6 +6,7 @@ import hashlib
 import importlib.metadata
 import json
 import platform
+import sys
 import time
 import uuid
 from pathlib import Path
@@ -468,20 +469,20 @@ def main():
     p.add_argument("--dataset", help="Path to transaction CSV dataset")
     p.add_argument("--identity", help="Path to identity CSV dataset")
     p.add_argument("--output-dir", help="Directory for experiment run output artifacts")
-    p.add_argument("--seed", type=int, default=42, help="Deterministic random seed")
+    p.add_argument("--seed", type=int, default=None, help="Deterministic random seed (protocol default: 42)")
     p.add_argument("--train-slices", type=int, help="Number of baseline training slices")
     p.add_argument("--evaluation-slices", type=int, help="Number of evaluation slices")
     p.add_argument("--adaptive-window", type=int, help="Sliding window size for adaptive model")
     p.add_argument("--half-life-slices", type=float, help="Exponential decay half-life in slices")
     p.add_argument("--max-retrains", type=int, help="Maximum permitted retraining budget")
-    p.add_argument("--delay-slices", type=int, default=0, help="Dispute label arrival delay in slices")
-    p.add_argument("--latency-mode", choices=["fixed", "lognormal"], default="fixed", help="Label feedback delay mode")
-    p.add_argument("--lognormal-mu", type=float, default=1.38)
-    p.add_argument("--lognormal-sigma", type=float, default=0.45)
+    p.add_argument("--delay-slices", type=int, default=None, help="Dispute label arrival delay in slices (protocol default: 0)")
+    p.add_argument("--latency-mode", choices=["fixed", "lognormal"], default=None, help="Label feedback delay mode (protocol default: fixed)")
+    p.add_argument("--lognormal-mu", type=float, default=None, help="Log-normal mu parameter (default: 1.38)")
+    p.add_argument("--lognormal-sigma", type=float, default=None, help="Log-normal sigma parameter (default: 0.45)")
     p.add_argument(
         "--threshold-objective",
         choices=["validation_f1", "review_budget_recall"],
-        default="validation_f1",
+        default=None,
         help="Decision threshold optimization policy ('validation_f1' or 'review_budget_recall')",
     )
     p.add_argument(
@@ -493,22 +494,29 @@ def main():
     p.add_argument(
         "--n-estimators",
         type=int,
-        default=100,
+        default=None,
         help="Number of gradient boosted trees (protocol default: 100)",
     )
     p.add_argument(
         "--learning-rate",
         type=float,
-        default=0.1,
+        default=None,
         help="XGBoost learning rate (protocol default: 0.1)",
     )
-    p.add_argument("--all-features", action="store_true", help="Include all raw dataset features")
-    p.add_argument("--history-features", action="store_true", help="Include behavioral history features")
-    p.add_argument("--pre-transaction-only", action="store_true", help="Exclude post-transaction balance leakage")
-    p.add_argument("--exclude-identifiers", action="store_true", help="Exclude high-cardinality card/entity IDs")
-    p.add_argument("--synthetic", action="store_true", help="Mark dataset as synthetic software test fixture")
-    p.add_argument("--explain", action="store_true", help="Generate SHAP/attribution explanations")
+    p.add_argument("--all-features", action="store_true", default=None, help="Include all raw dataset features")
+    p.add_argument("--history-features", action="store_true", default=None, help="Include behavioral history features")
+    p.add_argument("--pre-transaction-only", action="store_true", default=None, help="Exclude post-transaction balance leakage")
+    p.add_argument("--exclude-identifiers", action="store_true", default=None, help="Exclude high-cardinality card/entity IDs")
+    p.add_argument("--synthetic", action="store_true", default=None, help="Mark dataset as synthetic software test fixture")
+    p.add_argument("--explain", action="store_true", default=None, help="Generate SHAP/attribution explanations")
     a = p.parse_args()
+
+    # Track explicitly supplied command-line arguments to prevent defaults from overwriting config
+    explicit_flags = set()
+    for raw_arg in sys.argv[1:]:
+        if raw_arg.startswith("--"):
+            clean_flag = raw_arg.split("=")[0].lstrip("-").replace("-", "_")
+            explicit_flags.add(clean_flag)
 
     # Load versioned configuration file if supplied
     cfg = {}
@@ -524,47 +532,79 @@ def main():
 
     # Merge model hyperparameter settings
     model_params = dict(cfg.get("model_params", {}))
-    if a.n_estimators is not None:
+    if "n_estimators" in explicit_flags and a.n_estimators is not None:
         model_params["n_estimators"] = a.n_estimators
-    if a.learning_rate is not None:
+    elif "n_estimators" not in model_params:
+        model_params["n_estimators"] = 100
+
+    if "learning_rate" in explicit_flags and a.learning_rate is not None:
         model_params["learning_rate"] = a.learning_rate
+    elif "learning_rate" not in model_params:
+        model_params["learning_rate"] = 0.1
 
     # Validate operational review budget
     budget = a.operational_daily_budget if a.operational_daily_budget is not None else cfg.get("operational_daily_budget")
     if budget is not None and budget <= 0:
         p.error("--operational-daily-budget must be a positive integer")
 
-    thresh_obj = a.threshold_objective if a.threshold_objective != "validation_f1" else cfg.get("threshold_objective", a.threshold_objective)
+    thresh_obj = a.threshold_objective if a.threshold_objective is not None else cfg.get("threshold_objective", "validation_f1")
     if thresh_obj == "review_budget_recall" and not budget:
         p.error("--operational-daily-budget must be provided when threshold_objective is 'review_budget_recall'")
 
+    protocol_ver = cfg.get("protocol_version", "1.0.0")
+    strategies = cfg.get("strategies", ("static", "periodic", "weekly", "sliding", "adaptive"))
+
+    seed_val = a.seed if a.seed is not None else cfg.get("seed", 42)
+    delay_slices_val = a.delay_slices if a.delay_slices is not None else cfg.get("delay_slices", 0)
+    latency_mode_val = a.latency_mode if a.latency_mode is not None else cfg.get("latency_mode", "fixed")
+    lognormal_mu_val = a.lognormal_mu if a.lognormal_mu is not None else cfg.get("lognormal_mu", 1.38)
+    lognormal_sigma_val = a.lognormal_sigma if a.lognormal_sigma is not None else cfg.get("lognormal_sigma", 0.45)
+    exclude_ids = a.exclude_identifiers if a.exclude_identifiers is not None else cfg.get("exclude_card_identifiers", False)
+    all_feats = a.all_features if a.all_features is not None else cfg.get("all_features", False)
+    hist_feats = a.history_features if a.history_features is not None else cfg.get("history_features", False)
+    pre_tx_only = a.pre_transaction_only if a.pre_transaction_only is not None else cfg.get("pre_transaction_only", False)
+    is_synth = a.synthetic if a.synthetic is not None else (cfg.get("data_kind") == "synthetic")
+    explain_flag = a.explain if a.explain is not None else cfg.get("explain", False)
+
+    resolved = dict(cfg)
+    resolved["dataset"] = dataset
+    resolved["model_params"] = model_params
+    resolved["protocol_version"] = protocol_ver
+    resolved["strategies"] = list(strategies)
+    resolved["seed"] = seed_val
+    resolved["threshold_objective"] = thresh_obj
+    resolved["operational_daily_budget"] = budget
+
     r = run_pipeline(
         dataset,
-        exclude_card_identifiers=a.exclude_identifiers or cfg.get("exclude_card_identifiers", False),
+        exclude_card_identifiers=exclude_ids,
         output_dir=a.output_dir or cfg.get("output_dir"),
-        seed=a.seed if a.seed != 42 else cfg.get("seed", 42),
-        n_train_slices=a.train_slices or cfg.get("train_slices"),
-        evaluation_slices=a.evaluation_slices or cfg.get("evaluation_slices"),
+        seed=seed_val,
+        n_train_slices=a.train_slices if a.train_slices is not None else cfg.get("train_slices"),
+        evaluation_slices=a.evaluation_slices if a.evaluation_slices is not None else cfg.get("evaluation_slices"),
         adaptive_window=a.adaptive_window if a.adaptive_window is not None else cfg.get("adaptive_window"),
         half_life_slices=a.half_life_slices if a.half_life_slices is not None else cfg.get("half_life_slices"),
         max_retrains=a.max_retrains if a.max_retrains is not None else cfg.get("max_retrains"),
-        delay_slices=a.delay_slices if a.delay_slices != 0 else cfg.get("delay_slices", 0),
-        latency_mode=a.latency_mode if a.latency_mode != "fixed" else cfg.get("latency_mode", "fixed"),
+        delay_slices=delay_slices_val,
+        latency_mode=latency_mode_val,
         identity_path=a.identity or cfg.get("identity"),
-        all_features=a.all_features or cfg.get("all_features", False),
-        history_features=a.history_features or cfg.get("history_features", False),
-        pre_transaction_only=a.pre_transaction_only or cfg.get("pre_transaction_only", False),
-        data_kind="synthetic" if (a.synthetic or cfg.get("data_kind") == "synthetic") else "real",
+        all_features=all_feats,
+        history_features=hist_feats,
+        pre_transaction_only=pre_tx_only,
+        data_kind="synthetic" if is_synth else "real",
         model_params=model_params or None,
-        explain=a.explain or cfg.get("explain", False),
-        lognormal_mu=a.lognormal_mu if a.lognormal_mu != 1.38 else cfg.get("lognormal_mu", 1.38),
-        lognormal_sigma=a.lognormal_sigma if a.lognormal_sigma != 0.45 else cfg.get("lognormal_sigma", 0.45),
+        explain=explain_flag,
+        lognormal_mu=lognormal_mu_val,
+        lognormal_sigma=lognormal_sigma_val,
         threshold_objective=thresh_obj,
         operational_daily_budget=budget,
-        resolved_config=dict(cfg, **{k: v for k, v in vars(a).items() if v is not None}),
+        strategies=strategies,
+        protocol_version=protocol_ver,
+        resolved_config=resolved,
     )
     print(r["run_dir"] / "report.html")
 
 
 if __name__ == "__main__":
     main()
+

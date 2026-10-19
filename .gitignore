@@ -48,6 +48,7 @@ results/service/
 results/cohort_runs/
 results/**/predictions.csv
 results/**/feedback_events.csv
+!results/benchmark_runs/**
 !results/**/weekly_metrics.csv
 !results/**/metrics.csv
 !results/**/alert_budgets.csv
@@ -55,3 +56,4 @@ results/**/feedback_events.csv
 !results/**/error_examples.csv
 !results/**/study.csv
 !results/**/ablations_summary.csv
+!REMEDIATION_CHECKLIST.md

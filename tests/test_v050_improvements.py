@@ -36,10 +36,11 @@ def test_provenance_classification_rules():
     assert prov_ieee_nofile["acceptable_for_proposal_benchmark"] is False
     assert prov_ieee_nofile["verification_status"] == "UNVERIFIED"
 
-    # Explicit verified test double produces verified record
+    # Explicit test double produces test-double record that is marked unacceptable for proposal benchmark (R01)
     prov_test_double = create_verified_test_double_provenance("test_run")
     assert prov_test_double["classification"] == GENUINE_OBSERVED
-    assert prov_test_double["acceptable_for_proposal_benchmark"] is True
+    assert prov_test_double["acceptable_for_proposal_benchmark"] is False
+    assert prov_test_double["test_double"] is True
     assert prov_test_double["verification_status"] == "VERIFIED_RESEARCH_DATA"
 
     prov_paysim = get_dataset_provenance("PaySim")
@@ -63,13 +64,13 @@ def test_model_bundle_ready_enforces_provenance():
     mock_model.trained = True
     mock_prep = MagicMock()
 
-    # Valid genuine bundle using verified test double
+    # Test double bundle must NOT be ready for production serving per R01
     meta_genuine = {
         "data_kind": "real",
         "provenance": create_verified_test_double_provenance("unit_test"),
     }
     bundle_genuine = ModelBundle(mock_model, mock_prep, meta_genuine)
-    assert bundle_genuine.ready is True
+    assert bundle_genuine.ready is False
 
     # Simulator-generated bundle must NOT be ready for verified research service
     meta_paysim = {

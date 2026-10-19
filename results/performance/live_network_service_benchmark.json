@@ -1,0 +1,87 @@
+{
+  "scope": "Comprehensive latency, throughput, hardware, and query plan profile",
+  "execution_mode": "live_network_service",
+  "is_live_network": true,
+  "target_url": "http://127.0.0.1:8080",
+  "hardware": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "processor": "Intel64 Family 6 Model 197 Stepping 2, GenuineIntel",
+    "cpu_count": 16,
+    "python_version": "3.12.10",
+    "system_total_memory_gb": 95.32,
+    "system_available_memory_gb": 63.5,
+    "process_initial_rss_mb": 168.77,
+    "process_final_rss_mb": 186.02,
+    "process_peak_rss_mb": 186.02
+  },
+  "benchmark_parameters": {
+    "requests": 200,
+    "concurrency": 4,
+    "warmup_requests": 20,
+    "model_version": "0.7.0",
+    "model_generation": 0
+  },
+  "model_only_inference": {
+    "description": "In-memory feature preprocessing and model.predict without HTTP or disk I/O",
+    "p50_ms": 0.0,
+    "p90_ms": 0.0,
+    "p95_ms": 0.0,
+    "p99_ms": 0.0,
+    "mean_ms": 0.0,
+    "total_elapsed_sec": 0.0,
+    "effective_qps": 0.0
+  },
+  "sequential_http": {
+    "description": "Sequential HTTP calls (live_network_service) including auth, validation, scoring, and SQLite ledger write",
+    "p50_ms": 44.81390000000829,
+    "p90_ms": 48.09370000002673,
+    "p95_ms": 49.51913499680813,
+    "p99_ms": 112.55326800273899,
+    "mean_ms": 46.378647000092315,
+    "total_elapsed_sec": 9.280831999996735,
+    "effective_qps": 21.54979208761352
+  },
+  "concurrent_api": {
+    "description": "Concurrent HTTP calls (live_network_service) with concurrency=4 including auth and SQLite writes",
+    "concurrency_level": 4,
+    "successful_requests": 200,
+    "error_count": 0,
+    "p50_ms": 68.13764999969862,
+    "p90_ms": 234.65690000011818,
+    "p95_ms": 291.5535400006774,
+    "p99_ms": 657.0532059988908,
+    "mean_ms": 107.50043150004785,
+    "total_elapsed_sec": 70.95027899999695,
+    "throughput_qps": 2.818875455021235
+  },
+  "retraining_contention": {
+    "contention_tested": false,
+    "note": "Use --retraining-contention to measure latency under simultaneous retraining"
+  },
+  "sqlite_query_plans": [
+    {
+      "operation": "Transaction ID Lookup (Score / Feedback check)",
+      "sql": "SELECT prediction, label, generation, model_id, event_time FROM predictions WHERE id = ?",
+      "plan_detail": "SEARCH predictions USING INDEX sqlite_autoindex_predictions_1 (id=?)",
+      "uses_index": true
+    },
+    {
+      "operation": "Training Data Extraction (Holdout / Retraining query)",
+      "sql": "SELECT features, label, event_time FROM predictions WHERE label IS NOT NULL AND family_id = ? ORDER BY event_time DESC, rowid DESC LIMIT ?",
+      "plan_detail": "SEARCH predictions USING INDEX idx_predictions_family_event_time (family_id=?) | USE TEMP B-TREE FOR LAST TERM OF ORDER BY",
+      "uses_index": true
+    },
+    {
+      "operation": "Promotion History Query (GET /v1/models/promotions)",
+      "sql": "SELECT attempt_id, timestamp, parent_generation, candidate_generation, evidence_count, gain, status, decision FROM promotion_history ORDER BY timestamp DESC LIMIT ?",
+      "plan_detail": "SCAN promotion_history | USE TEMP B-TREE FOR ORDER BY",
+      "uses_index": false
+    },
+    {
+      "operation": "Feedback Audit Query (GET /v1/feedback/audit)",
+      "sql": "SELECT event_id, trans_id, label, label_source, received_at, outcome FROM feedback_events ORDER BY rowid DESC LIMIT ?",
+      "plan_detail": "SCAN feedback_events",
+      "uses_index": false
+    }
+  ]
+}

@@ -72,11 +72,16 @@ def create_derived_subset_manifest(
     child_path: Union[Path, str],
     transformation_spec: Union[str, Dict[str, Any]],
     parent_identity_sha256: Optional[str] = None,
+    parent_path: Optional[Union[Path, str]] = None,
     description: str = "Verified derived subset of genuine observed transactions",
+    verified_lineage: bool = False,
+    row_identities: Optional[list] = None,
 ) -> Dict[str, Any]:
     """
     Constructs a cryptographic manifest linking a derived subset to an approved parent dataset.
     Validates child file existence and computes its SHA-256 digest.
+    If parent_path is provided, verifies that parent bytes match parent_sha256.
+    Separates verified lineage from self-declared claims.
     """
     child_obj = Path(child_path)
     if not child_obj.exists():
@@ -90,13 +95,29 @@ def create_derived_subset_manifest(
     else:
         trans_digest = hashlib.sha256(str(transformation_spec).encode("utf-8")).hexdigest()
 
-    return {
+    is_verified = False
+    if parent_path is not None:
+        p_obj = Path(parent_path)
+        if p_obj.exists() and compute_file_sha256(p_obj) == parent_sha256:
+            is_verified = True
+
+    lineage_type = "verified_lineage" if is_verified else "self_declared"
+
+    manifest = {
         "parent_sha256": parent_sha256,
         "child_sha256": child_sha256,
         "parent_identity_sha256": parent_identity_sha256,
         "transformation_digest": trans_digest,
         "description": description,
+        "lineage_type": lineage_type,
+        "verified": (lineage_type == "verified_lineage"),
     }
+    if row_identities:
+        manifest["row_identities_sha256"] = hashlib.sha256(
+            json.dumps(row_identities, sort_keys=True).encode("utf-8")
+        ).hexdigest()
+    return manifest
+
 
 
 def get_dataset_provenance(
@@ -183,41 +204,53 @@ def get_dataset_provenance(
 
     expected_hashes = registry_entry.get("reference_sha256", {})
     expected_tx_hash = expected_hashes.get("train_transaction.csv")
+    expected_id_hash = expected_hashes.get("train_identity.csv")
+
+    # If identity file is provided on ANY path, cryptographically verify it first
+    if identity_path is not None:
+        id_obj = Path(identity_path)
+        if not id_obj.exists():
+            provenance["verification_status"] = STATUS_IDENTITY_MISSING
+            provenance["exclusion_reason"] = f"Identity file not found at {identity_path}"
+            return provenance
+
+        id_sha256 = compute_file_sha256(id_obj)
+        provenance["identity_file_name"] = id_obj.name
+        provenance["identity_file_size_bytes"] = id_obj.stat().st_size
+        provenance["identity_actual_sha256"] = id_sha256
+
+        target_id_hash = expected_id_hash
+        if derived_manifest and derived_manifest.get("parent_identity_sha256"):
+            target_id_hash = derived_manifest["parent_identity_sha256"]
+
+        if target_id_hash and id_sha256 != target_id_hash:
+            provenance["verification_status"] = STATUS_IDENTITY_MISMATCH
+            provenance["exclusion_reason"] = (
+                f"Identity file SHA-256 mismatch. Expected {target_id_hash}, got {id_sha256}"
+            )
+            return provenance
 
     # Case A: Exact byte match with official provider reference hash
     if actual_sha256 == expected_tx_hash:
-        # If identity file is provided, verify its hash as well
-        if identity_path is not None:
-            id_obj = Path(identity_path)
-            if not id_obj.exists():
-                provenance["verification_status"] = STATUS_IDENTITY_MISSING
-                provenance["exclusion_reason"] = f"Identity file not found at {identity_path}"
-                return provenance
-
-            id_sha256 = compute_file_sha256(id_obj)
-            provenance["identity_file_name"] = id_obj.name
-            provenance["identity_file_size_bytes"] = id_obj.stat().st_size
-            provenance["identity_actual_sha256"] = id_sha256
-            expected_id_hash = expected_hashes.get("train_identity.csv")
-
-            if id_sha256 != expected_id_hash:
-                provenance["verification_status"] = STATUS_IDENTITY_MISMATCH
-                provenance["exclusion_reason"] = (
-                    f"Identity file SHA-256 mismatch. Expected {expected_id_hash}, got {id_sha256}"
-                )
-                return provenance
-
-        # All provided files match official reference digests
         provenance["classification"] = GENUINE_OBSERVED
         provenance["verification_status"] = STATUS_VERIFIED
         provenance["acceptable_for_proposal_benchmark"] = True
         return provenance
 
-    # Case B: Cryptographically traced derived subset
+    # Case B: Cryptographically traced verified derived subset
     if derived_manifest is not None and isinstance(derived_manifest, dict):
         parent_sha256 = derived_manifest.get("parent_sha256")
         child_sha256 = derived_manifest.get("child_sha256")
         trans_digest = derived_manifest.get("transformation_digest")
+        lineage_type = derived_manifest.get("lineage_type", "self_declared")
+        is_verified_lineage = bool(derived_manifest.get("verified", False) and lineage_type == "verified_lineage")
+
+        if not is_verified_lineage:
+            provenance["verification_status"] = "EXCLUDED_UNVERIFIED_DERIVED_LINEAGE"
+            provenance["exclusion_reason"] = (
+                "Self-declared derived subset manifest lacks verified parent byte lineage; arbitrary child cannot be accepted"
+            )
+            return provenance
 
         if (
             parent_sha256 == expected_tx_hash
@@ -227,12 +260,7 @@ def get_dataset_provenance(
             provenance["classification"] = GENUINE_OBSERVED
             provenance["verification_status"] = STATUS_VERIFIED
             provenance["acceptable_for_proposal_benchmark"] = True
-            provenance["derived_subset"] = {
-                "parent_sha256": parent_sha256,
-                "child_sha256": child_sha256,
-                "transformation_digest": trans_digest,
-                "description": derived_manifest.get("description", "Verified derived subset"),
-            }
+            provenance["derived_subset"] = dict(derived_manifest)
             return provenance
         else:
             provenance["verification_status"] = "EXCLUDED_DERIVED_VERIFICATION_FAILED"
@@ -256,7 +284,7 @@ def create_verified_test_double_provenance(
 ) -> Dict[str, Any]:
     """
     Test harness helper: generates an explicit test double provenance record.
-    Used exclusively in unit/integration test suites to isolate test doubles from production data gates.
+    Used exclusively in unit/integration test suites. Marked non-acceptable for production benchmarks.
     """
     return {
         "dataset_type": "IEEE-CIS",
@@ -265,18 +293,18 @@ def create_verified_test_double_provenance(
         "source_uri": "https://www.kaggle.com/competitions/ieee-fraud-detection/data",
         "description": description,
         "feedback_latency_nature": "UNKNOWN_CONFIRMATION_TIME (test double)",
-        "acceptable_for_proposal_benchmark": True,
+        "acceptable_for_proposal_benchmark": False,
         "verification_status": STATUS_VERIFIED,
         "test_double": True,
         "test_run_id": run_id,
     }
 
 
-def verify_bundle_provenance(metadata: Dict[str, Any]) -> Tuple[bool, str]:
+def verify_bundle_provenance(metadata: Dict[str, Any], allow_test_doubles: bool = False) -> Tuple[bool, str]:
     """
     Validates whether a model bundle was fitted on genuine observed data.
     Strictly rejects missing provenance, non-genuine classifications, unverified statuses,
-    and contradictory metadata (e.g. data_kind='synthetic' carrying genuine claims).
+    test-double markers in production paths, and contradictory metadata.
     Returns (is_verified, reason).
     """
     if not metadata or not isinstance(metadata, dict):
@@ -291,6 +319,10 @@ def verify_bundle_provenance(metadata: Dict[str, Any]) -> Tuple[bool, str]:
     if not provenance or not isinstance(provenance, dict):
         return False, "Missing verified provenance metadata"
 
+    # Reject test doubles on production verification path
+    if (provenance.get("test_double") is True or metadata.get("test_double") is True) and not allow_test_doubles:
+        return False, "Model bundle contains test-double provenance marker; rejected for production acceptance"
+
     # Reject contradictory metadata
     dataset_type = provenance.get("dataset_type")
     if dataset_type in {"PaySim", "Feedzai-BAF"}:
@@ -303,7 +335,8 @@ def verify_bundle_provenance(metadata: Dict[str, Any]) -> Tuple[bool, str]:
     if provenance.get("verification_status") != STATUS_VERIFIED:
         return False, f"Provenance verification status is '{provenance.get('verification_status')}', not VERIFIED_RESEARCH_DATA"
 
-    if not provenance.get("acceptable_for_proposal_benchmark", False):
+    if not provenance.get("acceptable_for_proposal_benchmark", False) and not (provenance.get("test_double") and allow_test_doubles):
         return False, "Dataset is marked unacceptable for proposal research benchmarks"
 
     return True, "Verified genuine observed dataset"
+

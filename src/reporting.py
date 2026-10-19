@@ -142,13 +142,8 @@ def block_bootstrap_metric_delta(
     }
     n_periods = sum(len(ts) for ts in timeline.values())
 
-    has_prob = "probability_a" in paired.columns and "probability_b" in paired.columns
-    is_identical = (candidate_model == baseline_model) or (
-        (np.allclose(paired.probability_a.to_numpy(), paired.probability_b.to_numpy(), atol=1e-12) if has_prob else True)
-        and np.array_equal(paired.prediction_a.to_numpy(), paired.prediction_b.to_numpy())
-    )
-
-    if is_identical:
+    # Only treat true self-comparisons as identical
+    if candidate_model == baseline_model:
         return {
             "candidate_model": candidate_model,
             "baseline_model": baseline_model,
@@ -159,8 +154,10 @@ def block_bootstrap_metric_delta(
             "ci_95": [0.0, 0.0],
             "ci_99": [0.0, 0.0],
             "non_inferiority_margin": non_inferiority_margin,
-            "empirical_p_value": 0.0,
+            "empirical_p_value": 1.0,
+            "superiority_p_value": 1.0,
             "is_non_inferior": True,
+            "is_superior": False,
             "n_bootstrap": n_bootstrap,
             "n_seeds": len(seeds),
             "temporal_blocks": n_periods,
@@ -168,11 +165,10 @@ def block_bootstrap_metric_delta(
             "daily_budget": daily_budget if "budget" in metric else None,
             "capacity_policy": capacity_policy if "budget" in metric else None,
             "method": f"paired circular moving-block bootstrap; metric={metric}; shared time draws across seeds",
-            "status": "exploratory_short_stream"
-            if n_periods < 6
-            else "conditional_on_observed_stream",
-            "limitation": "Conditional on supplied periods; seeds do not add independent transaction populations.",
+            "status": "identical_self_comparison",
+            "limitation": "Self-comparison produces zero delta by construction.",
         }
+
 
     clean_metric = metric.lower().replace("-", "_")
 
@@ -356,8 +352,11 @@ def block_bootstrap_metric_delta(
 
     ci_95 = np.quantile(deltas, [0.025, 0.975]).tolist()
     ci_99 = np.quantile(deltas, [0.005, 0.995]).tolist()
-    emp_p = float(np.mean(np.array(deltas) <= -non_inferiority_margin))
+    emp_p_ni = float(np.mean(np.array(deltas) <= -non_inferiority_margin))
+    emp_p_sup = float(np.mean(np.array(deltas) <= 0.0))
     is_ni = bool(ci_95[0] >= -non_inferiority_margin)
+    is_sup = bool(ci_95[0] > 0.0)
+    min_resolvable_p = 1.0 / n_bootstrap
 
     return {
         "candidate_model": candidate_model,
@@ -369,8 +368,11 @@ def block_bootstrap_metric_delta(
         "ci_95": ci_95,
         "ci_99": ci_99,
         "non_inferiority_margin": non_inferiority_margin,
-        "empirical_p_value": emp_p,
+        "empirical_p_value": emp_p_ni,
+        "superiority_p_value": emp_p_sup,
         "is_non_inferior": is_ni,
+        "is_superior": is_sup,
+        "finite_resample_limit": f"p < {min_resolvable_p:.4f}" if emp_p_ni == 0 else None,
         "n_bootstrap": n_bootstrap,
         "n_seeds": len(seeds),
         "temporal_blocks": n_periods,
@@ -381,8 +383,9 @@ def block_bootstrap_metric_delta(
         "status": "exploratory_short_stream"
         if n_periods < 6
         else "conditional_on_observed_stream",
-        "limitation": "Conditional on supplied periods; seeds do not add independent transaction populations.",
+        "limitation": "Conditional on supplied periods; finite resample resolution limited to 1/B.",
     }
+
 
 
 def block_bootstrap_delta(

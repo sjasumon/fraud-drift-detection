@@ -237,20 +237,38 @@ def test_approved_genuine_inputs_succeed(tmp_path, monkeypatch):
 
 def test_correctly_traced_derived_subset_succeeds(tmp_path, monkeypatch):
     """A cryptographically traced derived subset with valid parent link succeeds verification."""
+    parent_file = tmp_path / "official_parent.csv"
+    parent_file.write_text("official_parent_transaction_records")
+    official_parent_hash = compute_file_sha256(parent_file)
+
     child_file = tmp_path / "derived_subset.csv"
     child_file.write_text("derived_child_records")
     child_hash = compute_file_sha256(child_file)
 
-    official_parent_hash = "3a5c83ab6b3cc13dcabe5ffa9f522307fd5f7f7b6e6f6a60c32284ca6283d642"
-
     manifest = create_derived_subset_manifest(
         parent_sha256=official_parent_hash,
         child_path=child_file,
+        parent_path=parent_file,
         transformation_spec={"sample_rate": 0.1, "seed": 42},
         description="10% deterministic sample of IEEE-CIS",
     )
     assert manifest["child_sha256"] == child_hash
     assert manifest["parent_sha256"] == official_parent_hash
+    assert manifest["lineage_type"] == "verified_lineage"
+
+    registry_mock = {
+        "IEEE-CIS": {
+            "classification": GENUINE_OBSERVED,
+            "provider": "Vesta Corporation",
+            "source_uri": "https://kaggle.com",
+            "description": "Mocked registry for derived test",
+            "reference_sha256": {
+                "train_transaction.csv": official_parent_hash,
+            },
+            "acceptable_for_proposal_benchmark": True,
+        }
+    }
+    monkeypatch.setattr("src.provenance.DATASET_REGISTRY", registry_mock)
 
     prov = get_dataset_provenance(
         "IEEE-CIS", file_path=child_file, derived_manifest=manifest
